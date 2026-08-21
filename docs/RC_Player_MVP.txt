@@ -1,0 +1,552 @@
+Atue como arquiteto e desenvolvedor sênior responsável pela criação de um MVP chamado
+provisoriamente RC Player.
+O objetivo é criar um player moderno para fontes de mídia pertencentes ao próprio usuário,
+funcionando inicialmente em:
+1. navegador web;
+2. Android TV e Google TV.
+O aplicativo Android deverá ser testável em uma televisão TCL C6K.
+Não transforme este projeto em uma plataforma grande. Implemente um MVP enxuto, funcional e
+visualmente profissional, mantendo espaço para expansão futura.
+
+1. DEFINIÇÃO DO PRODUTO
+O RC Player será apenas um reprodutor e organizador de mídia.
+O usuário poderá inserir sua própria fonte compatível e visualizar:
+• TV ao vivo;
+• filmes;
+• séries;
+• categorias;
+• favoritos;
+• conteúdos recentes;
+• progresso de reprodução;
+• guia de programação, quando houver XMLTV.
+O RC Player não deverá:
+• vender canais;
+• oferecer listas;
+• indicar fornecedores;
+• procurar fontes na internet;
+• hospedar vídeos;
+• retransmitir streams;
+• fazer proxy de vídeo;
+• transcodificar conteúdo;
+• compartilhar listas entre usuários;
+• fornecer catálogo próprio;
+• apresentar conteúdo protegido de demonstração;
+• utilizar marcas, capas ou logotipos próprios de emissoras e plataformas;
+• armazenar permanentemente as fontes dos usuários no servidor.
+A reprodução deverá ocorrer diretamente entre o dispositivo do usuário e a fonte informada por ele.
+
+1
+
+2. PRINCÍPIO DA ARQUITETURA
+Utilize uma arquitetura local-first.
+O navegador e o aplicativo Android deverão:
+• baixar a fonte diretamente;
+• processar a lista localmente;
+• organizar o catálogo localmente;
+• reproduzir os streams diretamente;
+• salvar favoritos e histórico no dispositivo;
+• evitar enviar nomes de canais, filmes, séries ou URLs para o backend.
+O backend deverá ser mínimo e responsável apenas por:
+• verificar o funcionamento do serviço;
+• gerar códigos temporários de pareamento;
+• transferir uma configuração para a televisão;
+• registrar aceite dos termos;
+• controlar dispositivos de teste;
+• suportar futuramente o licenciamento.
+O backend não deverá baixar, abrir, validar ou analisar as fontes do usuário.
+
+3. STACK
+Backend
+• Laravel;
+• PHP;
+• MySQL;
+• Redis;
+• API REST em /api/v1 ;
+• Docker Compose.
+
+Aplicação web
+• Vue 3;
+• Vite;
+• TypeScript;
+• Pinia;
+• Vue Router;
+• Tailwind CSS;
+• HLS.js;
+• elemento HTML5 <video> ;
+• IndexedDB para dados locais;
+• PWA instalável.
+
+2
+
+Android TV e Google TV
+• Kotlin;
+• Jetpack Compose for TV;
+• Media3/ExoPlayer;
+• navegação completa por controle remoto;
+• armazenamento local protegido;
+• Retrofit ou cliente HTTP equivalente;
+• geração de APK de teste.
+Não utilize microsserviços, Kubernetes, GraphQL, CQRS, event sourcing ou abstrações desnecessárias.
+
+4. ESTRUTURA DO REPOSITÓRIO
+Crie:
+
+rc-player/
+├── backend/
+├── web/
+├── android-tv/
+├── docs/
+├── docker-compose.yml
+├── .env.example
+├── .gitignore
+└── README.md
+Mantenha apenas estes documentos:
+
+docs/
+├── PRODUCT.md
+├── ARCHITECTURE.md
+└── LEGAL_AND_SECURITY.md
+Não crie documentação repetitiva.
+
+5. FLUXO PRINCIPAL
+Primeiro acesso pelo navegador
+1. Exibir apresentação breve do produto.
+2. Exibir os Termos de Uso e a Política de Privacidade.
+3. Exigir aceite explícito, sem caixa previamente marcada.
+4. Exigir declaração de que o usuário possui autorização para acessar o conteúdo informado.
+5. Permitir adicionar uma fonte por:
+
+3
+
+6. URL M3U/M3U8;
+7. arquivo M3U local.
+8. Permitir informar opcionalmente uma URL XMLTV.
+9. Processar tudo no navegador.
+10. Salvar a configuração localmente.
+11. Abrir a página inicial do player.
+
+Primeiro acesso na televisão
+1. Exibir os termos resumidos e informar que o aplicativo não fornece conteúdo.
+2. Gerar um código temporário de seis caracteres.
+3. Exibir endereço e QR Code para pareamento.
+4. O usuário acessa o painel web.
+5. Digita o código da televisão.
+6. Seleciona uma configuração já cadastrada localmente no navegador.
+7. O navegador criptografa e envia um pacote temporário.
+8. A televisão recupera o pacote uma única vez.
+9. A televisão armazena a configuração localmente.
+10. O backend elimina o pacote imediatamente após o uso ou ao expirar.
+O código deverá:
+• possuir seis caracteres;
+• evitar O, 0, I e 1;
+• expirar em dez minutos;
+• ser de uso único;
+• ter limite de tentativas;
+• ser gerado com fonte criptograficamente segura;
+• não permitir enumeração previsível.
+
+6. FUNCIONALIDADES DO MVP
+Fontes
+Implementar:
+• uma fonte por instalação;
+• URL M3U/M3U8;
+• importação de arquivo M3U no navegador;
+• URL XMLTV opcional;
+• atualização manual;
+• informação da última atualização;
+• remoção completa da fonte;
+• tratamento de listas inválidas;
+• limite configurável de tamanho;
+• cancelamento do processamento;
+• processamento sem bloquear a interface.
+Não implementar múltiplas fontes no MVP.
+
+4
+
+Catálogo
+Organizar, quando os dados estiverem disponíveis, em:
+• TV ao vivo;
+• filmes;
+• séries;
+• categorias.
+O parser deverá reconhecer campos comuns, como:
+• nome;
+• grupo;
+• URL;
+• logo informado pela fonte;
+• identificador de EPG;
+• tipo de conteúdo.
+Não enriquecer dados usando serviços externos.
+Não consultar TMDB, IMDb ou APIs de emissoras.
+
+Página inicial
+Criar uma interface moderna, leve e inspirada genericamente em serviços premium de streaming, sem
+copiar Netflix ou outra marca.
+A página inicial deverá possuir:
+• destaque visual neutro;
+• continuar assistindo;
+• favoritos;
+• vistos recentemente;
+• TV ao vivo;
+• filmes;
+• séries;
+• categorias horizontais.
+Caso não existam conteúdos suficientes, ocultar as seções vazias.
+
+TV ao vivo
+Implementar:
+• lista de canais;
+• categorias;
+• canal atual;
+• próximo programa, quando houver EPG;
+• favoritos;
+• pesquisa;
+
+5
+
+• troca rápida;
+• tela cheia;
+• controles simples;
+• reconexão manual;
+• mensagens claras de erro.
+
+Filmes e séries
+Implementar:
+• capa, quando fornecida pela fonte;
+• título;
+• grupo ou categoria;
+• reprodução;
+• progresso;
+• continuar assistindo;
+• temporadas e episódios quando puderem ser identificados com segurança;
+• próximo episódio manual.
+Não implementar reprodução automática no MVP.
+
+Busca
+A busca deverá:
+• funcionar localmente;
+• pesquisar canais, filmes e séries;
+• responder rapidamente;
+• não enviar consultas ao backend;
+• permitir limpar o histórico de busca.
+
+Favoritos e histórico
+Implementar:
+• adicionar e remover favoritos;
+• progresso de filmes e episódios;
+• últimos canais assistidos;
+• continuar assistindo;
+• remoção individual;
+• limpeza completa dos dados locais.
+Os dados não precisam ser sincronizados entre navegador e televisão no MVP.
+
+Configurações
+Implementar:
+• editar fonte;
+• atualizar fonte;
+
+6
+
+• remover fonte;
+• configurar EPG;
+• alterar tamanho da interface;
+• ajustar formato de tela;
+• escolher idioma;
+• controlar reprodução automática ao selecionar canal;
+• limpar favoritos;
+• limpar histórico;
+• apagar todos os dados;
+• consultar termos e privacidade;
+• acessar canal de denúncias.
+Idiomas iniciais:
+• português do Brasil;
+• inglês.
+Estruture a internacionalização para novos idiomas.
+
+7. PLAYER WEB
+Utilize:
+• elemento HTML5 <video> ;
+• HLS.js quando suportado;
+• reprodução nativa quando apropriada;
+• detecção de compatibilidade antes da reprodução;
+• tratamento separado para erro de rede, formato e autorização;
+• encerramento correto da instância do player ao trocar de conteúdo;
+• limitação de tentativas automáticas de reconexão.
+Não tente contornar:
+• CORS;
+• autenticação da origem;
+• bloqueios geográficos;
+• DRM;
+• restrições do servidor;
+• URLs expiradas.
+Quando o navegador não puder reproduzir determinado formato, informar claramente que a fonte
+pode funcionar no aplicativo Android TV mesmo sem funcionar no navegador.
+
+8. PLAYER ANDROID TV
+Utilize Media3/ExoPlayer.
+Implementar:
+• HLS;
+
+7
+
+• arquivos e streams compatíveis com os decodificadores do dispositivo;
+• tela cheia;
+• play e pause;
+• barra de progresso para conteúdo sob demanda;
+• seleção de áudio e legenda quando disponível;
+• tratamento de buffering;
+• tratamento de falhas;
+• botão para tentar novamente;
+• encerramento correto do player;
+• prevenção de vazamentos de memória;
+• pausa ao sair do aplicativo.
+Toda a interface deverá ser utilizável apenas com:
+• setas direcionais;
+• botão central;
+• botão voltar;
+• controles de mídia disponíveis.
+O foco visual deverá ser sempre claramente perceptível.
+
+9. DESIGN
+Crie um layout:
+• moderno;
+• escuro;
+• limpo;
+• leve;
+• responsivo;
+• adequado para uso à distância na televisão;
+• sem excesso de animações;
+• sem efeitos pesados;
+• sem copiar identidade visual de terceiros.
+Utilize:
+• hierarquia tipográfica clara;
+• cards grandes na televisão;
+• cantos suavemente arredondados;
+• skeleton loading;
+• estados vazios bem desenhados;
+• foco destacado;
+• contraste adequado;
+• imagens carregadas sob demanda;
+• placeholders quando não houver capa;
+• navegação lateral na televisão;
+• navegação superior ou lateral no navegador.
+
+8
+
+Evite:
+• vídeos automáticos em banners;
+• fundos animados;
+• carrosséis infinitos pesados;
+• bibliotecas visuais gigantes;
+• carregamento de centenas de imagens simultaneamente.
+
+10. MEDIDAS JURÍDICAS E OPERACIONAIS
+Crie páginas iniciais para:
+• Termos de Uso;
+• Política de Privacidade;
+• Política de Uso Aceitável;
+• Política de Direitos Autorais;
+• canal de denúncia.
+Os textos devem ser marcados como minutas que exigem revisão de advogado antes da publicação
+comercial.
+O usuário deverá declarar que:
+• adiciona a fonte por iniciativa própria;
+• possui autorização para acessá-la;
+• é responsável pelo conteúdo informado;
+• não utilizará o aplicativo para violar direitos de terceiros;
+• entende que o RC Player não vende nem fornece conteúdo;
+• entende que a disponibilidade da fonte não é controlada pelo RC Player.
+Além do texto, implemente as seguintes medidas técnicas:
+• nenhum conteúdo ou fonte padrão;
+• nenhum catálogo pré-carregado;
+• nenhuma pesquisa de listas;
+• nenhum compartilhamento público;
+• nenhuma recomendação de fornecedor;
+• nenhum proxy;
+• nenhuma retransmissão;
+• nenhuma transcodificação;
+• nenhuma gravação;
+• nenhum download de conteúdo;
+• nenhuma remoção de bloqueios;
+• nenhum desbloqueio de DRM;
+• nenhuma tentativa de ignorar CORS;
+• URLs removidas dos logs;
+• credenciais mascaradas nas mensagens de erro;
+• dados de pareamento apagados após o uso;
+• canal visível para denúncias;
+• possibilidade de revogar um dispositivo;
+• registro da versão dos termos aceitos;
+
+9
+
+• proibição de publicidade como “TV grátis”, “canais liberados” ou expressão equivalente.
+Não utilizar “Netflix” no nome, na interface, na descrição pública ou nas imagens do produto.
+Não afirmar que os Termos de Uso eliminam toda responsabilidade jurídica.
+
+11. SEGURANÇA E PRIVACIDADE
+Implementar:
+• Content Security Policy no web app;
+• proteção contra XSS;
+• validação de URLs;
+• bloqueio de esquemas perigosos;
+• limite de tamanho de arquivo;
+• rate limiting no pareamento;
+• CORS restritivo;
+• segredos fora do repositório;
+• logs sem fontes ou credenciais;
+• conexão HTTPS preparada;
+• criptografia do pacote temporário de pareamento;
+• expiração automática no Redis;
+• armazenamento local protegido no Android;
+• opção para apagar todos os dados.
+Não enviar analytics de nomes de canais, filmes, séries ou endereços reproduzidos.
+
+12. BACKEND MÍNIMO
+Criar somente as entidades necessárias:
+
+devices
+pairing_codes
+terms_acceptances
+app_versions
+Endpoints iniciais:
+
+GET
+POST
+GET
+POST
+POST
+POST
+GET
+
+/api/v1/health
+/api/v1/pairing-codes
+/api/v1/pairing-codes/{code}
+/api/v1/pairing-codes/{code}/payload
+/api/v1/pairing-codes/{code}/consume
+/api/v1/terms/accept
+/api/v1/app-version
+
+10
+
+Regras:
+• payload temporário;
+• uso único;
+• expiração em dez minutos;
+• nenhuma URL em logs;
+• exclusão após consumo;
+• respostas padronizadas;
+• testes para expiração, consumo único e limite de tentativas.
+Não implementar agora:
+• pagamentos;
+• assinaturas;
+• revendedores;
+• painel administrativo complexo;
+• perfis;
+• recuperação de senha;
+• notificações;
+• recomendações por inteligência artificial.
+
+13. TESTES
+Criar testes usando apenas dados sintéticos ou conteúdo devidamente autorizado.
+Validar:
+
+Web
+• importação M3U;
+• parser;
+• agrupamento;
+• busca;
+• favoritos;
+• progresso;
+• IndexedDB;
+• player HLS;
+• erro de CORS;
+• erro de formato;
+• atualização da fonte;
+• remoção completa dos dados.
+
+Android TV
+• instalação do APK;
+• navegação por controle remoto;
+• foco;
+• pareamento;
+• armazenamento local;
+• importação da configuração;
+
+11
+
+• reprodução;
+• troca de canal;
+• botão voltar;
+• retomada;
+• erro de rede.
+
+Backend
+• expiração do código;
+• uso único;
+• limite de tentativas;
+• exclusão do payload;
+• aceite dos termos;
+• ausência de URLs nos logs.
+
+14. CRITÉRIOS DE CONCLUSÃO
+O MVP estará pronto quando:
+1. o navegador importar uma fonte real fornecida pelo usuário;
+2. o navegador organizar e reproduzir conteúdo compatível;
+3. favoritos, busca e progresso funcionarem localmente;
+4. a TV exibir um código de pareamento;
+5. o navegador enviar a configuração para a TV;
+6. o payload desaparecer do backend após o consumo;
+7. o aplicativo Android organizar o catálogo;
+8. o aplicativo reproduzir conteúdo compatível na TCL C6K;
+9. toda a interface funcionar com controle remoto;
+10. nenhuma URL completa aparecer nos logs;
+11. não existir conteúdo pré-carregado;
+12. os testes críticos passarem;
+13. o APK debug for gerado;
+14. o README explicar como instalar o APK na televisão;
+15. a documentação corresponder ao que foi efetivamente implementado.
+
+15. ORDEM DE IMPLEMENTAÇÃO
+Implemente nesta ordem:
+1. estrutura do repositório e Docker;
+2. backend de saúde e pareamento;
+3. parser M3U compartilhável por testes;
+4. aplicação web local-first;
+5. player web;
+6. interface Android TV;
+7. pareamento navegador–TV;
+8. parser e catálogo Android;
+9. player Android;
+10. favoritos e progresso;
+
+12
+
+11. segurança;
+12. documentação e testes finais.
+Antes de começar:
+• analise o diretório;
+• apresente um plano curto;
+• verifique versões estáveis das dependências;
+• não altere o escopo.
+Durante o trabalho:
+• implemente em etapas pequenas;
+• execute testes após cada etapa;
+• não diga que algo funciona sem validar;
+• não adicione funcionalidades futuras;
+• mantenha componentes pequenos;
+• não crie arquivos ou camadas sem necessidade.
+Ao final, entregue:
+• lista dos arquivos relevantes;
+• decisões técnicas;
+• comandos executados;
+• resultados dos testes;
+• limitações conhecidas;
+• caminho do APK;
+• instruções para instalação na TCL C6K;
+• instruções para executar o web app;
+• pendências reais.
+A prioridade é ter um produto pequeno, bonito e funcional, não uma arquitetura sofisticada.
+
+13
+
+

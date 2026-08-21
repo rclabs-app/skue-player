@@ -1,0 +1,44 @@
+# ── Segredos / Env ──────────────────────────────
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ── Node ────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Laravel (backend) ───────────────────────────
+backend/vendor/
+backend/storage/logs/*.log
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/bootstrap/cache/*.php
+backend/.env
+backend/.env.*
+backend/database/database.sqlite
+
+# ── Vue / Vite (web) ────────────────────────────
+web/dist/
+web/.env
+web/.env.*
+
+# ── Android (Capacitor) ─────────────────────────
+web/android/.gradle/
+web/android/app/build/
+web/android/build/
+web/android/local.properties
+web/android/.idea/
+web/android/*.iml
+web/android/capacitor.settings.gradle
+web/android/app/release/
+*.apk
+*.aab
+
+# ── Sistema ─────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log

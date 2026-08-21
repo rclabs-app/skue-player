@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <style>
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #0f171e;
+      }
+      #app {
+        width: 100%;
+        height: 100%;
+        display: flex;
+      }
+    </style>
+
+    <script>
+      function applyTVScaling() {
+        const ua = navigator.userAgent.toLowerCase();
+        // Detect TV or generic Android (often Android boxes don't explicitly say TV)
+        const isTV = ua.includes('tv') || ua.includes('box') || (ua.includes('android') && !ua.includes('mobile'));
+        
+        if (isTV && window.innerWidth > 0 && window.innerWidth < 1920) {
+          const scaleX = window.innerWidth / 1920;
+          const scaleY = window.innerHeight / 1080;
+          const scale = Math.min(scaleX, scaleY);
+          
+          const translateX = Math.max(0, (window.innerWidth - (1920 * scale)) / 2);
+          const translateY = Math.max(0, (window.innerHeight - (1080 * scale)) / 2);
+          
+          let style = document.getElementById('tv-scale-style');
+          if (!style) {
+            style = document.createElement('style');
+            style.id = 'tv-scale-style';
+            document.head.appendChild(style);
+          }
+          style.innerHTML = `
+            #app {
+              width: 1920px !important;
+              height: 1080px !important;
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              transform-origin: top left !important;
+              transform: translate(${translateX}px, ${translateY}px) scale(${scale}) !important;
+              overflow: hidden !important;
+            }
+          `;
+        }
+      }
+      
+      // Apply immediately and on resize
+      applyTVScaling();
+      window.addEventListener('resize', applyTVScaling);
+      window.addEventListener('orientationchange', applyTVScaling);
+    </script>
+    <title>web</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

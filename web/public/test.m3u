@@ -1,0 +1,9 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="" tvg-name="TV Globo HD" tvg-logo="https://example.com/globo.png" group-title="TV Aberta",TV Globo HD
+http://example.com/live/globo.m3u8
+#EXTINF:-1 tvg-id="" tvg-name="HBO" tvg-logo="" group-title="Filmes",HBO
+http://example.com/live/hbo.m3u8
+#EXTINF:-1 tvg-id="" tvg-name="Matrix" tvg-logo="" group-title="VOD Filmes",Matrix
+http://example.com/movie/matrix.mp4
+#EXTINF:-1 tvg-id="" tvg-name="Breaking Bad S01E01" tvg-logo="" group-title="Series VOD",Breaking Bad S01E01
+http://example.com/series/bb1.mp4
