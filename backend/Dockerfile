@@ -15,6 +15,7 @@ WORKDIR /var/www/html
 COPY . .
 
 RUN composer install --no-interaction --prefer-dist \
+    && mkdir -p storage/framework/views storage/framework/cache storage/framework/sessions \
     && touch database/database.sqlite \
     && chmod 775 database/database.sqlite \
     && chmod -R 775 storage bootstrap/cache
