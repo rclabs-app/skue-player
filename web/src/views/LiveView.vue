@@ -11,6 +11,8 @@ import ContentCard from '../components/ContentCard.vue'
 import { EPGService, type EPGProgram } from '../services/epg.service'
 
 import { db } from '../lib/database'
+import { useSpatialNav } from '../composables/useSpatialNav'
+import { useTvRemote } from '../composables/useTvRemote'
 
 const store = usePlaylistStore()
 const favoritesStore = useFavoritesStore()
@@ -59,6 +61,37 @@ onMounted(async () => {
 onUnmounted(() => observer?.disconnect())
 
 const groups = ref<{name: string, count: number}[]>([])
+
+// ── TV Navigation ────────────────────────────────────────────────────────
+const sidebarZone = ref<HTMLElement | null>(null)
+const catZone     = ref<HTMLElement | null>(null)
+const gridZone    = ref<HTMLElement | null>(null)
+
+const nav = useSpatialNav()
+nav.registerZone('sidebar',    sidebarZone)
+nav.registerZone('categories', catZone)
+nav.registerZone('grid',       gridZone)
+nav.setZoneRule('sidebar',    'RIGHT', 'categories')
+nav.setZoneRule('categories', 'LEFT',  'sidebar')
+nav.setZoneRule('categories', 'RIGHT', 'grid')
+nav.setZoneRule('grid',       'LEFT',  'categories')
+nav.activate()
+
+const { onRemoteKey } = useTvRemote()
+onRemoteKey('CHANNEL_UP',   () => cycleGroup(-1))
+onRemoteKey('CHANNEL_DOWN', () => cycleGroup(1))
+onRemoteKey('PAGE_UP',      () => cycleGroup(-1))
+onRemoteKey('PAGE_DOWN',    () => cycleGroup(1))
+
+function cycleGroup(delta: number) {
+  const allKeys = [
+    { key: 'ALL' }, { key: 'FAVORITES' }, { key: 'CONTINUE' },
+    ...groups.value.map(g => ({ key: g.name }))
+  ]
+  const idx = allKeys.findIndex(g => g.key === activeGroup.value)
+  const next = allKeys[(idx + delta + allKeys.length) % allKeys.length]
+  if (next) selectGroup(next.key)
+}
 
 // Progressive rendering — 80 channels at a time (smaller cards = can show more)
 const visibleItems = ref<PlaylistItem[]>([])
@@ -193,7 +226,7 @@ function getProgress(prog: EPGProgram) {
     </div>
 
     <!-- ── Categories Sidebar ── -->
-    <aside class="w-56 lg:w-64 shrink-0 flex flex-col bg-black/30 border-r border-gray-800/60 overflow-hidden">
+    <aside ref="sidebarZone" class="w-56 lg:w-64 shrink-0 flex flex-col bg-black/30 border-r border-gray-800/60 overflow-hidden">
       <div class="px-5 pt-6 pb-4 border-b border-gray-800/60">
         <div class="flex items-center gap-2 mb-1">
           <span class="relative flex h-2.5 w-2.5 shrink-0">
@@ -215,20 +248,20 @@ function getProgress(prog: EPGProgram) {
         </div>
       </div>
 
-      <div class="flex-1 overflow-y-auto py-2 scrollbar-thin">
-        <button @click="selectGroup('ALL')" :class="['w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'ALL' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+      <div ref="catZone" class="flex-1 overflow-y-auto py-2">
+        <button @click="selectGroup('ALL')" @keydown.enter.prevent="selectGroup('ALL')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'ALL' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Todos</span>
           <span class="text-xs text-gray-600 tabular-nums"></span>
         </button>
-        <button @click="selectGroup('FAVORITES')" :class="['w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'FAVORITES' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button @click="selectGroup('FAVORITES')" @keydown.enter.prevent="selectGroup('FAVORITES')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'FAVORITES' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Favoritos</span>
           <span class="text-xs text-gray-600 tabular-nums"></span>
         </button>
-        <button @click="selectGroup('CONTINUE')" :class="['w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'CONTINUE' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button @click="selectGroup('CONTINUE')" @keydown.enter.prevent="selectGroup('CONTINUE')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'CONTINUE' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Continuar Assistindo</span>
           <span class="text-xs text-gray-600 tabular-nums"></span>
         </button>
-        <button v-for="g in groups" :key="g.name" @click="selectGroup(g.name)" :class="['w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === g.name ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button v-for="g in groups" :key="g.name" @click="selectGroup(g.name)" @keydown.enter.prevent="selectGroup(g.name)" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === g.name ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span class="truncate pr-2">{{ g.name }}</span>
           <span class="text-xs text-gray-600 tabular-nums shrink-0">{{ g.count.toLocaleString('pt-BR') }}</span>
         </button>
@@ -301,7 +334,8 @@ function getProgress(prog: EPGProgram) {
         </div>
       </div>
 
-      <div ref="scrollArea" class="flex-1 overflow-y-auto p-6 scrollbar-thin">
+      <div ref="scrollArea" class="flex-1 overflow-y-auto p-6">
+        <div ref="gridZone">
         <div v-if="visibleItems.length === 0" class="flex flex-col items-center justify-center h-full text-gray-600 gap-3">
           <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
           <p>Nenhum canal encontrado.</p>
@@ -330,6 +364,7 @@ function getProgress(prog: EPGProgram) {
             Todos os canais exibidos
           </div>
         </div>
+        </div><!-- /gridZone -->
       </div>
     </div>
 
@@ -346,9 +381,4 @@ function getProgress(prog: EPGProgram) {
   </div>
 </template>
 
-<style scoped>
-.scrollbar-thin::-webkit-scrollbar { width: 4px; }
-.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
-.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #4b5563; }
-</style>
+

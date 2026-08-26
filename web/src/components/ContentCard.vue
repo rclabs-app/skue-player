@@ -20,9 +20,10 @@ function getDisplayName(item: any) {
 <template>
   <div 
     @click="$emit('play', item)"
-    @keydown.enter="$emit('play', item)"
+    @keydown.enter.prevent="$emit('play', item)"
+    @keydown.space.prevent="$emit('play', item)"
     tabindex="0"
-    class="group cursor-pointer flex flex-col gap-1.5 focus:outline-none transition-all duration-200"
+    class="content-card group cursor-pointer flex flex-col gap-1.5 focus:outline-none transition-all duration-200 relative"
   >
     <!-- Image / Thumbnail Container -->
     <div 
@@ -37,8 +38,8 @@ function getDisplayName(item: any) {
         loading="lazy"
         decoding="async"
         :class="[
-          'max-w-full max-h-full transition-all duration-300 group-hover:scale-105',
-          isPortrait ? 'w-full h-full object-cover' : (item.type === 'live' ? 'w-full h-full object-cover' : 'object-contain p-2 opacity-85 group-hover:opacity-100'),
+          'max-w-full max-h-full transition-all duration-300 group-hover:scale-105 group-focus:scale-105',
+          isPortrait ? 'w-full h-full object-cover' : (item.type === 'live' ? 'w-full h-full object-cover' : 'object-contain p-2 opacity-85 group-hover:opacity-100 group-focus:opacity-100'),
           progress !== undefined && isPortrait ? 'h-[calc(100%-4px)]' : ''
         ]"
         @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
@@ -79,3 +80,4 @@ function getDisplayName(item: any) {
     </p>
   </div>
 </template>
+

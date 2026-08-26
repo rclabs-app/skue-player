@@ -11,6 +11,8 @@ import ContentCard from '../components/ContentCard.vue'
 import { TMDBService } from '../services/tmdb.service'
 import { db } from '../lib/database'
 import type { TMDBMetadata } from '../lib/database'
+import { useSpatialNav } from '../composables/useSpatialNav'
+import { useTvRemote } from '../composables/useTvRemote'
 
 const store = usePlaylistStore()
 const favoritesStore = useFavoritesStore()
@@ -87,6 +89,42 @@ const sentinel = ref<HTMLElement | null>(null)
 const scrollArea = ref<HTMLElement | null>(null)
 const observer = ref<IntersectionObserver | null>(null)
 const isPageLoading = ref(true)
+
+// ── TV Navigation ────────────────────────────────────────────────────────
+const sidebarZone = ref<HTMLElement | null>(null)
+const catZone     = ref<HTMLElement | null>(null)
+const gridZone    = ref<HTMLElement | null>(null)
+
+const nav = useSpatialNav()
+nav.registerZone('sidebar',    sidebarZone)
+nav.registerZone('categories', catZone)
+nav.registerZone('grid',       gridZone)
+nav.setZoneRule('sidebar',    'RIGHT', 'categories')
+nav.setZoneRule('categories', 'LEFT',  'sidebar')
+nav.setZoneRule('categories', 'RIGHT', 'grid')
+nav.setZoneRule('grid',       'LEFT',  'categories')
+nav.activate()
+
+// Channel up/down = navigate categories
+const { onRemoteKey } = useTvRemote()
+const groupKeys = computed(() => [
+  { key: 'ALL' },
+  { key: 'FAVORITES' },
+  { key: 'CONTINUE' },
+  ...groups.value.map(g => ({ key: g.name }))
+])
+
+onRemoteKey('CHANNEL_UP',   () => { cycleGroup(-1) })
+onRemoteKey('CHANNEL_DOWN', () => { cycleGroup(1) })
+onRemoteKey('PAGE_UP',      () => { cycleGroup(-1) })
+onRemoteKey('PAGE_DOWN',    () => { cycleGroup(1) })
+
+function cycleGroup(delta: number) {
+  const keys = groupKeys.value
+  const idx = keys.findIndex(g => g.key === activeGroup.value)
+  const next = keys[(idx + delta + keys.length) % keys.length]
+  if (next) selectGroup(next.key)
+}
 
 const totalMovies = ref(0)
 const totalFavorites = ref(0)
@@ -240,7 +278,7 @@ function extractYear(name: string): string | null {
     </div>
 
     <!-- ── Categories Sidebar ── -->
-    <aside class="w-56 lg:w-64 shrink-0 flex flex-col overflow-hidden">
+    <aside ref="sidebarZone" class="w-56 lg:w-64 shrink-0 flex flex-col overflow-hidden">
       <div class="px-5 pt-6 pb-4">
         <div class="flex items-center gap-2 mb-1">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary shrink-0"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></svg>
@@ -261,20 +299,20 @@ function extractYear(name: string): string | null {
       </div>
 
       <!-- Category list -->
-      <div class="flex-1 overflow-y-auto py-2 scrollbar-thin">
-        <button @click="selectGroup('ALL')" :class="['w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'ALL' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+      <div ref="catZone" class="flex-1 overflow-y-auto py-2">
+        <button @click="selectGroup('ALL')" @keydown.enter.prevent="selectGroup('ALL')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'ALL' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Todos</span>
           <span class="text-xs text-gray-600 tabular-nums">{{ totalMovies.toLocaleString('pt-BR') }}</span>
         </button>
-        <button @click="selectGroup('FAVORITES')" :class="['w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'FAVORITES' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button @click="selectGroup('FAVORITES')" @keydown.enter.prevent="selectGroup('FAVORITES')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'FAVORITES' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Favoritos</span>
           <span class="text-xs text-gray-600 tabular-nums">{{ totalFavorites.toLocaleString('pt-BR') }}</span>
         </button>
-        <button @click="selectGroup('CONTINUE')" :class="['w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'CONTINUE' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button @click="selectGroup('CONTINUE')" @keydown.enter.prevent="selectGroup('CONTINUE')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'CONTINUE' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Continuar Assistindo</span>
           <span class="text-xs text-gray-600 tabular-nums">{{ historyStore.activelyWatching.filter(item => item.metadata.type === 'movie').length.toLocaleString('pt-BR') }}</span>
         </button>
-        <button v-for="g in groups" :key="g.name" @click="selectGroup(g.name)" :class="['w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === g.name ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button v-for="g in groups" :key="g.name" @click="selectGroup(g.name)" @keydown.enter.prevent="selectGroup(g.name)" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === g.name ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span class="truncate pr-2">{{ g.name }}</span>
           <span class="text-xs text-gray-600 tabular-nums shrink-0">{{ g.count.toLocaleString('pt-BR') }}</span>
         </button>
@@ -297,7 +335,8 @@ function extractYear(name: string): string | null {
       </div>
 
       <!-- Scrollable grid -->
-      <div ref="scrollArea" class="flex-1 overflow-y-auto scrollbar-thin relative">
+      <div ref="scrollArea" class="flex-1 overflow-y-auto relative">
+        <div ref="gridZone" data-tv-zone="movies-grid">
         <!-- Hero Banner Carousel -->
         <div 
           v-if="currentHero && activeGroup === 'ALL' && !searchQuery" 
@@ -407,6 +446,7 @@ function extractYear(name: string): string | null {
             </div>
           </div>
         </div>
+        </div><!-- /gridZone -->
       </div>
     </div>
 
@@ -414,18 +454,6 @@ function extractYear(name: string): string | null {
 </template>
 
 <style scoped>
-.scrollbar-thin::-webkit-scrollbar { width: 4px; }
-.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
-.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #4b5563; }
-
 .fade-enter-active, .fade-leave-active { transition: opacity 0.8s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
-</style>
-
-<style scoped>
-.scrollbar-thin::-webkit-scrollbar { width: 4px; }
-.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
-.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #4b5563; }
 </style>

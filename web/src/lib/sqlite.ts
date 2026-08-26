@@ -128,6 +128,24 @@ export class SQLiteDatabaseService {
     await this.persist()
   }
 
+  /**
+   * Reload the database from the persistent store (OPFS/IDB).
+   * Use after the worker has persisted a new DB so the main thread
+   * gets the fresh data without the worker sending a large Uint8Array.
+   */
+  async reloadFromStorage(): Promise<void> {
+    const SQL = await initSqlJs({ locateFile: () => wasmUrl })
+    const saved = await loadDatabase()
+    if (this.db) this.db.close()
+    if (saved) {
+      this.db = new SQL.Database(saved)
+      this.db.run(SCHEMA)
+    } else {
+      this.db = new SQL.Database()
+      this.db.run(SCHEMA)
+    }
+  }
+
   /** Export the current database state to an array (for worker offloading) */
   exportDatabase(): Uint8Array | null {
     if (!this.db) return null

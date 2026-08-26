@@ -226,7 +226,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       await new Promise<void>((resolve, reject) => {
         const worker = new M3uWorker()
 
-        worker.onmessage = (e) => {
+        worker.onmessage = async (e) => {
           const msg = e.data
 
           if (msg.type === 'progress') {
@@ -241,27 +241,31 @@ export const usePlaylistStore = defineStore('playlist', () => {
           }
 
           if (msg.type === 'done') {
-            const { epgUrl: parsedEpgUrl, dbData } = msg
+            const { epgUrl: parsedEpgUrl } = msg
 
-            processingProgress.value = 'Aplicando atualizações no banco local...'
-            
-            // Import the new DB and save it to IDB
-            db.importDatabase(dbData).then(async () => {
-                await db.saveConfig('playlist_loaded', true)
-                await db.saveConfig('playlist_url', sourceInfo)
-                await db.saveConfig('epg_url', parsedEpgUrl ?? null)
+            try {
+              worker.terminate()
 
-                // Load into memory (only index, not 200k episodes)
-                await loadFromDb()
+              // Worker already persisted the DB to OPFS/IDB.
+              // We just need to reload it into the main-thread SQLite instance.
+              processingProgress.value = 'Carregando banco de dados...'
+              await db.reloadFromStorage()
 
-                if (parsedEpgUrl) {
-                  syncEpg(parsedEpgUrl).catch(err => console.error('Auto-sync EPG error:', err))
-                }
+              await db.saveConfig('playlist_loaded', true)
+              await db.saveConfig('playlist_url', sourceInfo)
+              await db.saveConfig('epg_url', parsedEpgUrl ?? null)
 
-                resolve()
-              })
-              .catch(reject)
-              .finally(() => worker.terminate())
+              // Load series index into memory
+              await loadFromDb()
+
+              if (parsedEpgUrl) {
+                syncEpg(parsedEpgUrl).catch(err => console.error('Auto-sync EPG error:', err))
+              }
+
+              resolve()
+            } catch (err) {
+              reject(err)
+            }
           }
         }
 
@@ -270,15 +274,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
           worker.terminate()
         }
 
-        // Export current database binary state
-        const currentDbData = db.exportDatabase()
-        
-        // Pass it to the worker
-        if (currentDbData) {
-          worker.postMessage({ content, dbData: currentDbData }, [currentDbData.buffer])
-        } else {
-          worker.postMessage({ content })
-        }
+        // Send only the content — worker initialises its own fresh DB
+        worker.postMessage({ content })
       })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Unknown error'

@@ -390,7 +390,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 bg-black flex flex-col" @click="wakeControls" @mousemove="wakeControls">
+  <div class="fixed inset-0 z-50 bg-black flex flex-col" data-tv-modal @click="wakeControls" @mousemove="wakeControls">
     
     <div class="flex-1 min-h-0 overflow-hidden bg-black relative transition-all" :class="{ 'cursor-none': !showControls }">
       <video

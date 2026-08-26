@@ -7,3 +7,99 @@
     @apply bg-background text-gray-200 antialiased;
   }
 }
+
+/* ─── Custom Scrollbars ─────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(59, 130, 246, 0.55); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.08) transparent; }
+*:hover { scrollbar-color: rgba(59, 130, 246, 0.45) transparent; }
+
+/* ─── TV Remote Navigation — Focus Styles ───────────────────────────────── */
+
+/*
+ * Hide the browser's default focus ring globally.
+ * We replace it with our own premium TV-style indicator.
+ */
+:focus { outline: none; }
+
+/*
+ * TV Focus Ring
+ * Applied to every focusable element when reached via keyboard/remote.
+ * Uses :focus-visible so mouse clicks don't trigger the ring.
+ */
+:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.9);
+  outline-offset: 3px;
+  box-shadow:
+    0 0 0 4px rgba(59, 130, 246, 0.18),
+    0 0 16px rgba(59, 130, 246, 0.30);
+  border-radius: 6px;
+  transition: outline 0.1s ease, box-shadow 0.1s ease;
+}
+
+/*
+ * Special tight ring for pill/icon buttons (sidebar nav, small controls)
+ */
+.tv-nav-icon:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.9);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 4px rgba(59, 130, 246, 0.15),
+    0 0 12px rgba(59, 130, 246, 0.35);
+  border-radius: 9999px;
+}
+
+/*
+ * Content card focus — larger, more dramatic ring for grid items
+ */
+.content-card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 1),
+    0 0 0 6px rgba(59, 130, 246, 0.25),
+    0 0 24px rgba(59, 130, 246, 0.4);
+  border-radius: 8px;
+  transform: scale(1.04);
+  z-index: 10;
+}
+
+/*
+ * Sidebar category button focus
+ */
+.tv-category-btn:focus-visible {
+  outline: none;
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-left-color: rgba(59, 130, 246, 1) !important;
+  color: white !important;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.4);
+}
+
+/*
+ * Utility: zones marked with data-tv-zone scroll their focused child into view
+ */
+[data-tv-zone] { position: relative; }
+
+/*
+ * Smooth focus transitions for all interactive elements
+ */
+button, a, [tabindex] {
+  transition-property: outline, box-shadow, transform, background-color, border-color;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
+
+/* ─── TV Cursor Hide ─────────────────────────────────────────────────────── */
+/*
+ * Hide mouse cursor when navigating with remote (re-shown on mouse move via JS)
+ */
+body.tv-remote-active * { cursor: none !important; }
+
