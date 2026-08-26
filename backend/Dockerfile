@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     sqlite3 \
     libsqlite3-dev \
+    nodejs \
+    npm \
     && docker-php-ext-install pdo pdo_sqlite pdo_mysql \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -19,6 +21,8 @@ RUN composer install --no-interaction --prefer-dist \
     && touch database/database.sqlite \
     && chmod 775 database/database.sqlite \
     && chmod -R 775 storage bootstrap/cache
+
+RUN npm install && npm run build
 
 EXPOSE 8080
 CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
