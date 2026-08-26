@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, type CSSProperties } from 'vue'
 import Hls from 'hls.js'
 import mpegts from 'mpegts.js'
+import { Capacitor } from '@capacitor/core'
 
 import { useHistoryStore } from '../stores/history'
 
@@ -379,6 +380,23 @@ function handleClose() {
   emit('close')
 }
 
+function openExternalPlayer() {
+  try {
+    const urlObj = new URL(props.url)
+    const scheme = urlObj.protocol.replace(':', '')
+    const path = urlObj.host + urlObj.pathname + urlObj.search
+    
+    if (Capacitor.isNativePlatform()) {
+      window.location.href = `intent://${path}#Intent;scheme=${scheme};type=video/*;end`
+    } else {
+      window.open(props.url, '_blank')
+    }
+  } catch (e) {
+    console.error('Invalid URL for intent', e)
+    window.open(props.url, '_blank')
+  }
+}
+
 onUnmounted(() => {
   stopPlayback()
   window.removeEventListener('keydown', handleKeydown)
@@ -421,11 +439,17 @@ onUnmounted(() => {
         <h2 class="text-2xl md:text-3xl font-bold text-white mb-3 text-center">{{ errorTitle }}</h2>
         <p class="text-gray-400 max-w-lg text-center mb-10 text-sm md:text-base leading-relaxed">{{ errorDescription }}</p>
         
-        <div class="flex gap-4">
+        <div class="flex flex-wrap justify-center gap-4">
           <button @click="handleClose" class="px-6 py-3 bg-gray-800 hover:bg-gray-700 focus:ring-2 focus:ring-white text-white font-bold rounded-lg transition-colors border border-gray-700 outline-none">
             Voltar
           </button>
-          <button @click="retryPlay" class="px-6 py-3 bg-primary hover:bg-blue-600 focus:ring-2 focus:ring-white text-white font-bold rounded-lg transition-colors flex items-center gap-2 outline-none">
+          
+          <button v-if="errorTitle === 'Formato Não Suportado'" @click="openExternalPlayer" class="px-6 py-3 bg-orange-600 hover:bg-orange-500 focus:ring-2 focus:ring-white text-white font-bold rounded-lg transition-colors flex items-center gap-2 outline-none">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Abrir Player da TV
+          </button>
+          
+          <button v-else @click="retryPlay" class="px-6 py-3 bg-primary hover:bg-blue-600 focus:ring-2 focus:ring-white text-white font-bold rounded-lg transition-colors flex items-center gap-2 outline-none">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             Tentar Novamente
           </button>
