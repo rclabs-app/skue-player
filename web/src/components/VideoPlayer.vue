@@ -2,8 +2,6 @@
 import { ref, computed, onMounted, onUnmounted, watch, type CSSProperties } from 'vue'
 import Hls from 'hls.js'
 import mpegts from 'mpegts.js'
-import { Capacitor } from '@capacitor/core'
-import { CapacitorVideoPlayer } from 'capacitor-video-player'
 
 import { useHistoryStore } from '../stores/history'
 
@@ -23,7 +21,6 @@ const emit = defineEmits<{
 const videoRef = ref<HTMLVideoElement | null>(null)
 let hls: Hls | null = null
 let tsPlayer: mpegts.Player | null = null
-let jeepExitListener: any = null
 const historyStore = useHistoryStore()
 let lastUpdateTime = 0
 
@@ -186,34 +183,12 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-async function initPlayer() {
+function initPlayer() {
   if (!videoRef.value || !props.url) return
   hasError.value = false
 
   // Make sure we stop and clean up any ongoing stream before starting a new one
   stopPlayback()
-
-  if (Capacitor.isNativePlatform()) {
-    try {
-      if (!jeepExitListener) {
-        jeepExitListener = await (CapacitorVideoPlayer as any).addListener('jeepCapVideoPlayerExit', () => {
-          handleClose()
-        })
-      }
-      
-      await CapacitorVideoPlayer.initPlayer({
-        mode: 'fullscreen',
-        url: props.url,
-        playerId: 'tv-player',
-        componentTag: 'capacitor-video-player'
-      })
-      return
-    } catch (e) {
-      console.error("Native player error", e)
-      showError('Erro de Reprodução', 'Falha ao iniciar o player nativo da TV.')
-      return
-    }
-  }
 
   const video = videoRef.value
   const lowerUrl = props.url.toLowerCase()
@@ -382,18 +357,6 @@ function handleTimeUpdate() {
 }
 
 function stopPlayback() {
-  if (Capacitor.isNativePlatform()) {
-    try {
-      if (jeepExitListener) {
-        jeepExitListener.remove()
-        jeepExitListener = null
-      }
-      CapacitorVideoPlayer.stopAllPlayers().catch(e => console.error(e))
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
   // 1. Pause and clear the video element immediately
   if (videoRef.value) {
     videoRef.value.pause()
