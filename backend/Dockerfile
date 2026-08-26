@@ -19,4 +19,5 @@ RUN composer install --no-interaction --prefer-dist \
     && chmod 775 database/database.sqlite \
     && chmod -R 775 storage bootstrap/cache
 
-EXPOSE 8000
+EXPOSE 8080
+CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
