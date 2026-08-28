@@ -36,12 +36,14 @@ class Device extends Model
     }
 
     /**
-     * Generate a new unique 6-character key and set expiration.
+     * Generate a new unique 6-character key and set permanent expiration.
      */
     public function refreshKey(): string
     {
-        $this->device_key = self::generateUniqueKey();
-        $this->key_expires_at = Carbon::now()->addHours(24);
+        if (!$this->device_key) {
+            $this->device_key = self::generateUniqueKey();
+        }
+        $this->key_expires_at = Carbon::now()->addYears(100);
         $this->save();
 
         return $this->device_key;

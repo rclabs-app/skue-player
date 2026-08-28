@@ -71,7 +71,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
 
   async function initialize() {
     try {
-      deviceMac.value = getDeviceMac()
+      deviceMac.value = await getDeviceMac()
       const loaded = await db.getConfig('playlist_loaded')
       if (loaded) await loadFromDb()
       isLoaded.value = !!loaded

@@ -13,6 +13,8 @@
   "dependencies": {
     "@capacitor/android": "^8.5.0",
     "@capacitor/core": "^8.5.0",
+    "@capacitor/device": "^8.0.3",
+    "@capacitor/preferences": "^8.0.1",
     "hls.js": "^1.5.21",
     "mpegts.js": "^1.8.0",
     "pinia": "^3.0.3",

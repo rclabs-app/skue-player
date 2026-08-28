@@ -31,13 +31,16 @@ class DeviceController extends Controller
             $device = Device::create([
                 'mac' => $mac,
                 'device_key' => Device::generateUniqueKey(),
-                'key_expires_at' => now()->addHours(24),
+                'key_expires_at' => now()->addYears(100),
                 'name' => $request->input('name', 'Smart TV'),
             ]);
         } else {
-            // If key is expired or not set, regenerate
-            if ($device->isKeyExpired()) {
+            // Keep device key permanent for each device
+            if (!$device->device_key) {
                 $device->refreshKey();
+            } else if ($device->key_expires_at && $device->key_expires_at->isPast()) {
+                // Upgrade legacy 24h expired keys to permanent without changing the key
+                $device->update(['key_expires_at' => now()->addYears(100)]);
             }
             
             // Optionally update name if provided

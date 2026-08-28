@@ -31,7 +31,7 @@ class DeviceActivationTest extends TestCase
         ]);
     }
 
-    public function test_handshake_refreshes_expired_key(): void
+    public function test_handshake_preserves_device_key_and_extends_expiry(): void
     {
         $device = Device::create([
             'mac' => '11:22:33:44:55:66',
@@ -45,12 +45,12 @@ class DeviceActivationTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        $newKey = $response->json('device_key');
+        $key = $response->json('device_key');
 
-        $this->assertNotEquals('OLD123', $newKey);
+        $this->assertEquals('OLD123', $key);
         $this->assertDatabaseHas('devices', [
             'mac' => '11:22:33:44:55:66',
-            'device_key' => $newKey,
+            'device_key' => 'OLD123',
         ]);
     }
 

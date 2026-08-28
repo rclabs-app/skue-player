@@ -58,7 +58,7 @@ onMounted(async () => {
     totalLive.value = await db.getPlaylistItemCount('live')
   }
   
-  deviceMac.value = store.deviceMac || getDeviceMac()
+  deviceMac.value = store.deviceMac || (await getDeviceMac())
   try {
     devicePlaylists.value = await store.fetchDeviceConfig()
   } catch (e) {

@@ -103,3 +103,14 @@ button, a, [tabindex] {
  */
 body.tv-remote-active * { cursor: none !important; }
 
+/* ─── Native Android TV Player Overlay Mode ───────────────────────────── */
+body.native-player-active,
+body.native-player-active html {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+body.native-player-active #app {
+  display: none !important;
+}
+

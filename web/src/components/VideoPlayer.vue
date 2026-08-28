@@ -26,15 +26,42 @@ const historyStore = useHistoryStore()
 let lastUpdateTime = 0
 
 // TV UI State
-const isPlaying = ref(false) // Start false until actually playing
-const isBuffering = ref(true) // Start true
+const isPlaying = ref(false)
+const isBuffering = ref(true)
 let bufferingTimeout: ReturnType<typeof setTimeout> | null = null
+
+// Native Android Player Bridge Sync
+const isNativePlatform = computed(() => Capacitor.isNativePlatform() && typeof (window as any).NativePlayer !== 'undefined')
+let nativePollInterval: ReturnType<typeof setInterval> | null = null
+
+function startNativeSync() {
+  if (nativePollInterval) clearInterval(nativePollInterval)
+  nativePollInterval = setInterval(() => {
+    if (!isNativePlatform.value) return
+    try {
+      const np = (window as any).NativePlayer
+      const pos = (np.getCurrentPosition() || 0) / 1000
+      const dur = (np.getDuration() || 0) / 1000
+      const playing = np.isPlaying()
+
+      if (dur > 0) duration.value = dur
+      if (pos >= 0) currentTime.value = pos
+      isPlaying.value = playing
+
+      if (playing || pos > 0 || dur > 0) {
+        isBuffering.value = false
+      }
+    } catch (e) {
+      console.error('Error polling NativePlayer state', e)
+    }
+  }, 400)
+}
 
 function handleWaiting() {
   if (bufferingTimeout) clearTimeout(bufferingTimeout)
   bufferingTimeout = setTimeout(() => {
     isBuffering.value = true
-  }, 500) // Only show spinner if buffering for more than 500ms
+  }, 500)
 }
 
 function handlePlaying() {
@@ -42,6 +69,7 @@ function handlePlaying() {
   isBuffering.value = false
   isPlaying.value = true
 }
+
 const currentTime = ref(0)
 const duration = ref(0)
 const showControls = ref(true)
@@ -63,6 +91,15 @@ let clockInterval: ReturnType<typeof setInterval> | null = null
 const hasError = ref(false)
 const errorTitle = ref('')
 const errorDescription = ref('')
+
+// Debug overlay
+const debugInfo = ref('')
+let debugTimeout: ReturnType<typeof setTimeout> | null = null
+function showDebug(msg: string) {
+  debugInfo.value = msg
+  if (debugTimeout) clearTimeout(debugTimeout)
+  debugTimeout = setTimeout(() => { debugInfo.value = '' }, 8000)
+}
 
 function showError(title: string, desc: string) {
   hasError.value = true
@@ -95,6 +132,23 @@ function wakeControls() {
 }
 
 function togglePlay() {
+  if (isNativePlatform.value) {
+    try {
+      const np = (window as any).NativePlayer
+      if (isPlaying.value) {
+        np.pauseNativeVideo()
+        isPlaying.value = false
+      } else {
+        np.resumeNativeVideo()
+        isPlaying.value = true
+      }
+    } catch (e) {
+      console.error('Failed togglePlay NativePlayer', e)
+    }
+    wakeControls()
+    return
+  }
+
   if (!videoRef.value) return
   if (videoRef.value.paused) {
     videoRef.value.play()
@@ -105,17 +159,44 @@ function togglePlay() {
 }
 
 function seek(delta: number) {
+  if (isNativePlatform.value) {
+    try {
+      const np = (window as any).NativePlayer
+      const targetMs = Math.max(0, (currentTime.value + delta) * 1000)
+      np.seekNativeVideo(targetMs)
+      currentTime.value = targetMs / 1000
+    } catch (e) {
+      console.error('Failed seek NativePlayer', e)
+    }
+    wakeControls()
+    return
+  }
+
   if (!videoRef.value) return
   videoRef.value.currentTime += delta
   wakeControls()
 }
 
 function seekTo(event: MouseEvent) {
-  if (!videoRef.value) return
   const bar = event.currentTarget as HTMLElement
   const rect = bar.getBoundingClientRect()
   const pos = (event.clientX - rect.left) / rect.width
-  videoRef.value.currentTime = pos * duration.value
+  const targetTime = pos * duration.value
+
+  if (isNativePlatform.value) {
+    try {
+      const np = (window as any).NativePlayer
+      np.seekNativeVideo(targetTime * 1000)
+      currentTime.value = targetTime
+    } catch (e) {
+      console.error('Failed seekTo NativePlayer', e)
+    }
+    wakeControls()
+    return
+  }
+
+  if (!videoRef.value) return
+  videoRef.value.currentTime = targetTime
 }
 
 function formatTime(seconds: number) {
@@ -138,8 +219,6 @@ const videoTransformStyle = computed<CSSProperties>(() => {
   const v = aspectRatio.value
   if (v === 'original') return { transform: 'none', objectFit: 'contain' }
   if (v === 'stretch') return { transform: 'none', objectFit: 'fill' }
-  // Reajusta a proporção relativa à base 16:9 da tela, corrigindo streams
-  // com sinal de aspect ratio incorreto (padrão usado pelos players de IPTV).
   const target = parseRatio(v)
   const base = 16 / 9
   const scaleX = base > target ? target / base : 1
@@ -184,187 +263,304 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-function initPlayer() {
-  if (!videoRef.value || !props.url) return
-  hasError.value = false
+function isMp4Url(url: string): boolean {
+  const lower = url.toLowerCase()
+  return /\.mp4(\?.*)?$/i.test(lower)
+}
 
-  // Make sure we stop and clean up any ongoing stream before starting a new one
+function isMkvUrl(url: string): boolean {
+  const lower = url.toLowerCase()
+  return /\.(mkv|avi|mov|wmv|flv|m4v)(\?.*)?$/i.test(lower)
+}
+
+function isVodUrl(url: string): boolean {
+  const lower = url.toLowerCase()
+  return isMp4Url(url) || isMkvUrl(url) || lower.includes('/movie/') || lower.includes('/series/')
+}
+
+function resolveHlsUrl(url: string): string {
+  return url.replace(/\.(mkv|mp4|avi|mov|wmv|flv|m4v)(\?.*)?$/i, '.m3u8')
+}
+
+function resolveTsUrl(url: string): string {
+  return url.replace(/\.(mkv|mp4|avi|mov|wmv|flv|m4v)(\?.*)?$/i, '.ts')
+}
+
+function playNativeWithFallback(url: string, onFail: () => void) {
+  const video = videoRef.value!
+  showDebug(`[Native HTML5] Tentando: ${url.slice(-60)}`)
+
   stopPlayback()
 
-  const video = videoRef.value
-  const lowerUrl = props.url.toLowerCase()
-  
-  const isMp4 = lowerUrl.endsWith('.mp4') || lowerUrl.endsWith('.mkv') || lowerUrl.includes('/movie/')
-  const isHls = lowerUrl.endsWith('.m3u8')
-  // Se não for HLS nem MP4, assumimos que é uma stream MPEG-TS direta comum em IPTV
-  const isTs = !isHls && !isMp4
+  let nativeFailed = false
+  const cleanup = () => {
+    video.removeEventListener('error', onError)
+    video.removeEventListener('playing', onPlaying)
+  }
 
-  if (isHls && Hls.isSupported()) {
-    hls = new Hls({
-      debug: false,
-      enableWorker: true
-    })
-    
-    hls.loadSource(props.url)
-    hls.attachMedia(video)
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(e => console.error("Auto-play prevented", e))
-    })
-    hls.on(Hls.Events.ERROR, (_event, data) => {
-      if (data.fatal) {
-        switch (data.type) {
-          case Hls.ErrorTypes.NETWORK_ERROR:
-            hls?.destroy()
-            const code = data.response?.code
-            if (code === 0) {
-              showError('Bloqueio do Navegador (CORS)', 'O provedor da playlist bloqueou a reprodução através do navegador. Este canal normalmente funciona direto no aplicativo de TV.')
-            } else if (code === 403 || code === 404) {
-              showError('Sinal Indisponível', `O provedor retornou erro ${code}. O canal pode estar offline, bloqueado ou o link expirou.`)
-            } else {
-              showError('Erro de Conexão', 'Não foi possível conectar ao servidor do vídeo. Verifique sua internet ou tente novamente mais tarde.')
-            }
-            break
-          case Hls.ErrorTypes.MEDIA_ERROR:
-            showError('Erro de Mídia', 'Ocorreu um erro fatal ao decodificar a mídia. O formato pode estar corrompido ou não ser suportado.')
-            hls?.destroy()
-            break
-          default:
-            showError('Erro de Reprodução', 'Um erro irrecuperável ocorreu ao tentar reproduzir o stream.')
-            hls?.destroy()
-            break
-        }
+  const onError = (e: Event) => {
+    if (nativeFailed) return
+    nativeFailed = true
+    cleanup()
+    const err = (e.target as HTMLVideoElement)?.error
+    showDebug(`[Native HTML5] Erro: code=${err?.code} msg=${err?.message} → cascading`)
+    onFail()
+  }
+
+  const onPlaying = () => {
+    cleanup()
+    showDebug(`[Native HTML5] Playback iniciado com sucesso!`)
+  }
+
+  video.addEventListener('error', onError, { once: true })
+  video.addEventListener('playing', onPlaying, { once: true })
+
+  video.src = url
+  video.play().catch(e => {
+    showDebug(`[Native HTML5] play() catch: ${e.name} ${e.message}`)
+    if (!nativeFailed) {
+      nativeFailed = true
+      cleanup()
+      onFail()
+    }
+  })
+}
+
+function playWithHls(url: string, fallbackUrl: string | null = null, onErrorCallback?: () => void) {
+  const video = videoRef.value!
+  if (hls) { hls.destroy(); hls = null }
+
+  hls = new Hls({
+    debug: false,
+    enableWorker: true,
+    maxBufferLength: 30,
+    maxMaxBufferLength: 60,
+  })
+  hls.loadSource(url)
+  hls.attachMedia(video)
+
+  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    video.play().catch(e => console.error('HLS play prevented', e))
+  })
+
+  hls.on(Hls.Events.ERROR, (_event, data) => {
+    if (!data.fatal) return
+    hls?.destroy()
+    hls = null
+
+    if (onErrorCallback) {
+      onErrorCallback()
+      return
+    }
+
+    if (fallbackUrl) {
+      if (mpegts.isSupported()) {
+        playWithMpegts(fallbackUrl, false)
+      } else {
+        showError('Stream Incompatível', `O servidor não suporta reprodução deste conteúdo neste dispositivo.`)
       }
-    })
-  } else if (isTs && mpegts.isSupported()) {
-    tsPlayer = mpegts.createPlayer({
-      type: 'mpegts',
-      isLive: true,
-      url: props.url
-    }, {
-      enableWorker: true,
-      enableStashBuffer: false,
-      stashInitialSize: 128,
-      liveBufferLatencyChasing: true,
-      liveBufferLatencyMaxLatency: 15,
-      liveBufferLatencyMinRemain: 2
-    })
-    
-    tsPlayer.attachMediaElement(video)
-    tsPlayer.load()
-    const playResult = tsPlayer.play()
-    if (playResult instanceof Promise) {
-      playResult.catch(e => {
-        console.error("TS Auto-play prevented", e)
+      return
+    }
+    showError('Erro de Reprodução HLS', 'Não foi possível carregar o vídeo via HLS.')
+  })
+}
+
+function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () => void, hasAudioStream: boolean = true) {
+  const video = videoRef.value!
+  showDebug(`[MPEGTS] Iniciando (isLive=${isLiveStream}, audio=${hasAudioStream}): ${url.slice(-50)}`)
+
+  if (tsPlayer) { tsPlayer.destroy(); tsPlayer = null }
+
+  tsPlayer = mpegts.createPlayer({
+    type: 'mpegts',
+    isLive: isLiveStream,
+    url,
+    hasAudio: hasAudioStream,
+  }, {
+    enableWorker: true,
+    enableStashBuffer: !isLiveStream,
+    stashInitialSize: isLiveStream ? 128 : 1024,
+  })
+
+  let mpegtsErrorFired = false
+
+  const handleMpegtsFailure = (msg: string) => {
+    if (mpegtsErrorFired) return
+    mpegtsErrorFired = true
+    video.removeEventListener('error', onVideoError)
+    if (tsPlayer) {
+      tsPlayer.destroy()
+      tsPlayer = null
+    }
+
+    if (onError) {
+      onError()
+    } else {
+      showError('Erro de Reprodução', msg)
+    }
+  }
+
+  const onVideoError = (e: Event) => {
+    const err = (e.target as HTMLVideoElement)?.error
+    handleMpegtsFailure(`HTML5 error code=${err?.code}`)
+  }
+
+  video.addEventListener('error', onVideoError, { once: true })
+  tsPlayer.attachMediaElement(video)
+  tsPlayer.load()
+
+  setTimeout(() => {
+    if (!tsPlayer) return
+    const result = tsPlayer.play()
+    if (result instanceof Promise) {
+      result.catch(e => {
+        console.warn('MPEGTS play() interrupted:', e.message)
       })
     }
-    
-    tsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
-      console.error('MPEGTS Error', errorType, errorDetail, errorInfo)
-      if (errorType === mpegts.ErrorTypes.NETWORK_ERROR) {
-        showError('Erro de Conexão (TS)', 'O servidor encerrou a conexão ou está inacessível. O canal pode estar offline.')
+  }, 100)
+
+  tsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail) => {
+    handleMpegtsFailure(`type=${errorType} detail=${errorDetail}`)
+  })
+}
+
+function initPlayer() {
+  if (!props.url) return
+  hasError.value = false
+  stopPlayback()
+
+  const url = props.url
+
+  // No Android TV Nativo: usa o VideoView nativo por trás do WebView transparente com a UI Vue por cima!
+  if (isNativePlatform.value) {
+    showDebug(`[Android TV Native Hardware] Iniciando reprodução via Hardware...`)
+    isBuffering.value = true
+    try {
+      ;(window as any).NativePlayer.playNativeVideo(url)
+      startNativeSync()
+    } catch (e) {
+      console.error('Failed to start native video', e)
+      showError('Erro de Reprodução', 'Falha ao iniciar o player nativo do Android TV.')
+    }
+    return
+  }
+
+  // No Navegador Desktop / Web:
+  const lower = url.toLowerCase()
+  const isHls = lower.endsWith('.m3u8')
+  const isTs  = lower.endsWith('.ts') && !isVodUrl(url)
+  const isMp4 = isMp4Url(url)
+  const isVod = isVodUrl(url)
+
+  if (isHls && Hls.isSupported()) {
+    showDebug(`[Iniciando] HLS direto: ${url.slice(-50)}`)
+    playWithHls(url)
+
+  } else if (isTs && mpegts.isSupported()) {
+    showDebug(`[Iniciando] TS direto: ${url.slice(-50)}`)
+    playWithMpegts(url, true)
+
+  } else if (isMp4) {
+    const hlsUrl = resolveHlsUrl(url)
+    const tsUrl  = resolveTsUrl(url)
+
+    const tryTsMpegts = () => {
+      playWithMpegts(tsUrl, false, () => {
+        showError('Conteúdo Incompatível', 'Este servidor não serve este conteúdo em formato compatível.')
+      })
+    }
+
+    const tryHls = () => {
+      if (Hls.isSupported()) {
+        playWithHls(hlsUrl, null, tryTsMpegts)
       } else {
-        showError('Erro de Reprodução', `Ocorreu um erro ao tentar exibir o canal (${errorDetail}).`)
+        tryTsMpegts()
       }
-    })
-  } else if (video.canPlayType('application/vnd.apple.mpegurl') || video.canPlayType('application/x-mpegURL') || isMp4) {
-    // Native support (Safari / iOS / Smart TVs) or direct MP4 playback
-    video.src = props.url
-    video.play().catch(e => {
-      if (e.name === 'NotSupportedError') {
-        showError('Formato Não Suportado', 'O formato do vídeo não é compatível com seu navegador. Tente no app da TV.')
-      } else {
-        console.error("Auto-play prevented", e)
-      }
-    })
+    }
+
+    playNativeWithFallback(url, tryHls)
+
+  } else if (isVod) {
+    const hlsUrl = resolveHlsUrl(url)
+    const tsUrl  = resolveTsUrl(url)
+
+    const tryNative = () => {
+      playNativeWithFallback(url, () => {
+        showError('Conteúdo Incompatível', 'Este servidor não serve este conteúdo em formato compatível.')
+      })
+    }
+
+    const tryTsMpegts = () => {
+      playWithMpegts(tsUrl, false, tryNative)
+    }
+
+    if (Hls.isSupported()) {
+      playWithHls(hlsUrl, null, tryTsMpegts)
+    } else {
+      tryTsMpegts()
+    }
+
+  } else if (mpegts.isSupported()) {
+    playWithMpegts(url, true)
+
   } else {
-    // Attempt to play natively, catch unsupported via @error handler
-    video.src = props.url
-    video.play().catch(e => {
-      if (e.name === 'NotSupportedError') {
-        showError('Formato Não Suportado', 'Este navegador não suporta a reprodução direta deste formato de vídeo (.ts, .mkv). Use o aplicativo de TV.')
-      } else {
-        console.error("Playback error", e)
-        showError('Erro de Reprodução', 'Falha ao iniciar o vídeo nativamente.')
-      }
+    playNativeWithFallback(url, () => {
+      showError('Formato Não Suportado', 'Este formato de vídeo não é compatível com este dispositivo.')
     })
   }
 }
 
 function handleNativeError(e: Event) {
-  const video = e.target as HTMLVideoElement;
-  if (!video.error) return;
-  if (video.error.code === 4) { // MEDIA_ERR_SRC_NOT_SUPPORTED
-    showError('Formato Não Suportado', 'Este navegador não suporta a reprodução direta deste formato de vídeo. Use o aplicativo de TV.');
-  } else if (video.error.code === 2) { // MEDIA_ERR_NETWORK
-    showError('Erro de Rede', 'A conexão de rede falhou durante o carregamento do vídeo. Verifique sua conexão.');
+  const video = e.target as HTMLVideoElement
+  if (!video.error) return
+  const code = video.error.code
+  if (code === 4) {
+    showError('Formato Não Suportado', `Este dispositivo não consegue decodificar este conteúdo.\nCódigo: MEDIA_ERR_SRC_NOT_SUPPORTED`)
+  } else if (code === 2) {
+    showError('Erro de Rede', 'A conexão de rede falhou durante o carregamento do vídeo.')
+  } else if (code === 3) {
+    showError('Erro de Decodificação', `Erro ao decodificar o vídeo (código ${code}).`)
   } else {
-    showError('Erro de Reprodução', 'Ocorreu um erro nativo no player (Código: ' + video.error.code + ').');
+    showError('Erro de Reprodução', `Erro no player (código ${code}).`)
   }
 }
 
-watch(() => props.url, () => {
-  initPlayer()
-})
+function handleTimeUpdate(e: Event) {
+  if (isNativePlatform.value) return
+  const video = e.target as HTMLVideoElement
+  currentTime.value = video.currentTime
+  duration.value = video.duration || 0
 
-onMounted(async () => {
-  initPlayer()
-  window.addEventListener('keydown', handleKeydown)
-  window.addEventListener('mousemove', wakeControls)
-  wakeControls()
-  
-  if (props.id && videoRef.value && !props.isLive) {
-    // Check if we have history and resume
-    await historyStore.loadHistory()
-    const hist = historyStore.getProgress(props.id)
-    if (hist && hist.currentTime > 0) {
-      // Small delay to ensure video is ready
-      videoRef.value.addEventListener('loadedmetadata', () => {
-        // Only resume if we aren't completely finished
-        if (hist.currentTime < hist.duration * 0.95) {
-          videoRef.value!.currentTime = hist.currentTime
-        }
-      }, { once: true })
-    }
-  }
-  
-  // Start clock
-  updateClock()
-  clockInterval = setInterval(updateClock, 60000)
-})
-
-function updateClock() {
-  const now = new Date()
-  currentClock.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
-function handleTimeUpdate() {
-  if (!videoRef.value) return
-  
-  currentTime.value = videoRef.value.currentTime
-  duration.value = videoRef.value.duration || 0
-
-  if (!props.id) return
-  
   const now = Date.now()
-  // Update every 5 seconds to avoid DB spam
-  if (now - lastUpdateTime > 5000) {
+  if (props.id && now - lastUpdateTime > 5000) {
     lastUpdateTime = now
     historyStore.updateProgress(
       props.id,
-      videoRef.value.currentTime,
-      videoRef.value.duration || 0
+      video.currentTime,
+      video.duration || 0
     )
   }
 }
 
 function stopPlayback() {
-  // 1. Pause and clear the video element immediately
+  if (nativePollInterval) {
+    clearInterval(nativePollInterval)
+    nativePollInterval = null
+  }
+
+  if (isNativePlatform.value) {
+    try {
+      ;(window as any).NativePlayer.stopNativeVideo()
+    } catch (e) {
+      console.error('Error stopping NativePlayer', e)
+    }
+  }
+
   if (videoRef.value) {
     videoRef.value.pause()
     videoRef.value.removeAttribute('src')
-    videoRef.value.load() // abort any ongoing network requests
+    videoRef.value.load()
   }
-  // 2. Destroy instances
   if (hls) {
     hls.destroy()
     hls = null
@@ -380,24 +576,61 @@ function handleClose() {
   emit('close')
 }
 
-function openExternalPlayer() {
-  try {
-    const urlObj = new URL(props.url)
-    const scheme = urlObj.protocol.replace(':', '')
-    const path = urlObj.host + urlObj.pathname + urlObj.search
-    
-    if (Capacitor.isNativePlatform()) {
-      window.location.href = `intent://${path}#Intent;scheme=${scheme};type=video/*;end`
-    } else {
-      window.open(props.url, '_blank')
-    }
-  } catch (e) {
-    console.error('Invalid URL for intent', e)
-    window.open(props.url, '_blank')
+function updateClock() {
+  const now = new Date()
+  currentClock.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+function applyNativePlayerClass() {
+  if (isNativePlatform.value && !hasError.value) {
+    document.body.classList.add('native-player-active')
+  } else {
+    document.body.classList.remove('native-player-active')
   }
 }
 
+watch([isNativePlatform, hasError], () => {
+  applyNativePlayerClass()
+})
+
+onMounted(() => {
+  applyNativePlayerClass()
+  updateClock()
+  clockInterval = setInterval(updateClock, 1000)
+  window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('mousemove', wakeControls)
+
+  // Native Android TV Event Listeners
+  ;(window as any).onNativePlayerPrepared = () => {
+    isBuffering.value = false
+    isPlaying.value = true
+  }
+  ;(window as any).onNativePlayerRenderingStart = () => {
+    isBuffering.value = false
+    isPlaying.value = true
+  }
+  ;(window as any).onNativePlayerError = (what: number, extra: number) => {
+    showError('Erro no Player Nativo', `O hardware da TV reportou um erro ao decodificar este conteúdo (Erro ${what}, ${extra}).`)
+  }
+  ;(window as any).onNativePlayerEnded = () => {
+    handleClose()
+  }
+
+  initPlayer()
+  wakeControls()
+})
+
+watch(() => props.url, () => {
+  initPlayer()
+})
+
 onUnmounted(() => {
+  delete (window as any).onNativePlayerPrepared
+  delete (window as any).onNativePlayerRenderingStart
+  delete (window as any).onNativePlayerError
+  delete (window as any).onNativePlayerEnded
+
+  document.body.classList.remove('native-player-active')
   stopPlayback()
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('mousemove', wakeControls)
@@ -408,10 +641,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 bg-black flex flex-col" data-tv-modal @click="wakeControls" @mousemove="wakeControls">
+  <Teleport to="body">
+    <div :class="['fixed inset-0 z-[99999] flex flex-col select-none overflow-hidden', isNativePlatform && !hasError ? 'bg-transparent' : 'bg-black']" data-tv-modal @click="wakeControls" @mousemove="wakeControls">
+
     
-    <div class="flex-1 min-h-0 overflow-hidden bg-black relative transition-all" :class="{ 'cursor-none': !showControls }">
+    <div :class="['flex-1 min-h-0 overflow-hidden relative transition-all', isNativePlatform && !hasError ? 'bg-transparent' : 'bg-black', { 'cursor-none': !showControls }]">
       <video
+        v-if="!isNativePlatform"
         ref="videoRef"
         class="absolute inset-0 w-full h-full object-contain"
         :style="videoTransformStyle"
@@ -427,141 +663,148 @@ onUnmounted(() => {
         @error="handleNativeError"
       ></video>
       
-      <!-- CLEAN PRELOAD / BUFFERING SCREEN -->
-      <div v-if="isBuffering && !hasError" class="absolute inset-0 z-30 bg-black/50 flex flex-col items-center justify-center pointer-events-none transition-opacity duration-300">
-        <div class="w-12 h-12 border-4 border-gray-700 border-t-primary rounded-full animate-spin mb-4 shadow-lg"></div>
-        <p class="text-gray-400 font-medium">Carregando canal...</p>
+      <!-- DEBUG OVERLAY -->
+      <div v-if="debugInfo" class="absolute top-3 left-3 right-3 z-50 pointer-events-none">
+        <div class="bg-black/80 border border-yellow-500/50 rounded-lg px-3 py-2 text-yellow-400 text-xs font-mono leading-relaxed break-all">
+          {{ debugInfo }}
+        </div>
       </div>
-      
-      <!-- ERROR OVERLAY -->
-      <div v-if="hasError" class="absolute inset-0 z-40 bg-black/95 flex flex-col items-center justify-center p-6 backdrop-blur-md pointer-events-auto">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 mb-6 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-        <h2 class="text-2xl md:text-3xl font-bold text-white mb-3 text-center">{{ errorTitle }}</h2>
-        <p class="text-gray-400 max-w-lg text-center mb-10 text-sm md:text-base leading-relaxed">{{ errorDescription }}</p>
-        
-        <div class="flex flex-wrap justify-center gap-4">
-          <button @click="handleClose" class="px-6 py-3 bg-gray-800 hover:bg-gray-700 focus:ring-2 focus:ring-white text-white font-bold rounded-lg transition-colors border border-gray-700 outline-none">
-            Voltar
-          </button>
-          
-          <button v-if="errorTitle === 'Formato Não Suportado'" @click="openExternalPlayer" class="px-6 py-3 bg-orange-600 hover:bg-orange-500 focus:ring-2 focus:ring-white text-white font-bold rounded-lg transition-colors flex items-center gap-2 outline-none">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Abrir Player da TV
-          </button>
-          
-          <button v-else @click="retryPlay" class="px-6 py-3 bg-primary hover:bg-blue-600 focus:ring-2 focus:ring-white text-white font-bold rounded-lg transition-colors flex items-center gap-2 outline-none">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-            Tentar Novamente
-          </button>
+
+      <!-- CLEAN PRELOAD / BUFFERING SCREEN (Compact Glass Pill, Non-blocking background) -->
+      <div v-if="isBuffering && !hasError" class="absolute inset-0 z-30 flex items-center justify-center pointer-events-none transition-opacity duration-300">
+        <div class="bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl px-6 py-4 flex flex-col items-center shadow-2xl">
+          <div class="w-8 h-8 border-3 border-white/20 border-t-blue-500 rounded-full animate-spin mb-2"></div>
+          <p class="text-white/80 text-xs font-semibold">Carregando...</p>
         </div>
       </div>
       
-      <!-- Custom TV-Friendly UI Overlay -->
+      <!-- ERROR OVERLAY (Apple Liquid Glass Modal) -->
+      <div v-if="hasError" class="absolute inset-0 z-40 bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-center p-6 pointer-events-auto">
+        <div class="bg-white/10 backdrop-blur-3xl border border-white/20 rounded-3xl p-8 md:p-10 max-w-lg w-full flex flex-col items-center shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] text-center relative overflow-hidden">
+          <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/15 via-white/5 to-transparent pointer-events-none"></div>
+          
+          <div class="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          </div>
+
+          <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3 tracking-tight">{{ errorTitle }}</h2>
+          <p class="text-white/70 text-sm md:text-base leading-relaxed mb-8 font-normal">{{ errorDescription }}</p>
+          
+          <div class="flex flex-wrap justify-center gap-4 w-full">
+            <button @click="handleClose" class="px-6 py-3.5 bg-white/10 hover:bg-white/20 focus:bg-white/30 focus:ring-2 focus:ring-white text-white font-semibold rounded-2xl transition-all border border-white/20 backdrop-blur-md outline-none shadow-md">
+              Voltar
+            </button>
+            
+            <button @click="retryPlay" class="px-6 py-3.5 bg-gradient-to-r from-blue-500/90 to-indigo-600/90 hover:from-blue-400 hover:to-indigo-500 focus:ring-2 focus:ring-white text-white font-bold rounded-2xl transition-all border border-blue-300/40 backdrop-blur-md flex items-center gap-2.5 outline-none shadow-[0_0_25px_rgba(59,130,246,0.4)]">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              Tentar Novamente
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Custom TV-Friendly UI Overlay (Apple Liquid Glass) -->
       <Transition name="fade">
         <div v-show="showControls" class="absolute inset-0 flex flex-col justify-between pointer-events-none">
           
           <!-- Top Bar -->
-          <div class="p-6 md:px-12 md:py-8 flex justify-between items-start pointer-events-auto bg-gradient-to-b from-black/80 to-transparent">
-            <!-- Left: Back Button Only -->
+          <div class="p-3 md:px-6 md:py-4 flex justify-between items-center pointer-events-auto bg-gradient-to-b from-black/70 via-black/20 to-transparent">
+            <!-- Left: Back Button Liquid Pill (Compact Glass Circle) -->
             <button 
               @click="handleClose()" 
-              class="text-white hover:text-primary focus:text-white focus:bg-primary focus:outline-none transition-all p-3 md:p-4 rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-lg" 
+              class="group text-white/90 hover:text-white focus:text-white focus:bg-white/40 focus:ring-2 focus:ring-white focus:scale-105 focus:outline-none transition-all w-8 h-8 rounded-full bg-white/15 backdrop-blur-xl border border-white/20 shadow-md flex items-center justify-center" 
               aria-label="Fechar"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </button>
 
-            <!-- Right: Clock -->
-            <div class="flex items-center gap-4 text-white drop-shadow-md mt-2">
-              <span class="text-xl font-medium tracking-wider">{{ currentClock }}</span>
+            <!-- Right: Clock Pill -->
+            <div class="px-3 py-1 rounded-full bg-white/15 backdrop-blur-xl border border-white/20 shadow-md text-white text-[11px] font-semibold tracking-wider flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              {{ currentClock }}
             </div>
           </div>
 
-          <!-- Bottom Bar -->
-          <div v-if="!hasError" class="p-6 md:px-12 md:py-10 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-auto">
-            <div class="grid grid-cols-1 md:grid-cols-3 items-end w-full">
+          <!-- Bottom Full-Width Controls Overlay (Compact, canto a canto) -->
+          <div v-if="!hasError" class="w-full pointer-events-auto p-3 md:px-6 md:pb-4 pt-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col gap-2">
+            
+            <!-- Row 1: Title & Aspect Ratio Button -->
+            <div class="flex items-center justify-between gap-3 w-full">
+              <div class="flex items-center gap-2">
+                <div v-if="isLive" class="bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm">
+                  LIVE
+                </div>
+                <h2 class="text-sm md:text-base font-bold text-white tracking-tight drop-shadow-md truncate max-w-lg">{{ title || 'Reproduzindo' }}</h2>
+              </div>
+
+              <!-- Aspect Ratio Selector Pill -->
+              <div class="relative">
+                <button
+                  @click.stop="showRatioMenu = !showRatioMenu"
+                  :class="['px-2.5 py-0.5 rounded-full border text-[11px] font-bold transition-all backdrop-blur-md outline-none focus:ring-2 focus:ring-white flex items-center gap-1', aspectRatio !== 'original' ? 'bg-primary/40 border-primary text-white' : 'bg-white/15 border-white/20 text-white/90 hover:bg-white/25 hover:text-white']"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M5 9h4M9 9v4"/></svg>
+                  <span>{{ RATIOS.find(r => r.value === aspectRatio)?.label || 'Tela' }}</span>
+                </button>
+
+                <Transition name="fade">
+                  <div v-show="showRatioMenu" class="absolute bottom-full right-0 mb-2 bg-black/90 backdrop-blur-2xl border border-white/20 rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-50 p-1">
+                    <button
+                      v-for="r in RATIOS"
+                      :key="r.value"
+                      @click.stop="selectAspectRatio(r.value)"
+                      :class="['w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all', aspectRatio === r.value ? 'bg-white/25 text-white font-bold' : 'text-white/70 hover:bg-white/15 hover:text-white']"
+                    >{{ r.label }}</button>
+                  </div>
+                </Transition>
+              </div>
+            </div>
+
+            <!-- Row 2: Centralized Refined Player Buttons (Compact & Balanced) -->
+            <div class="flex items-center justify-center gap-4 py-0.5">
+              <button 
+                v-if="!isLive"
+                @click="seek(-10)" 
+                class="text-white/80 hover:text-white focus:text-white focus:bg-white/40 focus:ring-2 focus:ring-white focus:scale-105 focus:outline-none transition-all w-8 h-8 rounded-full bg-white/15 border border-white/20 backdrop-blur-md shadow-md flex items-center justify-center" 
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
+              </button>
+
+              <!-- Central Main Play/Pause Button (Compact 40px Glass Pill) -->
+              <button 
+                @click="togglePlay" 
+                class="text-white hover:scale-105 focus:scale-105 focus:ring-2 focus:ring-white focus:outline-none transition-all w-10 h-10 rounded-full bg-white/25 hover:bg-white/35 backdrop-blur-xl border border-white/30 shadow-[0_0_12px_rgba(255,255,255,0.2)] flex items-center justify-center" 
+              >
+                <svg v-if="!isPlaying" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+              </button>
+
+              <button 
+                v-if="!isLive"
+                @click="seek(10)" 
+                class="text-white/80 hover:text-white focus:text-white focus:bg-white/40 focus:ring-2 focus:ring-white focus:scale-105 focus:outline-none transition-all w-8 h-8 rounded-full bg-white/15 border border-white/20 backdrop-blur-md shadow-md flex items-center justify-center" 
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
+              </button>
+            </div>
+
+            <!-- Row 3: Progress Bar (Edge-to-Edge, Posicionada Abaixo dos Botões) -->
+            <div v-if="!isLive" class="w-full flex items-center gap-2.5 mt-0.5">
+              <span class="text-white/80 text-[11px] font-mono font-semibold min-w-[38px] text-right">{{ formatTime(currentTime) }}</span>
               
-              <!-- Bottom Left: Info -->
-              <div class="flex flex-col gap-2 w-full mb-6 md:mb-0">
-                <div v-if="isLive" class="bg-[#ff4040] text-white text-xs font-bold px-2 py-0.5 rounded w-max uppercase tracking-wider mb-1">
-                  Live
-                </div>
-                <h2 class="text-2xl md:text-3xl font-bold text-white drop-shadow-lg leading-tight">{{ title || 'Reproduzindo' }}</h2>
-                <div class="text-white text-xl md:text-2xl font-medium mt-3 tracking-wider drop-shadow-md" v-if="!isLive">
-                  {{ formatTime(currentTime) }}
-                </div>
+              <div class="flex-1 h-1.5 bg-white/20 hover:h-2 transition-all rounded-full cursor-pointer relative overflow-hidden shadow-inner" @click="seekTo">
+                <div class="absolute left-0 h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all shadow-[0_0_8px_rgba(59,130,246,0.8)]" :style="{ width: duration ? (currentTime / duration) * 100 + '%' : '0%' }"></div>
               </div>
 
-              <!-- Bottom Center: Controls -->
-              <div class="flex flex-col items-center justify-end w-full pb-2 mb-6 md:mb-0">
-                <div class="flex items-center gap-8">
-                  <button 
-                    v-if="!isLive"
-                    @click="seek(-10)" 
-                    class="text-white hover:text-primary focus:outline-none transition-all p-2 hover:scale-110" 
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
-                  </button>
-
-                  <button 
-                    @click="togglePlay" 
-                    class="text-white hover:scale-105 focus:outline-none transition-all p-5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 shadow-lg" 
-                  >
-                    <svg v-if="!isPlaying" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-                  </button>
-
-                  <button 
-                    v-if="!isLive"
-                    @click="seek(10)" 
-                    class="text-white hover:text-primary focus:outline-none transition-all p-2 hover:scale-110" 
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Bottom Right: Secondary Actions -->
-              <div class="flex items-center justify-end gap-6 w-full pb-6 relative">
-                <button v-if="!isLive" class="text-white/80 hover:text-white transition-all hover:scale-110 p-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2" ry="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>
-                </button>
-
-                <div class="relative">
-                  <button
-                    @click.stop="showRatioMenu = !showRatioMenu"
-                    :class="['transition-all hover:scale-110 p-2', aspectRatio !== 'original' ? 'text-primary' : 'text-white/80 hover:text-white']"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M5 9h4M9 9v4"/></svg>
-                  </button>
-
-                  <Transition name="fade">
-                    <div v-show="showRatioMenu" class="absolute bottom-full right-0 mb-3 bg-black/90 backdrop-blur-md border border-white/10 rounded-lg shadow-2xl overflow-hidden min-w-[110px] z-50">
-                      <button
-                        v-for="r in RATIOS"
-                        :key="r.value"
-                        @click.stop="selectAspectRatio(r.value)"
-                        :class="['block w-full text-left px-4 py-2.5 text-sm font-semibold transition-colors', aspectRatio === r.value ? 'bg-primary/20 text-primary' : 'text-gray-300 hover:bg-white/10 hover:text-white']"
-                      >{{ r.label }}</button>
-                    </div>
-                  </Transition>
-                </div>
-
-                <button v-if="!isLive" class="text-white/80 hover:text-white transition-all hover:scale-110 p-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                </button>
-              </div>
+              <span class="text-white/80 text-[11px] font-mono font-semibold min-w-[38px]">{{ formatTime(duration) }}</span>
             </div>
 
-            <!-- Progress Bar (Hidden for Live TV, shown at the very bottom edge) -->
-            <div v-if="!isLive" class="w-full mt-4 h-1.5 bg-gray-600/50 rounded-full cursor-pointer relative overflow-hidden" @click="seekTo">
-              <div class="absolute left-0 h-full bg-primary transition-all" :style="{ width: duration ? (currentTime / duration) * 100 + '%' : '0%' }"></div>
-            </div>
           </div>
         </div>
       </Transition>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
