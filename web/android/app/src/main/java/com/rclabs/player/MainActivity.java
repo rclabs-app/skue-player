@@ -5,7 +5,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
-import android.view.TextureView;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
@@ -20,11 +20,12 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.ui.PlayerView;
 
 @UnstableApi
 public class MainActivity extends BridgeActivity {
     private ExoPlayer exoPlayer;
-    private TextureView textureView;
+    private PlayerView playerView;
     private FrameLayout videoContainer;
 
     @Override
@@ -50,8 +51,9 @@ public class MainActivity extends BridgeActivity {
             settings.setDomStorageEnabled(true);
             settings.setMediaPlaybackRequiresUserGesture(false);
 
-            // Torna o WebView transparente
+            // Torna o WebView 100% transparente
             this.bridge.getWebView().setBackgroundColor(Color.TRANSPARENT);
+            this.bridge.getWebView().setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
             setupExoPlayer();
 
@@ -122,8 +124,8 @@ public class MainActivity extends BridgeActivity {
 
         DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
                 .setUserAgent("Mozilla/5.0 (VLC)")
-                .setConnectTimeoutMs(8000)
-                .setReadTimeoutMs(8000)
+                .setConnectTimeoutMs(10000)
+                .setReadTimeoutMs(10000)
                 .setAllowCrossProtocolRedirects(true);
 
         DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this)
@@ -133,15 +135,20 @@ public class MainActivity extends BridgeActivity {
                 .setMediaSourceFactory(mediaSourceFactory)
                 .build();
 
-        textureView = new TextureView(this);
-        textureView.setLayoutParams(new FrameLayout.LayoutParams(
+        playerView = new PlayerView(this);
+        playerView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        textureView.setOpaque(true);
+        playerView.setUseController(false);
+        playerView.setPlayer(exoPlayer);
 
-        exoPlayer.setVideoTextureView(textureView);
-        videoContainer.addView(textureView);
+        View sv = playerView.getVideoSurfaceView();
+        if (sv instanceof SurfaceView) {
+            ((SurfaceView) sv).setZOrderMediaOverlay(true);
+        }
+
+        videoContainer.addView(playerView);
 
         ViewGroup root = (ViewGroup) getWindow().getDecorView().findViewById(android.R.id.content);
         root.addView(videoContainer, 0);
