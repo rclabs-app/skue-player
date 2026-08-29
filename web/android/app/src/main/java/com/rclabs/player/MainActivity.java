@@ -6,6 +6,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.SurfaceView;
+import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
@@ -18,14 +19,13 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
-import androidx.media3.ui.PlayerView;
 
 @UnstableApi
 public class MainActivity extends BridgeActivity {
     private ExoPlayer exoPlayer;
-    private PlayerView playerView;
     private FrameLayout videoContainer;
 
     @Override
@@ -131,24 +131,23 @@ public class MainActivity extends BridgeActivity {
         DefaultMediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(this)
                 .setDataSourceFactory(httpDataSourceFactory);
 
-        exoPlayer = new ExoPlayer.Builder(this)
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
+                .setEnableDecoderFallback(true)
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON);
+
+        exoPlayer = new ExoPlayer.Builder(this, renderersFactory)
                 .setMediaSourceFactory(mediaSourceFactory)
                 .build();
 
-        playerView = new PlayerView(this);
-        playerView.setLayoutParams(new FrameLayout.LayoutParams(
+        TextureView textureView = new TextureView(this);
+        textureView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        playerView.setUseController(false);
-        playerView.setPlayer(exoPlayer);
+        textureView.setOpaque(false); // Permite que fique transparente antes do vídeo carregar
 
-        View sv = playerView.getVideoSurfaceView();
-        if (sv instanceof SurfaceView) {
-            ((SurfaceView) sv).setZOrderMediaOverlay(true);
-        }
-
-        videoContainer.addView(playerView);
+        exoPlayer.setVideoTextureView(textureView);
+        videoContainer.addView(textureView);
 
         ViewGroup root = (ViewGroup) getWindow().getDecorView().findViewById(android.R.id.content);
         root.addView(videoContainer, 0);

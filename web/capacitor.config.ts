@@ -12,7 +12,8 @@ const config: CapacitorConfig = {
     CapacitorHttp: {
       enabled: true
     }
-  }
+  },
+  backgroundColor: '#00000000'
 };
 
 export default config;
