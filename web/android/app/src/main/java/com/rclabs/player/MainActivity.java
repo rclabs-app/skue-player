@@ -115,12 +115,13 @@ public class MainActivity extends BridgeActivity {
 
     private void setupExoPlayer() {
         videoContainer = new FrameLayout(this);
-        videoContainer.setLayoutParams(new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-        ));
+        // SMALL BOX FOR DIAGNOSTICS
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(800, 600);
+        params.topMargin = 50;
+        params.leftMargin = 50;
+        videoContainer.setLayoutParams(params);
         videoContainer.setVisibility(View.GONE);
-        videoContainer.setBackgroundColor(Color.TRANSPARENT);
+        videoContainer.setBackgroundColor(Color.RED); // RED background to see if container exists
 
         DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
                 .setUserAgent("Mozilla/5.0 (VLC)")
@@ -150,7 +151,9 @@ public class MainActivity extends BridgeActivity {
         videoContainer.addView(textureView);
 
         ViewGroup root = (ViewGroup) getWindow().getDecorView().findViewById(android.R.id.content);
-        root.addView(videoContainer, 0);
+        root.addView(videoContainer); // ADDED ON TOP OF WEBVIEW (no index 0)
+        videoContainer.bringToFront(); // FORCE TO FRONT
+
 
         exoPlayer.addListener(new Player.Listener() {
             @Override

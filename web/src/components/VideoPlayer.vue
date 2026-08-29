@@ -31,7 +31,12 @@ const isBuffering = ref(true)
 let bufferingTimeout: ReturnType<typeof setTimeout> | null = null
 
 // Native Android Player Bridge Sync
-const isNativePlatform = computed(() => Capacitor.isNativePlatform() && typeof (window as any).NativePlayer !== 'undefined')
+const isNativePlatform = computed(() => {
+  if (props.url && (props.url.toLowerCase().includes('.mp4') || props.url.toLowerCase().includes('.mkv'))) {
+    return false; // Force HTML5 Web Player for .mp4 and .mkv which work natively in WebView
+  }
+  return Capacitor.isNativePlatform() && typeof (window as any).NativePlayer !== 'undefined';
+})
 let nativePollInterval: ReturnType<typeof setInterval> | null = null
 
 function startNativeSync() {
