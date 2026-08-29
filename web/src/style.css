@@ -105,15 +105,23 @@ body.tv-remote-active * { cursor: none !important; }
 
 /* ─── Native Android TV Player Overlay Mode ───────────────────────────── */
 body.native-player-active,
-body.native-player-active html,
-body.native-player-active #app,
-body.native-player-active #app * {
+body.native-player-active html {
   background-color: transparent !important;
-  background-image: none !important;
+  background: transparent !important;
+}
+
+body.native-player-active #app {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 body.native-player-active [data-tv-modal] {
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
   background-color: transparent !important;
 }
+
 
 
