@@ -17,6 +17,8 @@
  */
 
 import { onMounted, onUnmounted } from 'vue'
+import { App as CapApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
 
 export type RemoteKey =
   | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'
@@ -163,6 +165,11 @@ function _install() {
   if (_installed) return
   _installed = true
   window.addEventListener('keydown', _dispatch, { capture: true })
+  if (Capacitor.isNativePlatform()) {
+    CapApp.addListener('backButton', () => {
+      _dispatch(new KeyboardEvent('keydown', { key: 'Escape' }) as any)
+    })
+  }
 }
 
 function _uninstall() {

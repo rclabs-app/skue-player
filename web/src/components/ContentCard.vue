@@ -22,6 +22,7 @@ function getDisplayName(item: any) {
     @click="$emit('play', item)"
     @keydown.enter.prevent="$emit('play', item)"
     @keydown.space.prevent="$emit('play', item)"
+    @focus="(e) => (e.target as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })"
     tabindex="0"
     class="content-card group cursor-pointer flex flex-col gap-1.5 focus:outline-none transition-all duration-200 relative"
   >
@@ -56,7 +57,7 @@ function getDisplayName(item: any) {
       </div>
 
       <!-- Hover / Focus Play Overlay -->
-      <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-[2px] z-10">
+      <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity flex items-center justify-center z-10">
         <div class="bg-primary text-white rounded-full p-2.5 shadow-xl transform scale-75 group-hover:scale-100 group-focus:scale-100 transition-transform duration-200">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <polygon points="5 3 19 12 5 21 5 3"/>

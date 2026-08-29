@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
 import { useHistoryStore } from '../stores/history'
 import { useFavoritesStore } from '../stores/favorites'
+import { useTvRemote } from '../composables/useTvRemote'
 import { cleanName } from '../utils/text'
 import type { PlaylistItem, SeriesEntry } from '../types/m3u'
 import VideoPlayer from '../components/VideoPlayer.vue'
@@ -12,13 +13,16 @@ import { TMDBService } from '../services/tmdb.service'
 import type { TMDBMetadata } from '../lib/database'
 import ContentCard from '../components/ContentCard.vue'
 import { db } from '../lib/database'
+import { App as CapApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
 
 const store = usePlaylistStore()
 const historyStore = useHistoryStore()
 const favoritesStore = useFavoritesStore()
 const router = useRouter()
+const { onRemoteKey } = useTvRemote()
 
-// Type check helper
+const showExitPopup = ref(false)
 const isLiveChannel = (item: PlaylistItem | null) => {
   if (!item) return false
   return item.type === 'live'
@@ -131,7 +135,7 @@ async function loadCategoryData(cat: string) {
   heroItems.value = live.slice(0, 6)
 }
 
-const hoveredItem = ref<PlaylistItem | null>(null)
+const hoveredItem = ref<any>(null)
 
 const isPageLoading = ref(true)
 
@@ -154,14 +158,12 @@ watch(activeCategory, async (newCat) => {
   isPageLoading.value = false
 }, { immediate: true })
 
-function setCategoryHovered(item: PlaylistItem) {
-  if (activeCategory.value !== 'Home') {
-    hoveredItem.value = item
-  }
+function setCategoryHovered(item: any) {
+  hoveredItem.value = item
 }
 
 const currentHero = computed(() => {
-  if (activeCategory.value !== 'Home' && hoveredItem.value) {
+  if (hoveredItem.value) {
     return hoveredItem.value
   }
   return heroItems.value[heroIndex.value] ?? null
@@ -277,10 +279,6 @@ function extractYear(name?: string): string | null {
 }
 
 /** Scroll a named row left or right */
-function scrollRow(id: string, dir: 'left' | 'right') {
-  const el = document.getElementById(id)
-  if (el) el.scrollBy({ left: dir === 'right' ? 820 : -820, behavior: 'smooth' })
-}
 
 function play(item: PlaylistItem | SeriesEntry) {
   const itemType = 'type' in item ? item.type : undefined
@@ -322,9 +320,270 @@ onMounted(async () => {
     startHeroTimer()
   }
   isPageLoading.value = false
+  
+  // Rule 1: Focus Home button on mount
+  setTimeout(() => focusMenu(0), 100)
 })
 
 onUnmounted(() => stopHeroTimer())
+
+// --- Spatial Navigation Focus Logic ---
+
+function focusMenu(index: number) {
+  hoveredItem.value = null
+  const menus = ['btn-menu-0', 'btn-menu-1', 'btn-menu-2', 'btn-menu-3']
+  const el = document.getElementById(menus[index])
+  if (el) el.focus()
+}
+
+function focusVerMais() {
+  hoveredItem.value = null
+  const el = document.getElementById('btn-ver-mais')
+  if (el) {
+    el.focus({ preventScroll: true })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+function focusGridFirstItem() {
+  const firstCard = document.querySelector('.content-card') as HTMLElement
+  if (firstCard) firstCard.focus()
+}
+
+function exitApp() {
+  if (Capacitor.isNativePlatform()) {
+    CapApp.exitApp()
+  } else if ((window as any).Android) {
+    (window as any).Android.exitApp()
+  } else {
+    window.close()
+  }
+}
+
+function cancelExit() {
+  showExitPopup.value = false
+  setTimeout(() => focusMenu(0), 50)
+}
+
+function findClosestCardInRow(row: HTMLElement, x: number) {
+  const cards = Array.from(row.querySelectorAll('.content-card')) as HTMLElement[]
+  if (cards.length === 0) return null
+  let closest = cards[0]
+  let minDiff = Infinity
+  for (const card of cards) {
+    const rect = card.getBoundingClientRect()
+    const cardX = rect.left + rect.width / 2
+    const diff = Math.abs(cardX - x)
+    if (diff < minDiff) {
+      minDiff = diff
+      closest = card
+    }
+  }
+  return closest
+}
+
+onRemoteKey('DOWN', () => {
+  if (showExitPopup.value) return true
+  const active = document.activeElement as HTMLElement
+  if (!active) return false
+
+  if (active.id.startsWith('btn-menu-')) {
+    focusVerMais()
+    return true
+  }
+  if (active.id === 'btn-ver-mais') {
+    focusGridFirstItem()
+    return true
+  }
+  if (active.classList.contains('content-card')) {
+    const currentRow = active.closest('.content-row')
+    if (currentRow) {
+      const allRows = Array.from(document.querySelectorAll('.content-row'))
+      const rowIndex = allRows.indexOf(currentRow as HTMLElement)
+      if (rowIndex >= 0 && rowIndex < allRows.length - 1) {
+        const nextRow = allRows[rowIndex + 1] as HTMLElement
+        const activeRect = active.getBoundingClientRect()
+        const target = findClosestCardInRow(nextRow, activeRect.left + activeRect.width / 2)
+        if (target) target.focus({ preventScroll: true })
+      }
+      return true
+    }
+  }
+  return false
+})
+
+onRemoteKey('UP', () => {
+  if (showExitPopup.value) return true
+  const active = document.activeElement as HTMLElement
+  if (!active) return false
+
+  if (active.id === 'btn-ver-mais') {
+    const categories = ['Home', 'Esportes', 'News', 'Infantil']
+    let activeCategoryIndex = categories.indexOf(activeCategory.value)
+    if (activeCategoryIndex < 0) activeCategoryIndex = 0
+    focusMenu(activeCategoryIndex)
+    return true
+  }
+  if (active.classList.contains('content-card')) {
+    const currentRow = active.closest('.content-row')
+    if (currentRow) {
+      const allRows = Array.from(document.querySelectorAll('.content-row'))
+      const rowIndex = allRows.indexOf(currentRow as HTMLElement)
+      if (rowIndex > 0) {
+        const prevRow = allRows[rowIndex - 1] as HTMLElement
+        const activeRect = active.getBoundingClientRect()
+        const target = findClosestCardInRow(prevRow, activeRect.left + activeRect.width / 2)
+        if (target) target.focus({ preventScroll: true })
+      } else {
+        focusVerMais()
+      }
+      return true
+    }
+  }
+  // Let native handle other UP navigation, but we could catch grid up here if needed
+  return false
+})
+
+onRemoteKey('LEFT', () => {
+  if (showExitPopup.value) {
+    if (document.activeElement?.id === 'popup-nao') {
+      document.getElementById('popup-sim')?.focus()
+    }
+    return true
+  }
+  const active = document.activeElement as HTMLElement
+  if (!active) return false
+
+  if (active.id === 'btn-ver-mais') {
+    prevHero()
+    return true
+  }
+  if (active.id.startsWith('btn-menu-')) {
+    const idx = parseInt(active.id.split('-').pop() || '0')
+    if (idx > 0) {
+      focusMenu(idx - 1)
+    } else {
+      const sidebarHome = document.querySelector('.tv-nav-icon') as HTMLElement
+      if (sidebarHome) sidebarHome.focus()
+    }
+    return true
+  }
+  if (active.classList.contains('content-card')) {
+    const currentRow = active.closest('.content-row')
+    if (currentRow) {
+      const cards = Array.from(currentRow.querySelectorAll('.content-card')) as HTMLElement[]
+      const idx = cards.indexOf(active)
+      if (idx > 0) {
+        const targetCard = cards[idx - 1]
+        targetCard.focus({ preventScroll: true })
+        const containerRect = currentRow.getBoundingClientRect()
+        const targetRect = targetCard.getBoundingClientRect()
+        if (targetRect.left < containerRect.left) {
+          currentRow.scrollBy({ left: -(containerRect.width * 0.8), behavior: 'smooth' })
+        }
+        return true
+      } else {
+        const sidebarHome = document.querySelector('.tv-nav-icon') as HTMLElement
+        if (sidebarHome) sidebarHome.focus()
+        return true
+      }
+    }
+  }
+  return false
+})
+
+onRemoteKey('RIGHT', () => {
+  if (showExitPopup.value) {
+    if (document.activeElement?.id === 'popup-sim') {
+      document.getElementById('popup-nao')?.focus()
+    }
+    return true
+  }
+  const active = document.activeElement as HTMLElement
+  if (!active) return false
+  
+  if (active.classList.contains('tv-nav-icon')) {
+    const scrollY = window.scrollY || document.documentElement.scrollTop
+    if (scrollY < 100) {
+      const topMenu = document.getElementById('btn-menu-0')
+      if (topMenu) topMenu.focus()
+    } else {
+      const cards = Array.from(document.querySelectorAll('.content-card')) as HTMLElement[]
+      for (const card of cards) {
+        const rect = card.getBoundingClientRect()
+        if (rect.top >= 0 && rect.bottom <= window.innerHeight) {
+          card.focus({ preventScroll: true })
+          break
+        }
+      }
+    }
+    return true
+  }
+
+  if (active.id === 'btn-ver-mais') {
+    nextHero()
+    return true
+  }
+  if (active.id.startsWith('btn-menu-')) {
+    const idx = parseInt(active.id.split('-').pop() || '0')
+    if (idx < 3) focusMenu(idx + 1)
+    return true
+  }
+  if (active.classList.contains('content-card')) {
+    const currentRow = active.closest('.content-row')
+    if (currentRow) {
+      const cards = Array.from(currentRow.querySelectorAll('.content-card')) as HTMLElement[]
+      const idx = cards.indexOf(active)
+      if (idx < cards.length - 1) {
+        const targetCard = cards[idx + 1]
+        targetCard.focus({ preventScroll: true })
+        const containerRect = currentRow.getBoundingClientRect()
+        const targetRect = targetCard.getBoundingClientRect()
+        if (targetRect.right > containerRect.right) {
+          currentRow.scrollBy({ left: containerRect.width * 0.8, behavior: 'smooth' })
+        }
+        return true
+      }
+    }
+  }
+  return false
+})
+
+onRemoteKey('OK', () => {
+  if (showExitPopup.value) {
+    if (document.activeElement?.id === 'popup-sim') {
+      exitApp()
+    } else {
+      cancelExit()
+    }
+    return true
+  }
+  const active = document.activeElement as HTMLElement
+  if (active?.id === 'hero-banner') {
+    if (currentHero.value) play(currentHero.value)
+    return true
+  }
+  // Native OK behavior will click focused elements automatically
+  return false
+})
+
+onRemoteKey('BACK', () => {
+  if (activeItem.value) return false // Let VideoPlayer handle back
+
+  if (showExitPopup.value) {
+    cancelExit()
+    return true
+  }
+
+  const active = document.activeElement as HTMLElement
+  if (active && active.id === 'btn-menu-0') {
+    showExitPopup.value = true
+    setTimeout(() => document.getElementById('popup-nao')?.focus(), 50)
+  } else {
+    focusMenu(0)
+  }
+  return true
+})
 </script>
 
 <template>
@@ -341,10 +600,10 @@ onUnmounted(() => stopHeroTimer())
     ══════════════════════════════════════════════════ -->
     <header class="absolute top-0 left-0 right-0 z-50 flex items-center gap-8 px-10 md:px-16 py-6 bg-gradient-to-b from-black/90 via-black/40 to-transparent pointer-events-none">
       <div class="pointer-events-auto flex items-center gap-8">
-        <button @click="setCategory('Home')" :class="['font-bold text-lg transition-colors tracking-wide drop-shadow-lg', activeCategory === 'Home' ? 'text-white' : 'text-gray-400 hover:text-white']">Home</button>
-        <button @click="setCategory('Esportes')" :class="['font-medium text-base transition-colors drop-shadow-lg', activeCategory === 'Esportes' ? 'text-white font-bold' : 'text-gray-300 hover:text-white']">Esportes</button>
-        <button @click="setCategory('News')" :class="['font-medium text-base transition-colors drop-shadow-lg', activeCategory === 'News' ? 'text-white font-bold' : 'text-gray-300 hover:text-white']">News</button>
-        <button @click="setCategory('Infantil')" :class="['font-medium text-base transition-colors drop-shadow-lg', activeCategory === 'Infantil' ? 'text-white font-bold' : 'text-gray-300 hover:text-white']">Infantil</button>
+        <button id="btn-menu-0" tabindex="0" @click="setCategory('Home')" :class="['font-bold text-lg transition-colors tracking-wide drop-shadow-lg focus:outline-none focus:bg-white focus:!text-black px-4 py-1.5 rounded', activeCategory === 'Home' ? 'text-white' : 'text-gray-400 hover:text-white']">Home</button>
+        <button id="btn-menu-1" tabindex="0" @click="setCategory('Esportes')" :class="['font-medium text-base transition-colors drop-shadow-lg focus:outline-none focus:bg-white focus:!text-black px-4 py-1.5 rounded', activeCategory === 'Esportes' ? 'text-white font-bold' : 'text-gray-300 hover:text-white']">Esportes</button>
+        <button id="btn-menu-2" tabindex="0" @click="setCategory('News')" :class="['font-medium text-base transition-colors drop-shadow-lg focus:outline-none focus:bg-white focus:!text-black px-4 py-1.5 rounded', activeCategory === 'News' ? 'text-white font-bold' : 'text-gray-300 hover:text-white']">News</button>
+        <button id="btn-menu-3" tabindex="0" @click="setCategory('Infantil')" :class="['font-medium text-base transition-colors drop-shadow-lg focus:outline-none focus:bg-white focus:!text-black px-4 py-1.5 rounded', activeCategory === 'Infantil' ? 'text-white font-bold' : 'text-gray-300 hover:text-white']">Infantil</button>
       </div>
     </header>
 
@@ -352,8 +611,9 @@ onUnmounted(() => stopHeroTimer())
          HERO CAROUSEL
     ══════════════════════════════════════════════════ -->
     <section
+      id="hero-banner"
       v-if="currentHero"
-      class="relative w-full h-[60vh] min-h-[550px] select-none overflow-hidden"
+      class="relative w-full h-[60vh] min-h-[550px] select-none overflow-hidden transition-transform duration-300 focus-within:scale-[1.02] focus-within:z-40 focus-within:shadow-2xl"
       @mouseenter="stopHeroTimer"
       @mouseleave="startHeroTimer"
     >
@@ -371,72 +631,68 @@ onUnmounted(() => stopHeroTimer())
           </div>
 
           <!-- Smooth Overlays for text contrast -->
-          <div class="absolute inset-0 bg-gradient-to-r from-[#0f171e] via-[#0f171e]/70 to-transparent w-full md:w-[70%] z-0 pointer-events-none"></div>
-          <div class="absolute inset-0 bg-gradient-to-t from-[#0f171e] via-[#0f171e]/40 to-transparent z-0 pointer-events-none"></div>
+          <div class="absolute -inset-1 bg-gradient-to-r from-[#0f171e] via-[#0f171e]/70 to-transparent w-full md:w-[70%] z-0 pointer-events-none"></div>
+          <div class="absolute -inset-1 bg-gradient-to-t from-[#0f171e] via-[#0f171e]/40 to-transparent z-0 pointer-events-none"></div>
         </div>
       </Transition>
 
-      <!-- Text content -->
-      <Transition name="hero-content" mode="out-in">
-        <div :key="currentHero.id" class="relative z-20 h-full flex flex-col justify-end pl-16 md:pl-20 pr-10 md:pr-16 pb-16 max-w-4xl">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wider shadow-lg shadow-red-600/30" v-if="isLiveChannel(currentHero)">AO VIVO</span>
-            <span class="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wider shadow-lg shadow-primary/30" v-else>DESTAQUE</span>
-            <span class="text-gray-400 text-xs font-medium">{{ currentHero.group }}</span>
-          </div>
-
-          <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight drop-shadow-2xl max-w-3xl">
-            {{ cleanName(currentHero.name || '') }}
-          </h1>
-
-          <!-- EPG Program details for Live Channel -->
-          <template v-if="isLiveChannel(currentHero) && heroProgram">
-            <div class="text-primary font-semibold text-lg drop-shadow mb-1">{{ heroProgram.title }}</div>
-            <div class="flex items-center gap-3 text-sm text-gray-400 mb-2 font-medium">
-              <span class="bg-black/40 px-2 py-0.5 rounded text-gray-300 border border-gray-700/50">
-                {{ formatTime(heroProgram.startTime) }} - {{ formatTime(heroProgram.endTime) }}
-              </span>
-              <span class="text-xs uppercase tracking-wider text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded">Agora</span>
+      <!-- Text and Button content -->
+      <div class="absolute inset-0 z-20 h-full flex flex-col justify-end pl-16 md:pl-20 pr-10 md:pr-16 pb-16 max-w-4xl pointer-events-none">
+        <Transition name="hero-content" mode="out-in">
+          <div :key="currentHero.id" class="w-full">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wider shadow-lg shadow-red-600/30" v-if="isLiveChannel(currentHero)">AO VIVO</span>
+              <span class="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wider shadow-lg shadow-primary/30" v-else>DESTAQUE</span>
+              <span class="text-gray-400 text-xs font-medium">{{ currentHero.group }}</span>
             </div>
-            <p class="text-gray-400 text-sm line-clamp-2 leading-relaxed max-w-xl mb-4">{{ heroProgram.description }}</p>
-            
-            <div class="flex items-center gap-3 w-full max-w-md mb-6">
-              <span class="text-xs text-gray-500 font-medium w-10 text-right">{{ formatTime(heroProgram.startTime) }}</span>
-              <div class="flex-1 bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                <div class="bg-primary h-full rounded-full transition-all duration-1000" :style="{ width: getProgress(heroProgram) + '%' }"></div>
+
+            <h1 class="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight drop-shadow-2xl max-w-3xl">
+              {{ cleanName(currentHero.name || '') }}
+            </h1>
+
+            <!-- EPG Program details for Live Channel -->
+            <template v-if="isLiveChannel(currentHero) && heroProgram">
+              <div class="text-primary font-semibold text-lg drop-shadow mb-1">{{ heroProgram.title }}</div>
+              <div class="flex items-center gap-3 text-sm text-gray-400 mb-2 font-medium">
+                <span class="bg-black/40 px-2 py-0.5 rounded text-gray-300 border border-gray-700/50">
+                  {{ formatTime(heroProgram.startTime) }} - {{ formatTime(heroProgram.endTime) }}
+                </span>
+                <span class="text-xs uppercase tracking-wider text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded">Agora</span>
               </div>
-              <span class="text-xs text-gray-500 font-medium w-10">{{ formatTime(heroProgram.endTime) }}</span>
-            </div>
-          </template>
+              <p class="text-gray-400 text-sm line-clamp-2 leading-relaxed max-w-xl mb-4">{{ heroProgram.description }}</p>
+              
+              <div class="flex items-center gap-3 w-full max-w-md mb-6">
+                <span class="text-xs text-gray-500 font-medium w-10 text-right">{{ formatTime(heroProgram.startTime) }}</span>
+                <div class="flex-1 bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                  <div class="bg-primary h-full rounded-full transition-all duration-1000" :style="{ width: getProgress(heroProgram) + '%' }"></div>
+                </div>
+                <span class="text-xs text-gray-500 font-medium w-10">{{ formatTime(heroProgram.endTime) }}</span>
+              </div>
+            </template>
 
-          <template v-else>
-            <div class="flex items-center gap-3 mb-4 mt-2">
-              <span v-if="extractYear(currentHero.name)" class="text-gray-400 text-[10px] font-bold tracking-widest uppercase">Lançamento: {{ extractYear(currentHero.name) }}</span>
-            </div>
-            <p class="text-gray-300 text-sm md:text-base line-clamp-3 leading-relaxed max-w-2xl mb-8 drop-shadow-md">
-              {{ (tmdbHeroMetadata && tmdbHeroMetadata.overview) || 'Selecione para assistir agora.' }}
-            </p>
-          </template>
-
-          <div class="flex gap-4">
-            <button
-              @click="play(currentHero)"
-              class="flex items-center gap-2.5 bg-white text-black px-8 py-3.5 rounded-full font-bold text-sm hover:bg-gray-100 hover:scale-105 transition-all duration-200 shadow-2xl"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Assistir agora
-            </button>
-            <button
-              v-if="!isLiveChannel(currentHero)"
-              class="flex items-center gap-2 bg-white/10 text-white px-7 py-3.5 rounded-full font-bold text-sm hover:bg-white/20 hover:scale-105 transition-all duration-200 backdrop-blur-sm border border-white/20"
-              @click="router.push(currentHero.type === 'movie' ? '/movies' : '/series')"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              Ver mais
-            </button>
+            <template v-else>
+              <div class="flex items-center gap-3 mb-4 mt-2">
+                <span v-if="extractYear(currentHero.name)" class="text-gray-400 text-[10px] font-bold tracking-widest uppercase">Lançamento: {{ extractYear(currentHero.name) }}</span>
+              </div>
+              <p class="text-gray-300 text-sm md:text-base line-clamp-3 leading-relaxed max-w-2xl mb-8 drop-shadow-md">
+                {{ (tmdbHeroMetadata && tmdbHeroMetadata.overview) || 'Selecione para assistir agora.' }}
+              </p>
+            </template>
           </div>
+        </Transition>
+
+        <div class="flex gap-4 pointer-events-auto">
+          <button
+            id="btn-ver-mais"
+            tabindex="0"
+            class="flex items-center gap-2.5 bg-white text-black px-8 py-3.5 rounded-full font-bold text-sm hover:bg-gray-100 hover:scale-105 focus:outline-none focus:bg-primary focus:!text-white focus:scale-105 transition-all duration-200 shadow-2xl"
+            @click="play(currentHero)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            Ver mais
+          </button>
         </div>
-      </Transition>
+      </div>
 
       <!-- Arrows -->
       <button
@@ -507,7 +763,7 @@ onUnmounted(() => stopHeroTimer())
                 :item="item"
                 :is-portrait="true"
                 :show-title="true"
-                @play="play(item)"
+                @play="play(item)" @focus="setCategoryHovered(item)"
               />
             </div>
           </div>
@@ -525,7 +781,7 @@ onUnmounted(() => stopHeroTimer())
                 :item="item"
                 :is-portrait="true"
                 :show-title="true"
-                @play="play(item)"
+                @play="play(item)" @focus="setCategoryHovered(item)"
               />
             </div>
           </div>
@@ -547,11 +803,9 @@ onUnmounted(() => stopHeroTimer())
         <div>
           <div class="flex items-center justify-between mb-3 px-1">
             <h2 class="text-base md:text-lg font-bold text-gray-100"><span class="text-primary font-extrabold text-sm tracking-wider mr-2"></span>Filmes Recentes</h2>
-            <button @click="router.push('/movies')" class="text-xs text-gray-500 hover:text-primary transition-colors flex items-center gap-1 font-medium">Ver todos <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
           <div class="relative">
-            <button @click="scrollRow('row-recent-movies','left')" class="row-arrow row-arrow-left"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-            <div id="row-recent-movies" class="flex gap-3 overflow-x-auto no-scrollbar snap-x px-1" v-horizontal-scroll>
+            <div id="row-recent-movies" class="content-row flex gap-3 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-4 -my-4" tabindex="-1">
               <ContentCard
                 v-for="item in recentMovies" 
                 :key="item.id"
@@ -559,10 +813,9 @@ onUnmounted(() => stopHeroTimer())
                 :is-portrait="true"
                 :show-title="false"
                 class="card-portrait"
-                @play="play(item)"
+                @play="play(item)" @focus="setCategoryHovered(item)"
               />
             </div>
-            <button @click="scrollRow('row-recent-movies','right')" class="row-arrow row-arrow-right"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
         </div>
       </template>
@@ -576,13 +829,9 @@ onUnmounted(() => stopHeroTimer())
             <h2 class="text-base md:text-lg font-bold text-gray-100">
               <span class="text-primary font-extrabold text-sm tracking-wider mr-2"></span>Séries Recentes
             </h2>
-            <button @click="router.push('/series')" class="text-xs text-gray-500 hover:text-primary transition-colors flex items-center gap-1 font-medium">
-              Ver todas <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
           </div>
           <div class="relative group/row">
-            <button @click="scrollRow('row-recent-series', 'left')" class="row-arrow row-arrow-left"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-            <div id="row-recent-series" class="flex gap-3 overflow-x-auto no-scrollbar snap-x px-1" v-horizontal-scroll>
+            <div id="row-recent-series" class="content-row flex gap-3 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-4 -my-4" tabindex="-1">
               <ContentCard
                 v-for="item in recentSeries" 
                 :key="item.id"
@@ -590,10 +839,9 @@ onUnmounted(() => stopHeroTimer())
                 :is-portrait="true"
                 :show-title="false"
                 class="card-portrait"
-                @play="play(item)"
+                @play="play(item)" @focus="setCategoryHovered(item)"
               />
             </div>
-            <button @click="scrollRow('row-recent-series', 'right')" class="row-arrow row-arrow-right"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
         </div>
       </template>
@@ -606,8 +854,7 @@ onUnmounted(() => stopHeroTimer())
             <h2 class="text-base md:text-lg font-bold text-gray-100"><span class="text-primary font-extrabold text-sm tracking-wider mr-2">▶</span>Continuar Assistindo</h2>
           </div>
           <div class="relative group/row">
-            <button @click="scrollRow('row-continue','left')" class="row-arrow row-arrow-left"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-            <div id="row-continue" class="flex gap-3 overflow-x-auto no-scrollbar snap-x px-1" v-horizontal-scroll>
+            <div id="row-continue" class="content-row flex gap-3 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-4 -my-4" tabindex="-1">
               <ContentCard
                 v-for="item in historyStore.activelyWatching" 
                 :key="item.id"
@@ -617,9 +864,9 @@ onUnmounted(() => stopHeroTimer())
                 :progress="historyStore.getProgressPercentage(item.id)"
                 class="card-portrait"
                 @play="play(item.metadata)"
+                @focus="setCategoryHovered(item.metadata)"
               />
             </div>
-            <button @click="scrollRow('row-continue','right')" class="row-arrow row-arrow-right"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
         </div>
       </template>
@@ -631,8 +878,7 @@ onUnmounted(() => stopHeroTimer())
             <h2 class="text-base md:text-lg font-bold text-gray-100"><span class="text-primary font-extrabold text-sm tracking-wider mr-2">❤️</span>Meus Favoritos</h2>
           </div>
           <div class="relative group/row">
-            <button @click="scrollRow('row-favorites','left')" class="row-arrow row-arrow-left"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-            <div id="row-favorites" class="flex gap-3 overflow-x-auto no-scrollbar snap-x px-1" v-horizontal-scroll>
+            <div id="row-favorites" class="content-row flex gap-3 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-4 -my-4" tabindex="-1">
               <ContentCard
                 v-for="item in favoriteItems" 
                 :key="item.id"
@@ -640,28 +886,23 @@ onUnmounted(() => stopHeroTimer())
                 :is-portrait="true"
                 :show-title="false"
                 class="card-portrait"
-                @play="play(item)"
+                @play="play(item)" @focus="setCategoryHovered(item)"
               />
             </div>
-            <button @click="scrollRow('row-favorites','right')" class="row-arrow row-arrow-right"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
         </div>
       </template>
 
       <!-- Movie category rows -->
-      <template v-for="row in movieRows" :key="'mr-' + row.name">
+      <template v-for="(row, index) in movieRows" :key="'mr-' + row.name">
         <div>
           <div class="flex items-center justify-between mb-3 px-1">
             <h2 class="text-base md:text-lg font-bold text-gray-100">
               <span class="text-primary font-extrabold text-sm tracking-wider mr-2"></span>{{ row.name }}
             </h2>
-            <button @click="router.push('/movies')" class="text-xs text-gray-500 hover:text-primary transition-colors flex items-center gap-1 font-medium">
-              Ver todos <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
           </div>
           <div class="relative group/row">
-            <button @click="scrollRow('row-movies-' + row.name, 'left')" class="row-arrow row-arrow-left"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-            <div :id="'row-movies-' + row.name" class="flex gap-3 overflow-x-auto no-scrollbar snap-x px-1" v-horizontal-scroll>
+            <div :id="'row-movie-' + index" class="content-row flex gap-3 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-4 -my-4" tabindex="-1">
               <ContentCard
                 v-for="item in row.items" 
                 :key="item.id"
@@ -669,27 +910,22 @@ onUnmounted(() => stopHeroTimer())
                 :is-portrait="true"
                 :show-title="false"
                 class="card-portrait"
-                @play="play(item)"
+                @play="play(item)" @focus="setCategoryHovered(item)"
               />
             </div>
-            <button @click="scrollRow('row-movies-' + row.name, 'right')" class="row-arrow row-arrow-right"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
         </div>
       </template>
       <!-- Series category rows -->
-      <template v-for="row in seriesRows" :key="'sr-' + row.name">
+      <template v-for="(row, index) in seriesRows" :key="'sr-' + row.name">
         <div>
           <div class="flex items-center justify-between mb-3 px-1">
             <h2 class="text-base md:text-lg font-bold text-gray-100">
               <span class="text-primary font-extrabold text-sm tracking-wider mr-2"></span>{{ row.name }}
             </h2>
-            <button @click="router.push('/series')" class="text-xs text-gray-500 hover:text-primary transition-colors flex items-center gap-1 font-medium">
-              Ver todas <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
           </div>
           <div class="relative group/row">
-            <button @click="scrollRow('row-series-' + row.name, 'left')" class="row-arrow row-arrow-left"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
-            <div :id="'row-series-' + row.name" class="flex gap-3 overflow-x-auto no-scrollbar snap-x px-1" v-horizontal-scroll>
+            <div :id="'row-series-' + index" class="content-row flex gap-3 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-4 -my-4" tabindex="-1">
               <ContentCard
                 v-for="item in row.items" 
                 :key="item.id"
@@ -697,10 +933,9 @@ onUnmounted(() => stopHeroTimer())
                 :is-portrait="true"
                 :show-title="false"
                 class="card-portrait"
-                @play="play(item)"
+                @play="play(item)" @focus="setCategoryHovered(item)"
               />
             </div>
-            <button @click="scrollRow('row-series-' + row.name, 'right')" class="row-arrow row-arrow-right"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
           </div>
         </div>
       </template>
@@ -734,6 +969,17 @@ onUnmounted(() => stopHeroTimer())
       @close="activeItem = null"
       @error="errorMsg = $event"
     />
+
+    <!-- Exit Popup -->
+    <div v-if="showExitPopup" class="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center backdrop-blur-sm">
+      <div class="bg-[#1a222c] border border-gray-700 p-8 rounded-2xl shadow-2xl text-center max-w-md w-full animate-in fade-in zoom-in-95 duration-200">
+        <h3 class="text-2xl font-bold text-white mb-8 drop-shadow-sm">Deseja sair da aplicação?</h3>
+        <div class="flex gap-4 justify-center">
+          <button id="popup-sim" tabindex="0" @click="exitApp" class="px-8 py-3.5 rounded-full bg-gray-700 text-white font-bold hover:bg-gray-600 focus:outline-none focus:ring-4 focus:ring-red-500 focus:bg-gray-600 focus:scale-105 transition-all">Sim</button>
+          <button id="popup-nao" tabindex="0" @click="cancelExit" class="px-8 py-3.5 rounded-full bg-primary text-white font-bold hover:bg-blue-600 focus:outline-none focus:ring-4 focus:ring-white focus:bg-blue-600 focus:scale-105 transition-all shadow-lg shadow-primary/30">Não</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -800,7 +1046,7 @@ onUnmounted(() => stopHeroTimer())
   background: #111827;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   aspect-ratio: 2/3;
-  width: calc((100% - (5 * 0.75rem)) / 6); /* 6 cards */
+  width: calc((100% - (5 * 0.75rem)) / 6.5); /* 6.5 cards */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -833,7 +1079,7 @@ onUnmounted(() => stopHeroTimer())
   justify-content: center;
   padding: 0.75rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  width: 25%;
+  width: calc((100% - (3 * 0.75rem)) / 4.5); /* 4.5 cards */
   aspect-ratio: 16/9;
 }
 .card-landscape:hover {
