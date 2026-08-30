@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
 import { useFavoritesStore } from '../stores/favorites'
@@ -33,6 +33,7 @@ function resetScroll() {
 watch(() => item.value?.id, () => {
   nextTick(() => {
     resetScroll()
+    focusPlayButton()
   })
 })
 
@@ -201,10 +202,16 @@ onMounted(async () => {
           }
         }
       }
+      nextTick(() => focusPlayButton())
     } else {
       errorMsg.value = 'Item não encontrado.'
     }
   }
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
 })
 
 function goBack() {
@@ -245,6 +252,100 @@ function playEpisode(ep: PlaylistItem) {
   const info = parseEpisodeInfo(ep.name)
   activeSeason.value = info.season
   isPlaying.value = true
+}
+
+function focusPlayButton() {
+  const playBtn = document.getElementById('btn-play')
+  if (playBtn) playBtn.focus()
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (isPlaying.value) return // Let VideoPlayer handle it
+  
+  const active = document.activeElement as HTMLElement
+  if (!active || !active.id) return
+
+  const id = active.id
+  
+  // Handle "Assistir" and "Favoritar" buttons
+  if (id === 'btn-play' || id === 'btn-fav') {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const firstSeason = document.getElementById('btn-season-0')
+      if (firstSeason) firstSeason.focus()
+    } else if (e.key === 'ArrowRight' && id === 'btn-play') {
+      e.preventDefault()
+      const favBtn = document.getElementById('btn-fav')
+      if (favBtn) favBtn.focus()
+    } else if (e.key === 'ArrowLeft' && id === 'btn-fav') {
+      e.preventDefault()
+      const playBtn = document.getElementById('btn-play')
+      if (playBtn) playBtn.focus()
+    }
+  }
+  // Handle Seasons
+  else if (id.startsWith('btn-season-')) {
+    const idx = parseInt(id.replace('btn-season-', ''))
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      focusPlayButton()
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const firstEp = document.getElementById('btn-ep-0')
+      if (firstEp) firstEp.focus()
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      const nextSeason = document.getElementById(`btn-season-${idx + 1}`)
+      if (nextSeason) nextSeason.focus()
+    } else if (e.key === 'ArrowLeft') {
+      if (idx > 0) {
+        e.preventDefault()
+        const prevSeason = document.getElementById(`btn-season-${idx - 1}`)
+        if (prevSeason) prevSeason.focus()
+      }
+    }
+  }
+  // Handle Episodes
+  else if (id.startsWith('btn-ep-')) {
+    const idx = parseInt(id.replace('btn-ep-', ''))
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (idx < 6) { // First row
+        const seasonIdx = seasons.value.findIndex(s => s.season === activeSeason.value)
+        const seasonBtn = document.getElementById(`btn-season-${Math.max(0, seasonIdx)}`)
+        if (seasonBtn) seasonBtn.focus()
+      } else {
+        const prevRow = document.getElementById(`btn-ep-${idx - 6}`)
+        if (prevRow) prevRow.focus()
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const nextRow = document.getElementById(`btn-ep-${idx + 6}`)
+      if (nextRow) nextRow.focus()
+    } else if (e.key === 'ArrowLeft') {
+      if (idx % 6 !== 0) {
+        e.preventDefault()
+        const prevCol = document.getElementById(`btn-ep-${idx - 1}`)
+        if (prevCol) prevCol.focus()
+      }
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      if (idx % 6 !== 5) {
+        const nextCol = document.getElementById(`btn-ep-${idx + 1}`)
+        if (nextCol) nextCol.focus()
+      }
+    }
+    
+    // Ensure scrolled into view
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+      setTimeout(() => {
+        const newActive = document.activeElement
+        if (newActive && scrollContainer.value) {
+          newActive.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 50)
+    }
+  }
 }
 </script>
 
@@ -310,15 +411,17 @@ function playEpisode(ep: PlaylistItem) {
 
             <div class="flex items-center gap-4 mb-12">
               <button 
+                id="btn-play"
                 @click="startPlayback"
-                class="bg-primary hover:bg-blue-600 text-white flex items-center justify-center gap-3 px-8 py-4 rounded-lg font-bold transition-all shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 text-lg min-w-[240px]"
+                class="bg-primary hover:bg-blue-600 focus:bg-white focus:text-black focus:scale-105 text-white flex items-center justify-center gap-3 px-8 py-4 rounded-lg font-bold transition-all shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 text-lg min-w-[240px]"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 {{ playButtonText }}
               </button>
               <button 
+                id="btn-fav"
                 @click="favoritesStore.toggleFavorite(item.id)"
-                :class="['flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold transition-all border border-white/20 hover:scale-105 active:scale-95 text-lg', favoritesStore.isFavorite(item.id) ? 'bg-white text-black' : 'bg-black/40 text-white hover:bg-white/20']"
+                :class="['flex items-center justify-center gap-2 px-6 py-4 rounded-lg font-bold transition-all border border-white/20 hover:scale-105 focus:scale-105 focus:border-primary active:scale-95 text-lg', favoritesStore.isFavorite(item.id) ? 'bg-white text-black' : 'bg-black/40 text-white hover:bg-white/20 focus:bg-white focus:text-black']"
               >
                 <svg v-if="favoritesStore.isFavorite(item.id)" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
                 <svg v-else xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
@@ -332,12 +435,13 @@ function playEpisode(ep: PlaylistItem) {
             <!-- Season Selector -->
             <div class="flex gap-4 overflow-x-auto no-scrollbar mb-6 pb-2">
               <button 
-                v-for="s in seasons" 
+                v-for="(s, index) in seasons" 
                 :key="s.season"
+                :id="'btn-season-' + index"
                 @click="activeSeason = s.season"
                 :class="[
-                  'px-6 py-2 rounded-full font-bold transition-colors whitespace-nowrap',
-                  activeSeason === s.season ? 'bg-white text-black' : 'bg-gray-800/60 text-gray-400 hover:bg-gray-700 hover:text-white'
+                  'px-6 py-2 rounded-full font-bold transition-all whitespace-nowrap focus:scale-105 focus:ring-4 focus:ring-primary',
+                  activeSeason === s.season ? 'bg-white text-black' : 'bg-gray-800/60 text-gray-400 hover:bg-gray-700 hover:text-white focus:bg-white focus:text-black'
                 ]"
               >
                 Temporada {{ s.season }}
@@ -345,12 +449,14 @@ function playEpisode(ep: PlaylistItem) {
             </div>
 
             <!-- Episodes Grid -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 pb-20">
+            <div class="grid grid-cols-6 gap-3 md:gap-4 pb-20">
               <div 
-                v-for="ep in seasons.find(s => s.season === activeSeason)?.episodes"
+                v-for="(ep, index) in seasons.find(s => s.season === activeSeason)?.episodes"
                 :key="ep.id"
+                :id="'btn-ep-' + index"
+                tabindex="0"
                 @click="playEpisode(ep)"
-                class="group cursor-pointer bg-gray-900/60 border border-gray-800 hover:border-primary/50 rounded overflow-hidden flex flex-col transition-all hover:scale-[1.02]"
+                class="group cursor-pointer focus:outline-none focus:ring-4 focus:ring-primary bg-gray-900/60 border border-gray-800 hover:border-primary/50 rounded overflow-hidden flex flex-col transition-all hover:scale-[1.02] focus:scale-[1.05]"
               >
                 <div class="aspect-[2/3] bg-gray-800 relative flex items-center justify-center">
                   <img v-if="ep.logo" :src="ep.logo" class="max-w-full max-h-full object-contain p-2 opacity-70 group-hover:opacity-100 transition-opacity" @error="(e) => (e.target as HTMLImageElement).style.display='none'" />
