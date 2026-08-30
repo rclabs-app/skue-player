@@ -70,8 +70,10 @@ onUnmounted(() => {
     >
       
       <!-- Top Logo -->
-      <div class="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full border border-yellow-500 mb-10 cursor-pointer shadow-[0_0_10px_rgba(234,179,8,0.2)]">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="ml-0.5"><path d="m9 18 6-6-6-6"/></svg>
+      <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 mb-10 shadow-lg shadow-blue-500/30">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
       </div>
       
       <nav class="flex flex-col gap-6 w-full items-center">
