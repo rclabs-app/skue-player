@@ -153,13 +153,17 @@ watch(activeCategory, async (newCat) => {
     ? loadHomeData().then(startHeroTimer)
     : loadCategoryData(newCat)
 
-  await Promise.all([loadTask, minDelay])
-  
-  isPageLoading.value = false
-  if (Capacitor.isNativePlatform()) {
-    import('@capacitor/splash-screen').then(({ SplashScreen }) => {
-      SplashScreen.hide()
-    })
+  try {
+    await Promise.all([loadTask, minDelay])
+  } catch (e) {
+    console.error('Error loading home data', e)
+  } finally {
+    isPageLoading.value = false
+    if (Capacitor.isNativePlatform()) {
+      import('@capacitor/splash-screen').then(({ SplashScreen }) => {
+        SplashScreen.hide()
+      }).catch(() => {})
+    }
   }
 }, { immediate: true })
 

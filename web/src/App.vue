@@ -43,6 +43,17 @@ onMounted(() => {
 
   // Treat any arrow/remote key press as entering remote mode
   window.addEventListener('keydown', activateRemoteMode, { capture: true, passive: true })
+  
+  // FALLBACK: Always hide splash screen after a few seconds in case views fail to load
+  setTimeout(() => {
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (Capacitor.isNativePlatform()) {
+        import('@capacitor/splash-screen').then(({ SplashScreen }) => {
+          SplashScreen.hide().catch(() => {})
+        }).catch(() => {})
+      }
+    })
+  }, 3500)
 })
 
 onUnmounted(() => {
