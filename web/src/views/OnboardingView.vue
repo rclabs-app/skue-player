@@ -112,6 +112,11 @@ async function handleUrlLoad(url: string) {
 onMounted(async () => {
   await store.initialize()
   await requestActivation()
+  if (Capacitor.isNativePlatform()) {
+    import('@capacitor/splash-screen').then(({ SplashScreen }) => {
+      SplashScreen.hide()
+    })
+  }
 })
 
 onUnmounted(() => {

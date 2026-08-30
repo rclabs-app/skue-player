@@ -156,6 +156,11 @@ watch(activeCategory, async (newCat) => {
   await Promise.all([loadTask, minDelay])
   
   isPageLoading.value = false
+  if (Capacitor.isNativePlatform()) {
+    import('@capacitor/splash-screen').then(({ SplashScreen }) => {
+      SplashScreen.hide()
+    })
+  }
 }, { immediate: true })
 
 let hoverDebounceTimer: ReturnType<typeof setTimeout> | null = null
