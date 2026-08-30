@@ -55,7 +55,7 @@ watch(searchQuery, (newVal) => {
     
     // Series index is small and in memory
     const series = store.uniqueSeries
-      .filter(s => s.displayName.toLowerCase().includes(q) || cleanName(s.displayName).toLowerCase().includes(q))
+      .filter((s: any) => s.displayName.toLowerCase().includes(q) || cleanName(s.displayName).toLowerCase().includes(q))
       .slice(0, 48)
 
     results.value = { movies, series, live }

@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch, type CSSProperties } from
 import Hls from 'hls.js'
 import mpegts from 'mpegts.js'
 import { Capacitor } from '@capacitor/core'
-
+import { App } from '@capacitor/app'
 import { useHistoryStore } from '../stores/history'
 
 const props = defineProps<{
@@ -32,10 +32,9 @@ let bufferingTimeout: ReturnType<typeof setTimeout> | null = null
 
 // Native Android Player Bridge Sync
 const isNativePlatform = computed(() => {
-  if (props.url && (props.url.toLowerCase().includes('.mp4') || props.url.toLowerCase().includes('.mkv'))) {
-    return false; // Force HTML5 Web Player for .mp4 and .mkv which work natively in WebView
-  }
-  return Capacitor.isNativePlatform() && typeof (window as any).NativePlayer !== 'undefined';
+  const isAndroid = /android/i.test(navigator.userAgent);
+  const hasBridge = typeof (window as any).NativePlayer !== 'undefined';
+  return isAndroid || hasBridge || Capacitor.isNativePlatform();
 })
 let nativePollInterval: ReturnType<typeof setInterval> | null = null
 
@@ -83,11 +82,9 @@ const aspectRatio = ref('original')
 const showRatioMenu = ref(false)
 const RATIOS = [
   { label: 'Original', value: 'original' },
-  { label: '16:9', value: '16:9' },
   { label: '4:3', value: '4:3' },
-  { label: '3:2', value: '3:2' },
-  { label: '21:9', value: '21:9' },
-  { label: 'Esticar', value: 'stretch' },
+  { label: '16:9', value: '16:9' },
+  { label: '21:9', value: '21:9' }
 ] as const
 let hideTimeout: ReturnType<typeof setTimeout> | null = null
 let clockInterval: ReturnType<typeof setInterval> | null = null
@@ -97,13 +94,9 @@ const hasError = ref(false)
 const errorTitle = ref('')
 const errorDescription = ref('')
 
-// Debug overlay
-const debugInfo = ref('')
-let debugTimeout: ReturnType<typeof setTimeout> | null = null
+// Debug overlay removido
 function showDebug(msg: string) {
-  debugInfo.value = msg
-  if (debugTimeout) clearTimeout(debugTimeout)
-  debugTimeout = setTimeout(() => { debugInfo.value = '' }, 8000)
+  console.debug(msg)
 }
 
 function showError(title: string, desc: string) {
@@ -118,6 +111,51 @@ function showError(title: string, desc: string) {
 function retryPlay() {
   hasError.value = false
   initPlayer()
+}
+
+// Navigation Refs
+const backButtonRef = ref<HTMLElement | null>(null)
+const aspectRatioRef = ref<HTMLElement | null>(null)
+const rewButtonRef = ref<HTMLElement | null>(null)
+const playButtonRef = ref<HTMLElement | null>(null)
+const ffButtonRef = ref<HTMLElement | null>(null)
+const progressBarRef = ref<HTMLElement | null>(null)
+
+function focusBack() { setTimeout(() => backButtonRef.value?.focus(), 10) }
+function focusProgress() { setTimeout(() => progressBarRef.value?.focus(), 10) }
+function focusPlay() { setTimeout(() => playButtonRef.value?.focus(), 10) }
+function focusREW() { setTimeout(() => rewButtonRef.value?.focus(), 10) }
+function focusFF() { setTimeout(() => ffButtonRef.value?.focus(), 10) }
+function focusAspectRatio() { setTimeout(() => aspectRatioRef.value?.focus(), 10) }
+
+function openRatioMenu() {
+  showRatioMenu.value = true
+  setTimeout(() => {
+    const menu = document.getElementById('ratio-menu-container')
+    if (menu) {
+      const firstBtn = menu.querySelector('button') as HTMLElement
+      if (firstBtn) firstBtn.focus()
+    }
+  }, 50)
+}
+
+function closeRatioMenu(e?: Event) {
+  if (e) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  showRatioMenu.value = false
+  focusAspectRatio()
+}
+
+function focusRatioItem(index: number) {
+  const menu = document.getElementById('ratio-menu-container')
+  if (menu) {
+    const btns = menu.querySelectorAll('button')
+    if (index >= 0 && index < btns.length) {
+      (btns[index] as HTMLElement).focus()
+    }
+  }
 }
 
 function wakeControls() {
@@ -163,22 +201,52 @@ function togglePlay() {
   wakeControls()
 }
 
-function seek(delta: number) {
-  if (isNativePlatform.value) {
-    try {
-      const np = (window as any).NativePlayer
-      const targetMs = Math.max(0, (currentTime.value + delta) * 1000)
-      np.seekNativeVideo(targetMs)
-      currentTime.value = targetMs / 1000
-    } catch (e) {
-      console.error('Failed seek NativePlayer', e)
-    }
-    wakeControls()
-    return
-  }
+const seekingTarget = ref<number | null>(null)
+let performSeekTimeout: ReturnType<typeof setTimeout> | null = null
+let consecutiveSeeks = 0
+let lastSeekTime = 0
 
-  if (!videoRef.value) return
-  videoRef.value.currentTime += delta
+function seek(delta: number) {
+  const direction = delta > 0 ? 1 : -1;
+  const now = Date.now()
+  if (now - lastSeekTime < 600) {
+    consecutiveSeeks++
+  } else {
+    consecutiveSeeks = 0
+  }
+  lastSeekTime = now
+  
+  let actualDelta = Math.abs(delta)
+  if (consecutiveSeeks > 20) actualDelta = 300 // 5 mins per tick
+  else if (consecutiveSeeks > 15) actualDelta = 120 // 2 mins per tick
+  else if (consecutiveSeeks > 10) actualDelta = 60 // 1 min per tick
+  else if (consecutiveSeeks > 5) actualDelta = 30 // 30s per tick
+  
+  if (seekingTarget.value === null) {
+    seekingTarget.value = currentTime.value
+  }
+  
+  seekingTarget.value = Math.max(0, Math.min(duration.value, seekingTarget.value + (direction * actualDelta)))
+  
+  if (performSeekTimeout) clearTimeout(performSeekTimeout)
+  performSeekTimeout = setTimeout(() => {
+    if (seekingTarget.value !== null) {
+      if (isNativePlatform.value) {
+        try {
+          const np = (window as any).NativePlayer
+          np.seekNativeVideo(seekingTarget.value * 1000)
+          currentTime.value = seekingTarget.value
+        } catch (e) {
+          console.error('Failed seek NativePlayer', e)
+        }
+      } else if (videoRef.value) {
+        videoRef.value.currentTime = seekingTarget.value
+      }
+      seekingTarget.value = null
+      consecutiveSeeks = 0
+    }
+  }, 600)
+  
   wakeControls()
 }
 
@@ -233,30 +301,80 @@ const videoTransformStyle = computed<CSSProperties>(() => {
 
 function selectAspectRatio(ratio: string) {
   aspectRatio.value = ratio
-  showRatioMenu.value = false
-  wakeControls()
+  if (isNativePlatform.value) {
+    try {
+      (window as any).NativePlayer.updateAspectRatioNative(ratio)
+    } catch (e) {
+      console.error('Failed to update aspect ratio native', e)
+    }
+  }
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  wakeControls()
-  
   if (e.key === 'Escape' || e.key === 'Backspace') {
-    handleClose()
+    if (showRatioMenu.value) {
+      e.preventDefault()
+      closeRatioMenu()
+    } else if (showControls.value) {
+      e.preventDefault()
+      showControls.value = false
+    } else {
+      e.preventDefault()
+      wakeControls()
+      focusBack()
+    }
     return
   }
+
+  const isHidden = !showControls.value
+  wakeControls()
 
   const activeEl = document.activeElement
   const isButton = activeEl?.tagName === 'BUTTON'
 
   switch (e.key) {
     case 'ArrowLeft':
-      seek(-10)
+      if (props.isLive) {
+        if (isHidden) focusPlay()
+        return
+      }
+      if (isHidden) {
+        e.preventDefault()
+        focusProgress()
+        seek(-10)
+      } else if (activeEl === progressBarRef.value || activeEl === document.body) {
+        seek(-10)
+      }
       break
     case 'ArrowRight':
-      seek(10)
+      if (props.isLive) {
+        if (isHidden) focusPlay()
+        return
+      }
+      if (isHidden) {
+        e.preventDefault()
+        focusProgress()
+        seek(10)
+      } else if (activeEl === progressBarRef.value || activeEl === document.body) {
+        seek(10)
+      }
+      break
+    case 'ArrowUp':
+    case 'ArrowDown':
+      if (isHidden) {
+        e.preventDefault()
+        focusPlay()
+        return
+      }
       break
     case ' ':
     case 'Enter':
+      if (isHidden) {
+        e.preventDefault()
+        focusPlay()
+        togglePlay()
+        return
+      }
       if (!isButton) {
         e.preventDefault()
         togglePlay()
@@ -589,8 +707,10 @@ function updateClock() {
 function applyNativePlayerClass() {
   if (isNativePlatform.value && !hasError.value) {
     document.body.classList.add('native-player-active')
+    document.documentElement.classList.add('native-player-active')
   } else {
     document.body.classList.remove('native-player-active')
+    document.documentElement.classList.remove('native-player-active')
   }
 }
 
@@ -609,10 +729,15 @@ onMounted(() => {
   ;(window as any).onNativePlayerPrepared = () => {
     isBuffering.value = false
     isPlaying.value = true
+    wakeControls()
   }
   ;(window as any).onNativePlayerRenderingStart = () => {
     isBuffering.value = false
     isPlaying.value = true
+    wakeControls()
+  }
+  ;(window as any).onNativePlayerVideoSizeChanged = () => {
+    selectAspectRatio(aspectRatio.value)
   }
   ;(window as any).onNativePlayerError = (what: number, extra: number) => {
     showError('Erro no Player Nativo', `O hardware da TV reportou um erro ao decodificar este conteúdo (Erro ${what}, ${extra}).`)
@@ -623,7 +748,28 @@ onMounted(() => {
 
   initPlayer()
   wakeControls()
+  
+  setTimeout(() => {
+    focusPlay()
+  }, 100)
+
+  if (isNativePlatform.value) {
+    App.addListener('backButton', () => {
+      if (showRatioMenu.value) {
+        closeRatioMenu()
+      } else if (showControls.value) {
+        showControls.value = false
+      } else {
+        wakeControls()
+        focusBack()
+      }
+    }).then(listener => {
+      backListener = listener
+    })
+  }
 })
+
+let backListener: any = null
 
 watch(() => props.url, () => {
   initPlayer()
@@ -632,8 +778,13 @@ watch(() => props.url, () => {
 onUnmounted(() => {
   delete (window as any).onNativePlayerPrepared
   delete (window as any).onNativePlayerRenderingStart
+  delete (window as any).onNativePlayerVideoSizeChanged
   delete (window as any).onNativePlayerError
   delete (window as any).onNativePlayerEnded
+
+  if (backListener) {
+    backListener.remove()
+  }
 
   document.body.classList.remove('native-player-active')
   stopPlayback()
@@ -667,20 +818,9 @@ onUnmounted(() => {
         @click="togglePlay"
         @error="handleNativeError"
       ></video>
-      
-      <!-- DEBUG OVERLAY -->
-      <div v-if="debugInfo" class="absolute top-3 left-3 right-3 z-50 pointer-events-none">
-        <div class="bg-black/80 border border-yellow-500/50 rounded-lg px-3 py-2 text-yellow-400 text-xs font-mono leading-relaxed break-all">
-          {{ debugInfo }}
-        </div>
-      </div>
-
-      <!-- CLEAN PRELOAD / BUFFERING SCREEN (Compact Glass Pill, Non-blocking background) -->
-      <div v-if="isBuffering && !hasError" class="absolute inset-0 z-30 flex items-center justify-center pointer-events-none transition-opacity duration-300">
-        <div class="bg-black/70 backdrop-blur-md border border-white/10 rounded-2xl px-6 py-4 flex flex-col items-center shadow-2xl">
-          <div class="w-8 h-8 border-3 border-white/20 border-t-blue-500 rounded-full animate-spin mb-2"></div>
-          <p class="text-white/80 text-xs font-semibold">Carregando...</p>
-        </div>
+      <!-- CLEAN PRELOAD / BUFFERING SCREEN -->
+      <div v-if="isBuffering && !hasError && seekingTarget === null" class="absolute inset-0 z-30 flex items-center justify-center pointer-events-none transition-opacity duration-300">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary shadow-[0_0_15px_rgba(37,99,235,0.5)]"></div>
       </div>
       
       <!-- ERROR OVERLAY (Apple Liquid Glass Modal) -->
@@ -696,11 +836,11 @@ onUnmounted(() => {
           <p class="text-white/70 text-sm md:text-base leading-relaxed mb-8 font-normal">{{ errorDescription }}</p>
           
           <div class="flex flex-wrap justify-center gap-4 w-full">
-            <button @click="handleClose" class="px-6 py-3.5 bg-white/10 hover:bg-white/20 focus:bg-white/30 focus:ring-2 focus:ring-white text-white font-semibold rounded-2xl transition-all border border-white/20 backdrop-blur-md outline-none shadow-md">
+            <button @click="handleClose" class="px-6 py-3.5 bg-white/10 hover:bg-white/20 focus:bg-white/30 text-white font-semibold rounded-2xl border border-white/20 backdrop-blur-md outline-none focus:outline-none shadow-md">
               Voltar
             </button>
             
-            <button @click="retryPlay" class="px-6 py-3.5 bg-gradient-to-r from-blue-500/90 to-indigo-600/90 hover:from-blue-400 hover:to-indigo-500 focus:ring-2 focus:ring-white text-white font-bold rounded-2xl transition-all border border-blue-300/40 backdrop-blur-md flex items-center gap-2.5 outline-none shadow-[0_0_25px_rgba(59,130,246,0.4)]">
+            <button @click="retryPlay" class="px-6 py-3.5 bg-gradient-to-r from-blue-500/90 to-indigo-600/90 hover:from-blue-400 hover:to-indigo-500 text-white font-bold rounded-2xl border border-blue-300/40 backdrop-blur-md flex items-center gap-2.5 outline-none focus:outline-none shadow-[0_0_25px_rgba(59,130,246,0.4)]">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
               Tentar Novamente
             </button>
@@ -716,8 +856,13 @@ onUnmounted(() => {
           <div class="p-3 md:px-6 md:py-4 flex justify-between items-center pointer-events-auto bg-gradient-to-b from-black/70 via-black/20 to-transparent">
             <!-- Left: Back Button Liquid Pill (Compact Glass Circle) -->
             <button 
+              ref="backButtonRef"
               @click="handleClose()" 
-              class="group text-white/90 hover:text-white focus:text-white focus:bg-white/40 focus:ring-2 focus:ring-white focus:scale-105 focus:outline-none transition-all w-8 h-8 rounded-full bg-white/15 backdrop-blur-xl border border-white/20 shadow-md flex items-center justify-center" 
+              @keydown.down.prevent="focusPlay"
+              @keydown.left.prevent
+              @keydown.right.prevent
+              @keydown.up.prevent
+              class="group text-white/90 hover:text-white focus:text-white focus:bg-white/40 focus:scale-105 outline-none focus:outline-none w-8 h-8 rounded-full bg-white/10 backdrop-blur-xl border border-white/10 shadow-md flex items-center justify-center" 
               aria-label="Fechar"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -745,20 +890,31 @@ onUnmounted(() => {
               <!-- Aspect Ratio Selector Pill -->
               <div class="relative">
                 <button
-                  @click.stop="showRatioMenu = !showRatioMenu"
-                  :class="['px-2.5 py-0.5 rounded-full border text-[11px] font-bold transition-all backdrop-blur-md outline-none focus:ring-2 focus:ring-white flex items-center gap-1', aspectRatio !== 'original' ? 'bg-primary/40 border-primary text-white' : 'bg-white/15 border-white/20 text-white/90 hover:bg-white/25 hover:text-white']"
+                  ref="aspectRatioRef"
+                  @click.stop="openRatioMenu"
+                  @keydown.enter.prevent="openRatioMenu"
+                  @keydown.left.prevent="!isLive ? focusFF() : focusPlay()"
+                  @keydown.right.prevent
+                  @keydown.up.prevent="focusBack"
+                  @keydown.down.prevent="focusProgress"
+                  class="px-2.5 py-0.5 rounded-full border text-[11px] font-bold backdrop-blur-md outline-none focus:outline-none focus:bg-white/40 flex items-center gap-1 bg-white/10 border-white/10 text-white/90 hover:bg-white/20 hover:text-white"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M5 9h4M9 9v4"/></svg>
                   <span>{{ RATIOS.find(r => r.value === aspectRatio)?.label || 'Tela' }}</span>
                 </button>
 
                 <Transition name="fade">
-                  <div v-show="showRatioMenu" class="absolute bottom-full right-0 mb-2 bg-black/90 backdrop-blur-2xl border border-white/20 rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-50 p-1">
+                  <div v-show="showRatioMenu" id="ratio-menu-container" class="absolute bottom-full right-0 mb-2 bg-black/90 backdrop-blur-2xl border border-white/10 rounded-xl shadow-2xl overflow-hidden min-w-[120px] z-50 p-1">
                     <button
-                      v-for="r in RATIOS"
+                      v-for="(r, index) in RATIOS"
                       :key="r.value"
                       @click.stop="selectAspectRatio(r.value)"
-                      :class="['w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all', aspectRatio === r.value ? 'bg-white/25 text-white font-bold' : 'text-white/70 hover:bg-white/15 hover:text-white']"
+                      @keydown.enter.prevent="selectAspectRatio(r.value)"
+                      @keydown.up.prevent="focusRatioItem(index - 1)"
+                      @keydown.down.prevent="focusRatioItem(index + 1)"
+                      @keydown.left.prevent
+                      @keydown.right.prevent
+                      :class="['w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold outline-none focus:outline-none focus:bg-white/40', aspectRatio === r.value ? 'bg-white/25 text-white font-bold' : 'text-white/70 hover:bg-white/15 hover:text-white']"
                     >{{ r.label }}</button>
                   </div>
                 </Transition>
@@ -769,16 +925,26 @@ onUnmounted(() => {
             <div class="flex items-center justify-center gap-4 py-0.5">
               <button 
                 v-if="!isLive"
+                ref="rewButtonRef"
                 @click="seek(-10)" 
-                class="text-white/80 hover:text-white focus:text-white focus:bg-white/40 focus:ring-2 focus:ring-white focus:scale-105 focus:outline-none transition-all w-8 h-8 rounded-full bg-white/15 border border-white/20 backdrop-blur-md shadow-md flex items-center justify-center" 
+                @keydown.left.prevent
+                @keydown.right.prevent="focusPlay"
+                @keydown.up.prevent="focusBack"
+                @keydown.down.prevent="focusProgress"
+                class="text-white/80 hover:text-white focus:text-white focus:bg-white/40 focus:scale-105 outline-none focus:outline-none w-8 h-8 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-md flex items-center justify-center" 
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
               </button>
 
               <!-- Central Main Play/Pause Button (Compact 40px Glass Pill) -->
               <button 
+                ref="playButtonRef"
                 @click="togglePlay" 
-                class="text-white hover:scale-105 focus:scale-105 focus:ring-2 focus:ring-white focus:outline-none transition-all w-10 h-10 rounded-full bg-white/25 hover:bg-white/35 backdrop-blur-xl border border-white/30 shadow-[0_0_12px_rgba(255,255,255,0.2)] flex items-center justify-center" 
+                @keydown.left.prevent="!isLive && focusREW()"
+                @keydown.right.prevent="!isLive ? focusFF() : focusAspectRatio()"
+                @keydown.up.prevent="focusBack"
+                @keydown.down.prevent="focusProgress"
+                class="text-white hover:scale-105 focus:scale-105 focus:bg-white/40 outline-none focus:outline-none w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-xl border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.1)] flex items-center justify-center" 
               >
                 <svg v-if="!isPlaying" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                 <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
@@ -786,8 +952,13 @@ onUnmounted(() => {
 
               <button 
                 v-if="!isLive"
+                ref="ffButtonRef"
                 @click="seek(10)" 
-                class="text-white/80 hover:text-white focus:text-white focus:bg-white/40 focus:ring-2 focus:ring-white focus:scale-105 focus:outline-none transition-all w-8 h-8 rounded-full bg-white/15 border border-white/20 backdrop-blur-md shadow-md flex items-center justify-center" 
+                @keydown.left.prevent="focusPlay"
+                @keydown.right.prevent="focusAspectRatio"
+                @keydown.up.prevent="focusBack"
+                @keydown.down.prevent="focusProgress"
+                class="text-white/80 hover:text-white focus:text-white focus:bg-white/40 focus:scale-105 outline-none focus:outline-none w-8 h-8 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-md flex items-center justify-center" 
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
               </button>
@@ -795,10 +966,16 @@ onUnmounted(() => {
 
             <!-- Row 3: Progress Bar (Edge-to-Edge, Posicionada Abaixo dos Botões) -->
             <div v-if="!isLive" class="w-full flex items-center gap-2.5 mt-0.5">
-              <span class="text-white/80 text-[11px] font-mono font-semibold min-w-[38px] text-right">{{ formatTime(currentTime) }}</span>
+              <span class="text-white/80 text-[11px] font-mono font-semibold min-w-[38px] text-right">{{ formatTime(seekingTarget !== null ? seekingTarget : currentTime) }}</span>
               
-              <div class="flex-1 h-1.5 bg-white/20 hover:h-2 transition-all rounded-full cursor-pointer relative overflow-hidden shadow-inner" @click="seekTo">
-                <div class="absolute left-0 h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all shadow-[0_0_8px_rgba(59,130,246,0.8)]" :style="{ width: duration ? (currentTime / duration) * 100 + '%' : '0%' }"></div>
+              <div 
+                ref="progressBarRef"
+                tabindex="0"
+                @keydown.up.prevent="focusPlay"
+                @click="seekTo"
+                class="flex-1 h-1.5 bg-white/20 hover:h-2 focus:h-2 outline-none focus:outline-none focus:bg-white/40 focus:ring-2 focus:ring-white/50 focus:scale-[1.01] rounded-full cursor-pointer relative overflow-hidden shadow-inner" 
+              >
+                <div class="absolute left-0 h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" :style="{ width: duration ? ((seekingTarget !== null ? seekingTarget : currentTime) / duration) * 100 + '%' : '0%' }"></div>
               </div>
 
               <span class="text-white/80 text-[11px] font-mono font-semibold min-w-[38px]">{{ formatTime(duration) }}</span>

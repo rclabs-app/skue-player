@@ -1,0 +1,85 @@
+*User:* 639811527
+*Password:* 903950104
+*SS:* http://e.daily3.news/6IeLSsmSQn
+
+*Valid Until:* 28/09/2026
+
+*M3U*
+*URL COMPLETA 1:*
+
+TS   -    http://ded15.com/get.php?username=639811527&password=903950104&type=m3u_plus&output=ts
+
+*- EPG:* http://ded15.com/xmltv.php?username=639811527&password=903950104
+
+*--SMARTV APLICATIVO--*
+
+Nome Aplicativo: *LazerPlayer*
+
+Apk disponível nas SMARTV: LG , SAMSUNG , ROKU
+
+Basta Digitar o CODIGO :➡ 123 ou 012
+
+*Obs:* Ao digitar CODIGO LOGIN E SENHA, voce vai ficar na aba da lista clique nela para carregar, apos carregar so basta aperta no controle botão volta, que ja vai ficar aonde tem os conteudos.
+
+*Obs2:* Para deixar o apk mais leve você pode DESATIVAR em Configuração a api que puxa as capas direto do TMDB ja que o servidor ja tem capas e descrição compatível com os conteúdos.
+
+*--SMARTV APLICATIVO--*
+
+Nome Aplicativo: *FunPlay*
+
+Apk disponível nas SMARTV: LG , SAMSUNG , ROKU
+
+Basta Digitar o CODIGO :➡ 123
+
+*Obs:* Ao digitar CODIGO LOGIN E SENHA, voce vai ficar na aba da lista clique nela para carregar, apos carregar so basta aperta no controle botão volta, que ja vai ficar aonde tem os conteudos.
+
+*Obs2:* Para deixar o apk mais leve você pode DESATIVAR em Configuração a api que puxa as capas direto do TMDB ja que o servidor ja tem capas e descrição compatível com os conteúdos.
+
+*Obs3 Se canais não abri mude o tipo de fluxo la em configuração do aplicativo tira de Default coloque em M3U8 que desta forma o FLUXO abri.*
+
+Opção 2
+
+
+*--SMARTV APLICATIVO--*
+
+Nome Aplicativo: *PlaySim*
+
+Apk disponível nas SMARTV: LG , SAMSUNG , ROKU
+
+Basta Digitar o CODIGO :➡ 121
+
+*Obs:* Ao digitar CODIGO LOGIN E SENHA, voce vai ficar na aba da lista clique nela para carregar, apos carregar so basta aperta no controle botão volta, que ja vai ficar aonde tem os conteudos.
+
+*Obs2:* Para deixar o apk mais leve você pode DESATIVAR em Configuração a api que puxa as capas direto do TMDB ja que o servidor ja tem capas e descrição compatível com os conteúdos.
+
+*Obs3* Se canais não abri mude o tipo de fluxo la em configuração do aplicativo tira de Default coloque em M3U8 que desta forma o FLUXO abri.
+
+*Opção 3*
+
+*--SMARTV APLICATIVO--*
+
+Nome Aplicativo: *Assist Plus*
+
+Apk disponível nas SMARTV: LG , SAMSUNG , ROKU
+
+Basta Digitar o CODIGO :➡ 121
+
+*Obs:* Ao digitar CODIGO LOGIN E SENHA, voce vai ficar na aba da lista clique nela para carregar, apos carregar so basta aperta no controle botão volta, que ja vai ficar aonde tem os conteudos.
+
+*Obs2:* Para deixar o apk mais leve você pode DESATIVAR em Configuração a api que puxa as capas direto do TMDB ja que o servidor ja tem capas e descrição compatível com os conteúdos.
+
+*--Aplicativo Android--*
+
+Novos app Leve 2:  wtwp1.com/2.apk
+
+-*XC MULT.*  wtwp1.com/xc31.apk
+
+- *OTT:*  wtwp1.com/ott1.apk
+
+*- DNS:* 64.31.61.14 Layout v4 
+
+*- DNS:* 103.195.100.208 Layout v1
+
+* DNS Recomendado XC/API:*  http://ded30.com
+
+* DNS Recomendado XC/API:* http://ded34.com

@@ -81,7 +81,7 @@ export function useSpatialNav() {
       : els[preferLast ? els.length - 1 : 0]
 
     target.focus({ preventScroll: false })
-    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    target.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
     activeZoneId.value = id
     return true
   }
@@ -122,7 +122,7 @@ export function useSpatialNav() {
       }
       if (best) {
         best.focus({ preventScroll: false })
-        best.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+        best.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
         return
       }
     }
@@ -148,7 +148,7 @@ export function useSpatialNav() {
     }
     if (bestGlobal) {
       bestGlobal.focus({ preventScroll: false })
-      bestGlobal.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      bestGlobal.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' })
       for (const [zid, z] of zonesMap) {
         if (z.containerRef.value?.contains(bestGlobal)) { activeZoneId.value = zid; break }
       }

@@ -19,7 +19,7 @@ export function buildPlaylistUrl(playlist: PlaylistConfig): string {
     const baseUrl = playlist.url.replace(/\/$/, '')
     const user = encodeURIComponent(playlist.username || '')
     const pass = encodeURIComponent(playlist.password || '')
-    return `${baseUrl}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=ts`
+    return `${baseUrl}/get.php?username=${user}&password=${pass}&type=m3u_plus`
   }
   return playlist.url
 }

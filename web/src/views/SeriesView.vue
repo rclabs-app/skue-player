@@ -156,7 +156,7 @@ onUnmounted(() => {
 
 const groups = computed(() => {
   const map: Record<string, number> = {}
-  store.uniqueSeries.forEach(s => {
+  store.uniqueSeries.forEach((s: any) => {
     const g = s.group || 'Sem Categoria'
     map[g] = (map[g] || 0) + 1
   })
@@ -262,7 +262,7 @@ function extractYear(name?: string): string | null {
         </button>
         <button @click="selectGroup('FAVORITES')" @keydown.enter.prevent="selectGroup('FAVORITES')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'FAVORITES' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Favoritos</span>
-          <span class="text-xs text-gray-600 tabular-nums">{{ store.uniqueSeries.filter(s => favoritesStore.isFavorite(s.id)).length.toLocaleString('pt-BR') }}</span>
+          <span class="text-xs text-gray-600 tabular-nums">{{ store.uniqueSeries.filter((s: any) => favoritesStore.isFavorite(s.id)).length.toLocaleString('pt-BR') }}</span>
         </button>
         <button @click="selectGroup('CONTINUE')" @keydown.enter.prevent="selectGroup('CONTINUE')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'CONTINUE' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Continuar Assistindo</span>

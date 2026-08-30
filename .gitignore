@@ -42,3 +42,4 @@ web/android/app/release/
 .DS_Store
 Thumbs.db
 *.log
+ANTIGRAVITY_SPECS.md

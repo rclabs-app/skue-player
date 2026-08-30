@@ -129,176 +129,181 @@ function generateId(url: string, name: string, idx: number): string {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-self.onmessage = async (e: MessageEvent) => {
-  const { content } = e.data as { content: string }
+let db: any;
+let stmtItem: any;
+let stmtSeries: any;
+const seriesMap = new Map<string, { id: string; displayName: string; group: string; logo: string | null; count: number }>()
 
-  if (!content) {
-    self.postMessage({ type: 'error', error: 'No content provided' })
-    return
+let epgUrl: string | undefined
+let itemIdx = 0
+let chunkCount = 0
+let counts = { live: 0, movie: 0, series: 0 }
+
+let currentName = ''
+let currentGroup = 'Uncategorized'
+let currentLogo: string | null = null
+let currentEpgId: string | null = null
+let hasCurrentItem = false
+
+let remainder = ''
+const decoder = new TextDecoder('utf-8')
+
+const commitChunk = () => {
+  db.run('COMMIT')
+  db.run('BEGIN TRANSACTION')
+  chunkCount = 0
+}
+
+function processLines(text: string) {
+  const content = remainder + text
+  let pos = 0
+  const len = content.length
+
+  while (pos < len) {
+    let end = content.indexOf('\n', pos)
+    if (end === -1) {
+      // Incomplete line at the end of the chunk
+      remainder = content.slice(pos)
+      return
+    }
+
+    const lineEnd = end > pos && content[end - 1] === '\r' ? end - 1 : end
+    const line = content.slice(pos, lineEnd).trim()
+    pos = end + 1
+
+    if (!line) continue
+
+    if (line.startsWith('#EXTM3U')) {
+      const m = line.match(/x-tvg-url="([^"]+)"/i) || line.match(/url-tvg="([^"]+)"/i)
+      if (m) epgUrl = m[1]
+    } else if (line.startsWith('#EXTINF:')) {
+      currentName = 'Unknown'
+      currentGroup = 'Uncategorized'
+      currentLogo = null
+      currentEpgId = null
+
+      const attrRx = /([a-zA-Z0-9-]+)="([^"]*)"/g
+      let match: RegExpExecArray | null
+      while ((match = attrRx.exec(line)) !== null) {
+        switch (match[1]) {
+          case 'group-title': currentGroup = match[2]; break
+          case 'tvg-logo':    currentLogo  = match[2] || null; break
+          case 'tvg-id':      currentEpgId = match[2] || null; break
+        }
+      }
+      const ci = line.lastIndexOf(',')
+      if (ci !== -1) currentName = line.substring(ci + 1).trim()
+      hasCurrentItem = true
+
+    } else if (line[0] === '#') {
+      continue
+    } else if (hasCurrentItem) {
+      const url  = line
+      const type = determineType(url, currentGroup, currentName, currentEpgId)
+      const id   = generateId(url, currentName, itemIdx++)
+
+      let serieKey: string | null = null
+      if (type === 'series') {
+        serieKey = buildSerieKey(currentName)
+        const existing = seriesMap.get(serieKey)
+        if (!existing) {
+          seriesMap.set(serieKey, {
+            id,
+            displayName: cleanDisplayName(currentName),
+            group: currentGroup,
+            logo: currentLogo,
+            count: 1,
+          })
+        } else {
+          existing.count++
+          if (!existing.logo && currentLogo) existing.logo = currentLogo
+        }
+        counts.series++
+      } else if (type === 'movie') {
+        counts.movie++
+      } else {
+        counts.live++
+      }
+
+      stmtItem.run([id, currentName, url, currentGroup || 'Outros', currentLogo, currentEpgId, type, serieKey])
+      chunkCount++
+
+      if (chunkCount >= CHUNK_SIZE) {
+        commitChunk()
+        if (itemIdx % 20000 === 0) {
+          self.postMessage({
+            type: 'progress',
+            message: `Processando... ${itemIdx.toLocaleString()} itens (${counts.live} live, ${counts.movie} filmes, ${counts.series} episódios)`
+          })
+        }
+      }
+      hasCurrentItem = false
+    }
   }
+  remainder = ''
+}
+
+self.onmessage = async (e: MessageEvent) => {
+  const msg = e.data
 
   try {
-    // ── Init SQLite ──────────────────────────────────────────────────────────
-    self.postMessage({ type: 'progress', message: 'Iniciando banco de dados...' })
-    const SQL = await initSqlJs({ locateFile: () => wasmUrl })
-    const db  = new SQL.Database()
-    db.run(SCHEMA)
-    db.run('DELETE FROM playlist')
-    db.run('DELETE FROM series_index')
+    if (msg.type === 'init') {
+      self.postMessage({ type: 'progress', message: 'Iniciando banco de dados...' })
+      const SQL = await initSqlJs({ locateFile: () => wasmUrl })
+      db  = new SQL.Database()
+      db.run(SCHEMA)
+      db.run('DELETE FROM playlist')
+      db.run('DELETE FROM series_index')
 
-    // ── Stream parse + insert ────────────────────────────────────────────────
-    self.postMessage({ type: 'progress', message: 'Processando lista M3U...' })
-
-    const stmtItem = db.prepare(
-      'INSERT OR REPLACE INTO playlist (id, name, url, group_title, logo, epg_id, type, serie_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    )
-    const stmtSeries = db.prepare(
-      'INSERT OR REPLACE INTO series_index (id, display_name, group_title, logo, serie_key, episode_count) VALUES (?, ?, ?, ?, ?, ?)'
-    )
-
-    // In-memory series index (only metadata — much smaller than full items)
-    const seriesMap = new Map<string, { id: string; displayName: string; group: string; logo: string | null; count: number }>()
-
-    let epgUrl: string | undefined
-    let itemIdx = 0
-    let chunkCount = 0
-    let counts = { live: 0, movie: 0, series: 0 }
-
-    // Begin first transaction chunk
-    db.run('BEGIN TRANSACTION')
-
-    let currentName = ''
-    let currentGroup = 'Uncategorized'
-    let currentLogo: string | null = null
-    let currentEpgId: string | null = null
-    let hasCurrentItem = false
-
-    const len = content.length
-    let pos = 0
-
-    const commitChunk = () => {
-      db.run('COMMIT')
+      stmtItem = db.prepare('INSERT OR REPLACE INTO playlist (id, name, url, group_title, logo, epg_id, type, serie_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      stmtSeries = db.prepare('INSERT OR REPLACE INTO series_index (id, display_name, group_title, logo, serie_key, episode_count) VALUES (?, ?, ?, ?, ?, ?)')
+      
       db.run('BEGIN TRANSACTION')
-      chunkCount = 0
-    }
+      self.postMessage({ type: 'ack_init' })
 
-    while (pos < len) {
-      let end = content.indexOf('\n', pos)
-      if (end === -1) end = len
-      const lineEnd = end > pos && content[end - 1] === '\r' ? end - 1 : end
-      const line = content.slice(pos, lineEnd).trim()
-      pos = end + 1
+    } else if (msg.type === 'chunk') {
+      const text = decoder.decode(msg.data, { stream: true })
+      processLines(text)
+      self.postMessage({ type: 'ack_chunk' })
 
-      if (!line) continue
-
-      if (line.startsWith('#EXTM3U')) {
-        const m = line.match(/x-tvg-url="([^"]+)"/i) || line.match(/url-tvg="([^"]+)"/i)
-        if (m) epgUrl = m[1]
-
-      } else if (line.startsWith('#EXTINF:')) {
-        // Reset item metadata
-        currentName = 'Unknown'
-        currentGroup = 'Uncategorized'
-        currentLogo = null
-        currentEpgId = null
-
-        const attrRx = /([a-zA-Z0-9-]+)="([^"]*)"/g
-        let match: RegExpExecArray | null
-        while ((match = attrRx.exec(line)) !== null) {
-          switch (match[1]) {
-            case 'group-title': currentGroup = match[2]; break
-            case 'tvg-logo':    currentLogo  = match[2] || null; break
-            case 'tvg-id':      currentEpgId = match[2] || null; break
-          }
-        }
-        const ci = line.lastIndexOf(',')
-        if (ci !== -1) currentName = line.substring(ci + 1).trim()
-        hasCurrentItem = true
-
-      } else if (line[0] === '#') {
-        continue
-
-      } else if (hasCurrentItem) {
-        const url  = line
-        const type = determineType(url, currentGroup, currentName, currentEpgId)
-        const id   = generateId(url, currentName, itemIdx++)
-
-        let serieKey: string | null = null
-        if (type === 'series') {
-          serieKey = buildSerieKey(currentName)
-          const existing = seriesMap.get(serieKey)
-          if (!existing) {
-            seriesMap.set(serieKey, {
-              id,
-              displayName: cleanDisplayName(currentName),
-              group: currentGroup,
-              logo: currentLogo,
-              count: 1,
-            })
-          } else {
-            existing.count++
-            if (!existing.logo && currentLogo) existing.logo = currentLogo
-          }
-          counts.series++
-        } else if (type === 'movie') {
-          counts.movie++
-        } else {
-          counts.live++
-        }
-
-        stmtItem.run([id, currentName, url, currentGroup || 'Outros', currentLogo, currentEpgId, type, serieKey])
-        chunkCount++
-
-        // Commit and yield every CHUNK_SIZE rows to keep peak memory low
-        if (chunkCount >= CHUNK_SIZE) {
-          commitChunk()
-          if (itemIdx % 20000 === 0) {
-            self.postMessage({
-              type: 'progress',
-              message: `Processando... ${itemIdx.toLocaleString()} itens (${counts.live} live, ${counts.movie} filmes, ${counts.series} episódios)`
-            })
-          }
-        }
-
-        hasCurrentItem = false
+    } else if (msg.type === 'end') {
+      // Process any remaining text in the stream buffer
+      const finalStr = decoder.decode()
+      if (finalStr || remainder) {
+        processLines(finalStr + '\n')
       }
-    }
 
-    // Commit remaining playlist items
-    db.run('COMMIT')
-    stmtItem.free()
+      db.run('COMMIT')
+      stmtItem.free()
 
-    // ── Flush series index (much smaller — O(unique series)) ─────────────────
-    self.postMessage({ type: 'progress', message: `Salvando índice de ${seriesMap.size.toLocaleString()} séries...` })
-    db.run('BEGIN TRANSACTION')
-    for (const [key, s] of seriesMap) {
-      stmtSeries.run([s.id, s.displayName, s.group || 'Outros', s.logo, key, s.count])
-    }
-    db.run('COMMIT')
-    stmtSeries.free()
-
-    // ── Persist DB from within the worker (no export copy to main thread) ─────
-    self.postMessage({ type: 'progress', message: 'Gravando banco de dados...' })
-    const dbData = db.export()
-    db.close()
-
-    await persistDb(dbData)
-
-    // Free the buffer immediately after persisting
-    // @ts-ignore
-    dbData.fill(0)
-
-    self.postMessage({
-      type: 'done',
-      epgUrl,
-      counts: {
-        live: counts.live,
-        movie: counts.movie,
-        series: counts.series,
-        seriesIndex: seriesMap.size
+      self.postMessage({ type: 'progress', message: `Salvando índice de ${seriesMap.size.toLocaleString()} séries...` })
+      db.run('BEGIN TRANSACTION')
+      for (const [key, s] of seriesMap) {
+        stmtSeries.run([s.id, s.displayName, s.group || 'Outros', s.logo, key, s.count])
       }
-    })
+      db.run('COMMIT')
+      stmtSeries.free()
 
+      self.postMessage({ type: 'progress', message: 'Gravando banco de dados...' })
+      const dbData = db.export()
+      db.close()
+
+      await persistDb(dbData)
+
+      // @ts-ignore
+      if (dbData.fill) dbData.fill(0)
+
+      self.postMessage({
+        type: 'done',
+        epgUrl,
+        counts: {
+          live: counts.live,
+          movie: counts.movie,
+          series: counts.series,
+          seriesIndex: seriesMap.size
+        }
+      })
+    }
   } catch (error) {
     self.postMessage({
       type: 'error',

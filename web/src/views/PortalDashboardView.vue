@@ -27,6 +27,7 @@ async function fetchPlaylists() {
     isLoading.value = true
     const response = await fetch(getApiUrl('/api/v1/portal/playlists'), {
       headers: {
+        'Accept': 'application/json',
         'Authorization': `Bearer ${token.value}`
       }
     })
@@ -94,6 +95,7 @@ async function handleSave() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token.value}`
         },
         body: JSON.stringify(payload)
@@ -103,6 +105,7 @@ async function handleSave() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': `Bearer ${token.value}`
         },
         body: JSON.stringify(payload)

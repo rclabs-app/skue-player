@@ -22,7 +22,7 @@ function getDisplayName(item: any) {
     @click="$emit('play', item)"
     @keydown.enter.prevent="$emit('play', item)"
     @keydown.space.prevent="$emit('play', item)"
-    @focus="(e) => (e.target as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })"
+    @focus="(e) => (e.target as HTMLElement).scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' })"
     tabindex="0"
     class="content-card group cursor-pointer flex flex-col gap-1.5 focus:outline-none transition-all duration-200 relative"
   >

@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    
     <style>
       html, body {
         width: 100%;
@@ -18,6 +17,14 @@
         width: 100%;
         height: 100%;
         display: flex;
+      }
+      html.native-player-active, body.native-player-active {
+        background-color: transparent !important;
+        background: transparent !important;
+      }
+      body.native-player-active #app {
+        visibility: hidden !important;
+        opacity: 0 !important;
       }
     </style>
 

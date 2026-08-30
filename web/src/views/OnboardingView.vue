@@ -72,7 +72,7 @@ async function checkRemotePlaylists() {
       stopPolling()
       
       // Load first active playlist
-      const active = playlists.find(p => p.is_active) || playlists[0]
+      const active = playlists.find((p: any) => p.is_active) || playlists[0]
       const targetUrl = buildPlaylistUrl(active)
       
       await handleUrlLoad(targetUrl)

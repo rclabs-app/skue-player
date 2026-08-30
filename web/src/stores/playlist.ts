@@ -8,6 +8,7 @@ import { getApiUrl } from '../utils/api'
 import { EPGService } from '../services/epg.service'
 import { cleanName } from '../utils/text'
 
+
 export const usePlaylistStore = defineStore('playlist', () => {
   const isLoaded = ref(false)
   const isProcessing = ref(false)
@@ -171,29 +172,51 @@ export const usePlaylistStore = defineStore('playlist', () => {
     processingProgress.value = 'Downloading playlist...'
 
     try {
-      let content = ''
+      let responseToStream: Response | null = null
       
-      // 1. Try direct fetch first (works if URL has CORS enabled)
+      // 1. Try direct fetch first
       try {
-        const directResp = await fetch(url)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 60000)
+        
+        const directResp = await fetch(url, { signal: controller.signal })
+        clearTimeout(timeoutId)
+        
         if (directResp.ok) {
-          content = await directResp.text()
+          responseToStream = directResp
         }
-      } catch {
-        // Direct fetch failed (usually due to CORS), fallback to proxy
+      } catch (e: any) {
+        console.warn('Direct fetch failed:', e.message)
+        if (e.name === 'AbortError') {
+          throw new Error('Tempo limite excedido ao baixar a lista. A lista é muito grande ou a internet está lenta.')
+        }
       }
 
-      // 2. Proxy fetch
-      if (!content) {
+      // 2. Proxy fetch fallback
+      if (!responseToStream) {
         const token = await db.getConfig('device_token')
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        const headers: Record<string, string> = { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json' 
+        }
         if (token) headers['Authorization'] = `Bearer ${token}`
+
+        const proxyController = new AbortController()
+        const proxyTimeoutId = setTimeout(() => proxyController.abort(), 60000)
 
         const response = await fetch(getApiUrl('/api/v1/proxy'), {
           method: 'POST',
           headers,
-          body: JSON.stringify({ url })
+          body: JSON.stringify({ url }),
+          signal: proxyController.signal
+        }).catch(e => {
+          if (e.name === 'AbortError') {
+            throw new Error('Tempo limite excedido ao usar o servidor proxy.')
+          }
+          throw e
         })
+        clearTimeout(proxyTimeoutId)
+
         if (!response.ok) {
           if (response.status === 429) {
             throw new Error('Muitas requisições enviadas. Por favor, aguarde 1 minuto e tente novamente.')
@@ -205,10 +228,10 @@ export const usePlaylistStore = defineStore('playlist', () => {
           } catch {}
           throw new Error(errText)
         }
-        content = await response.text()
+        responseToStream = response
       }
 
-      await processPlaylistContent(content, url)
+      await streamToWorker(responseToStream, url)
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Erro desconhecido ao carregar lista'
       isProcessing.value = false
@@ -216,15 +239,22 @@ export const usePlaylistStore = defineStore('playlist', () => {
     }
   }
 
-  // ─── Process M3U content ──────────────────────────────────────────────────
-  async function processPlaylistContent(content: string, sourceInfo: string) {
+  // ─── Stream content to Worker ───────────────────────────────────────────────
+  async function streamToWorker(response: Response, sourceInfo: string) {
     isProcessing.value = true
     error.value = null
-    processingProgress.value = 'Parsing playlist...'
+    processingProgress.value = 'Iniciando processamento...'
+
+    if (!response.body) {
+      throw new Error('O servidor não retornou dados (Empty Body)')
+    }
 
     try {
       await new Promise<void>((resolve, reject) => {
         const worker = new M3uWorker()
+        const reader = response.body!.getReader()
+
+        let nextChunkResolver: (() => void) | null = null
 
         worker.onmessage = async (e) => {
           const msg = e.data
@@ -240,28 +270,30 @@ export const usePlaylistStore = defineStore('playlist', () => {
             return
           }
 
+          if (msg.type === 'ack_init') {
+            // Worker is ready, start pumping chunks
+            pumpChunks()
+          }
+
+          if (msg.type === 'ack_chunk') {
+            if (nextChunkResolver) {
+              nextChunkResolver()
+            }
+          }
+
           if (msg.type === 'done') {
             const { epgUrl: parsedEpgUrl } = msg
-
             try {
               worker.terminate()
-
-              // Worker already persisted the DB to OPFS/IDB.
-              // We just need to reload it into the main-thread SQLite instance.
               processingProgress.value = 'Carregando banco de dados...'
               await db.reloadFromStorage()
-
               await db.saveConfig('playlist_loaded', true)
               await db.saveConfig('playlist_url', sourceInfo)
               await db.saveConfig('epg_url', parsedEpgUrl ?? null)
-
-              // Load series index into memory
               await loadFromDb()
-
               if (parsedEpgUrl) {
                 syncEpg(parsedEpgUrl).catch(err => console.error('Auto-sync EPG error:', err))
               }
-
               resolve()
             } catch (err) {
               reject(err)
@@ -274,8 +306,30 @@ export const usePlaylistStore = defineStore('playlist', () => {
           worker.terminate()
         }
 
-        // Send only the content — worker initialises its own fresh DB
-        worker.postMessage({ content })
+        async function pumpChunks() {
+          try {
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) {
+                worker.postMessage({ type: 'end' })
+                break
+              }
+              
+              // Wait for the worker to acknowledge the previous chunk before sending the next one
+              // to prevent the postMessage queue from blowing up memory.
+              await new Promise<void>((res) => {
+                nextChunkResolver = res
+                worker.postMessage({ type: 'chunk', data: value }, [value.buffer])
+              })
+            }
+          } catch (err) {
+            reject(err)
+            worker.terminate()
+          }
+        }
+
+        // 1. Init worker
+        worker.postMessage({ type: 'init' })
       })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Unknown error'
@@ -331,7 +385,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     syncHandshake,
     fetchDeviceConfig,
     loadPlaylistFromUrl,
-    processPlaylistContent,
+    streamToWorker,
     clearPlaylist,
     syncEpg,
     syncCurrentEpg

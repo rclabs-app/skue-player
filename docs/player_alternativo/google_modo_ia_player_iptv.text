@@ -1,0 +1,75 @@
+# TECH SPEC: Migração de Engine de Player de Vídeo (IPTV no Google TV)
+
+## 1. Problema Atual
+* **Engine Atual:** ExoPlayer (Media3)
+* **Sintomas:** Falhas frequentes de reprodução, quebras de stream, travamentos em fluxos de Live TV e problemas de decodificação.
+* **Causa Raiz:** O ExoPlayer depende dos codecs de hardware nativos do dispositivo. No ecossistema Google TV/Android TV (Chromecast, TCL, Mi Box), a ausência de decodificadores para formatos antigos ou proprietários (ex: MPEG-TS, codecs de áudio AC3/EAC3) e streams HLS instáveis geram exceções fatais na reprodução.
+
+---
+
+## 2. Engines Alternativas Avaliadas
+
+### A. LibVLC (Recomendado)
+A engine oficial do projeto VLC adaptada para bibliotecas Android.
+* **Vantagens:** Possui decodificadores próprios via software integrados. Não depende do hardware da TV. Suporte nativo e robusto para MPEG-TS, fluxos de rede instáveis e áudio Dolby.
+* **Implementação:** Integração via dependência Gradle (`org.videolan.android:libvlc-all`).
+
+### B. IJKPlayer
+Engine open-source baseada em um fork do FFmpeg, mantida pela Bilibili.
+* **Vantagens:** Altamente customizável, extremamente leve na renderização e otimizada para grandes listas de canais de streaming.
+* **Desvantagens:** Requer compilação manual de arquivos binários `.so` usando o Android NDK, tornando o processo de build mais complexo.
+
+### C. MPV Android Component
+Wrapper mobile baseado no ecossistema MPV/MPlayer.
+* **Vantagens:** Altíssima performance em aceleração de hardware e renderização avançada de legendas em formatos VOD complexos.
+
+---
+
+## 3. Matriz de Comparação Técnica
+
+| Critério Técnico | ExoPlayer (Atual) | LibVLC (Recomendado) | IJKPlayer (FFmpeg) |
+| :--- | :--- | :--- | :--- |
+| **Compatibilidade de Codecs** | Média (Estrita ao hardware) | **Máxima (Codecs embutidos)** | Alta (Base FFmpeg) |
+| **Estabilidade em Live TV** | Baixa (Sensível a quedas) | **Altíssima (Reconexão)** | Alta |
+| **Impacto no tamanho do APK** | Mínimo (< 2MB adicionais) | Alto (+15MB a 30MB) | Médio (~8MB a 12MB) |
+| **Complexidade de Código** | Baixa (Nativo do ecossistema) | Média (Via LibVLC SDK) | Alta (Exige Android NDK) |
+
+---
+
+## 4. Arquitetura de Solução Proposta (Padrão de Mercado)
+
+Para garantir máxima performance sem comprometer dispositivos de baixo custo, o app implementará um modelo híbrido com **injeção dinâmica de Player Engine**:
+
+1. **Player Padrão (ExoPlayer):** Mantido como inicial para carregar canais modernos e leves com baixo consumo de CPU.
+2. **Player de Compatibilidade (LibVLC):** Adicionado ao escopo do APK como fallback.
+3. **Feature Toggle:** Disponibilizar nas configurações do app um switch para o usuário: 
+   * `[ ] Ativar Modo de Compatibilidade (Engine VLC)`
+
+### Snippet de Referência para a Lógica do Factory:
+
+```kotlin
+interface VideoPlayerEngine {
+    fun initialize(surfaceView: SurfaceView)
+    fun play(url: String)
+    fun release()
+}
+
+class PlayerFactory(private val context: Context, private val useVlcFallback: Boolean) {
+    fun createPlayer(): VideoPlayerEngine {
+        return if (useVlcFallback) {
+            LibVlcPlayerImpl(context) // Engine de alta compatibilidade
+        } else {
+            ExoPlayerImpl(context)    // Engine nativa leve
+        }
+    }
+}
+```
+
+---
+
+## 5. Próximos Passos para o Desenvolvimento (Antigravity Task List)
+* [ ] Adicionar repositórios e dependências da LibVLC no `build.gradle.kts`.
+* [ ] Criar a interface de abstração do Player (`VideoPlayerEngine`).
+* [ ] Implementar o wrapper da `LibVLC` gerenciando os callbacks de lifecycle da Activity/Fragment do Google TV.
+* [ ] Adicionar o switch de configuração na interface do usuário (UI otimizada para controle remoto/D-Pad).
+

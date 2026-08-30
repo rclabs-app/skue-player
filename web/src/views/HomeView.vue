@@ -60,8 +60,8 @@ const heroItems = ref<PlaylistItem[]>([])
 
 async function loadHomeData() {
   const [dbRecentMovies, dbRecentSeries, topMovieCats, topSeriesCats] = await Promise.all([
-    db.getRecentItems('movie', 60),
-    db.getRecentSeries(60),
+    db.getRecentItems('movie', 20),
+    db.getRecentSeries(20),
     db.getTopCategories('movie', 4),
     db.getTopCategories('series', 3)
   ])
@@ -158,8 +158,13 @@ watch(activeCategory, async (newCat) => {
   isPageLoading.value = false
 }, { immediate: true })
 
+let hoverDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
 function setCategoryHovered(item: any) {
-  hoveredItem.value = item
+  if (hoverDebounceTimer) clearTimeout(hoverDebounceTimer)
+  hoverDebounceTimer = setTimeout(() => {
+    hoveredItem.value = item
+  }, 300)
 }
 
 const currentHero = computed(() => {
@@ -479,7 +484,7 @@ onRemoteKey('LEFT', () => {
         const containerRect = currentRow.getBoundingClientRect()
         const targetRect = targetCard.getBoundingClientRect()
         if (targetRect.left < containerRect.left) {
-          currentRow.scrollBy({ left: -(containerRect.width * 0.8), behavior: 'smooth' })
+          currentRow.scrollBy({ left: -(containerRect.width * 0.8), behavior: 'auto' })
         }
         return true
       } else {
@@ -540,7 +545,7 @@ onRemoteKey('RIGHT', () => {
         const containerRect = currentRow.getBoundingClientRect()
         const targetRect = targetCard.getBoundingClientRect()
         if (targetRect.right > containerRect.right) {
-          currentRow.scrollBy({ left: containerRect.width * 0.8, behavior: 'smooth' })
+          currentRow.scrollBy({ left: containerRect.width * 0.8, behavior: 'auto' })
         }
         return true
       }

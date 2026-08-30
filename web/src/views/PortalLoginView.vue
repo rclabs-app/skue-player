@@ -23,6 +23,7 @@ async function handleLogin() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({
         mac: mac.value.trim(),
