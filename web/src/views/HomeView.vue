@@ -159,10 +159,8 @@ watch(activeCategory, async (newCat) => {
     console.error('Error loading home data', e)
   } finally {
     isPageLoading.value = false
-    if (Capacitor.isNativePlatform()) {
-      import('@capacitor/splash-screen').then(({ SplashScreen }) => {
-        SplashScreen.hide()
-      }).catch(() => {})
+    if (typeof (window as any).hideCustomSplash === 'function') {
+      (window as any).hideCustomSplash()
     }
   }
 }, { immediate: true })

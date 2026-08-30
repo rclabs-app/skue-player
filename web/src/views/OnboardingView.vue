@@ -3,7 +3,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
 import { buildPlaylistUrl } from '../utils/playlist'
-import { Capacitor } from '@capacitor/core'
 
 const router = useRouter()
 const store = usePlaylistStore()
@@ -115,10 +114,8 @@ onMounted(async () => {
     await store.initialize()
     await requestActivation()
   } finally {
-    if (Capacitor.isNativePlatform()) {
-      import('@capacitor/splash-screen').then(({ SplashScreen }) => {
-        SplashScreen.hide().catch(() => {})
-      }).catch(() => {})
+    if (typeof (window as any).hideCustomSplash === 'function') {
+      (window as any).hideCustomSplash()
     }
   }
 })

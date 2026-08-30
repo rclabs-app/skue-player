@@ -46,13 +46,9 @@ onMounted(() => {
   
   // FALLBACK: Always hide splash screen after a few seconds in case views fail to load
   setTimeout(() => {
-    import('@capacitor/core').then(({ Capacitor }) => {
-      if (Capacitor.isNativePlatform()) {
-        import('@capacitor/splash-screen').then(({ SplashScreen }) => {
-          SplashScreen.hide().catch(() => {})
-        }).catch(() => {})
-      }
-    })
+    if (typeof (window as any).hideCustomSplash === 'function') {
+      (window as any).hideCustomSplash()
+    }
   }, 3500)
 })
 
