@@ -12,8 +12,8 @@ class TMDBService
 
     public function __construct()
     {
-        $this->apiKey = config('services.tmdb.key', env('TMDB_API_KEY', ''));
-        $this->imageBaseUrl = env('TMDB_IMAGE_BASE_URL', 'https://image.tmdb.org/t/p/original');
+        $this->apiKey = trim(config('services.tmdb.key', env('TMDB_API_KEY', '')));
+        $this->imageBaseUrl = rtrim(env('TMDB_IMAGE_BASE_URL', 'https://image.tmdb.org/t/p/original'), '/');
     }
 
     public function getMetadata(string $title, string $type, ?string $year = null): array

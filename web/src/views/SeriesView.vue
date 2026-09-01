@@ -93,13 +93,13 @@ const observer = ref<IntersectionObserver | null>(null)
 const isPageLoading = ref(true)
 
 // ── TV Navigation ────────────────────────────────────────────────────────
-const sidebarZone = ref<HTMLElement | null>(null)
+const appSidebarZone = computed(() => document.querySelector('[data-tv-zone="sidebar"]') as HTMLElement | null)
 const catZone     = ref<HTMLElement | null>(null)
 const gridZone    = ref<HTMLElement | null>(null)
 
 const nav = useSpatialNav()
-nav.registerZone('sidebar',    sidebarZone)
-nav.registerZone('categories', catZone)
+nav.registerZone('sidebar',    appSidebarZone, { defaultFocusSelector: '[data-route="series"]' })
+nav.registerZone('categories', catZone, { defaultFocusSelector: '.border-primary' })
 nav.registerZone('grid',       gridZone)
 nav.setZoneRule('sidebar',    'RIGHT', 'categories')
 nav.setZoneRule('categories', 'LEFT',  'sidebar')
@@ -147,6 +147,7 @@ onMounted(async () => {
   
   await minDelay
   isPageLoading.value = false
+  setTimeout(() => nav.focusZone('categories'), 100)
 })
 
 onUnmounted(() => {
@@ -236,7 +237,7 @@ function extractYear(name?: string): string | null {
     </div>
 
     <!-- ── Categories Sidebar ── -->
-    <aside ref="sidebarZone" class="w-56 lg:w-64 shrink-0 flex flex-col overflow-hidden">
+    <aside ref="catZone" class="w-56 lg:w-64 shrink-0 flex flex-col overflow-hidden">
       <div class="px-5 pt-6 pb-4">
         <div class="flex items-center gap-2 mb-1">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary shrink-0"><path d="M4 10h16"/><path d="M4 14h16"/><rect width="16" height="16" x="4" y="4" rx="2"/></svg>
@@ -255,7 +256,7 @@ function extractYear(name?: string): string | null {
         </div>
       </div>
 
-      <div ref="catZone" class="flex-1 overflow-y-auto py-2">
+      <div class="flex-1 overflow-y-auto py-2">
         <button @click="selectGroup('ALL')" @keydown.enter.prevent="selectGroup('ALL')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'ALL' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Todos</span>
           <span class="text-xs text-gray-600 tabular-nums">{{ store.uniqueSeries.length.toLocaleString('pt-BR') }}</span>
@@ -305,7 +306,7 @@ function extractYear(name?: string): string | null {
             <div :key="currentHero.id" class="absolute inset-0 bg-[#0f171e]">
               <!-- Image Container without heavy masks -->
               <div class="absolute inset-0 w-full h-full">
-                <img :src="(tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) || currentHero.logo" class="w-full h-full object-cover object-[75%_center] md:object-right-top opacity-75" />
+                <img :src="(tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) || currentHero.logo" :class="['w-full h-full', (tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) ? 'opacity-75 object-cover object-[75%_center] md:object-right-top' : 'opacity-60 object-cover object-top']" />
               </div>
               
               <!-- Overlays for extra text contrast -->

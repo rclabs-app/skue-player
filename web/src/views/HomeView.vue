@@ -637,7 +637,7 @@ onRemoteKey('BACK', () => {
           <div class="absolute inset-0 w-full h-full">
             <img
               :src="(tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) || currentHero.logo"
-              :class="['w-full h-full hero-zoom opacity-80', (isLiveChannel(currentHero) && !(tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url)) ? 'object-contain p-12' : 'object-cover object-[75%_center] md:object-right-top']"
+              :class="['w-full h-full hero-zoom', (tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) ? 'opacity-80 object-cover object-[75%_center] md:object-right-top' : (isLiveChannel(currentHero) ? 'opacity-80 object-contain p-12' : 'opacity-60 object-cover object-top')]"
               @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
             />
           </div>

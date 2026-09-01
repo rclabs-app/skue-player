@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
 import { useFavoritesStore } from '../stores/favorites'
@@ -55,6 +55,7 @@ onMounted(async () => {
     console.error(e)
   } finally {
     isPageLoading.value = false
+    setTimeout(() => nav.focusZone('categories'), 100)
   }
 })
 
@@ -63,13 +64,13 @@ onUnmounted(() => observer?.disconnect())
 const groups = ref<{name: string, count: number}[]>([])
 
 // ── TV Navigation ────────────────────────────────────────────────────────
-const sidebarZone = ref<HTMLElement | null>(null)
+const appSidebarZone = computed(() => document.querySelector('[data-tv-zone="sidebar"]') as HTMLElement | null)
 const catZone     = ref<HTMLElement | null>(null)
 const gridZone    = ref<HTMLElement | null>(null)
 
 const nav = useSpatialNav()
-nav.registerZone('sidebar',    sidebarZone)
-nav.registerZone('categories', catZone)
+nav.registerZone('sidebar',    appSidebarZone, { defaultFocusSelector: '[data-route="live"]' })
+nav.registerZone('categories', catZone, { defaultFocusSelector: '.border-primary' })
 nav.registerZone('grid',       gridZone)
 nav.setZoneRule('sidebar',    'RIGHT', 'categories')
 nav.setZoneRule('categories', 'LEFT',  'sidebar')
@@ -226,7 +227,7 @@ function getProgress(prog: EPGProgram) {
     </div>
 
     <!-- ── Categories Sidebar ── -->
-    <aside ref="sidebarZone" class="w-56 lg:w-64 shrink-0 flex flex-col bg-black/30 border-r border-gray-800/60 overflow-hidden">
+    <aside ref="catZone" class="w-56 lg:w-64 shrink-0 flex flex-col bg-black/30 border-r border-gray-800/60 overflow-hidden">
       <div class="px-5 pt-6 pb-4 border-b border-gray-800/60">
         <div class="flex items-center gap-2 mb-1">
           <span class="relative flex h-2.5 w-2.5 shrink-0">
@@ -248,7 +249,7 @@ function getProgress(prog: EPGProgram) {
         </div>
       </div>
 
-      <div ref="catZone" class="flex-1 overflow-y-auto py-2">
+      <div class="flex-1 overflow-y-auto py-2">
         <button @click="selectGroup('ALL')" @keydown.enter.prevent="selectGroup('ALL')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'ALL' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Todos</span>
           <span class="text-xs text-gray-600 tabular-nums"></span>

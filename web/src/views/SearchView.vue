@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
 import { cleanName } from '../utils/text'
@@ -10,6 +10,11 @@ import ContentCard from '../components/ContentCard.vue'
 const router = useRouter()
 const store = usePlaylistStore()
 import { db } from '../lib/database'
+import { useSpatialNav } from '../composables/useSpatialNav'
+
+const nav = useSpatialNav()
+const appSidebarZone = computed(() => document.querySelector('[data-tv-zone="sidebar"]') as HTMLElement | null)
+nav.registerZone('sidebar', appSidebarZone, { defaultFocusSelector: '[data-route="search"]' })
 
 const searchQuery = ref('')
 const activeItem = ref<PlaylistItem | null>(null)

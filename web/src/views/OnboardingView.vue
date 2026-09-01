@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
 import { buildPlaylistUrl } from '../utils/playlist'
+import QrcodeVue from 'qrcode.vue'
 
 const router = useRouter()
 const store = usePlaylistStore()
@@ -145,11 +146,17 @@ onUnmounted(() => {
       </div>
 
       <!-- Activation Info -->
-      <div class="space-y-4">
+      <div class="space-y-5">
         <p class="text-xs text-gray-300 bg-gray-800/50 p-3 rounded-lg border border-gray-700/50 leading-relaxed">
-          Acesse <strong class="text-white text-sm">rcplayer.tv/portal</strong> no seu celular ou computador para adicionar suas listas IPTV utilizando os dados abaixo:
+          Acesse <strong class="text-white text-sm">rcplayer.tv/portal</strong> ou escaneie o QR Code para adicionar suas listas IPTV:
         </p>
         
+        <div class="flex justify-center">
+          <div class="bg-white p-3 rounded-xl shadow-lg inline-block">
+             <qrcode-vue value="https://rc-player-production.up.railway.app/portal" :size="140" level="M" render-as="svg" />
+          </div>
+        </div>
+
         <div class="space-y-4 bg-background rounded-xl p-5 border border-gray-700 shadow-inner">
           <!-- MAC Address -->
           <div>
@@ -195,6 +202,13 @@ onUnmounted(() => {
         <p v-else class="text-[11px] text-red-500/80 flex items-center justify-center gap-2">
           Desconectado do serviço de ativação.
         </p>
+      </div>
+      
+      <div v-if="store.isLoaded" class="mt-6 pt-4 border-t border-gray-800/50">
+        <button @click="router.push('/')" class="text-[12px] text-gray-400 hover:text-white transition-colors flex items-center justify-center gap-2 mx-auto">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Voltar para a página inicial
+        </button>
       </div>
       
     </div>
