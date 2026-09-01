@@ -172,7 +172,7 @@ const filteredSeries = computed(() => {
   } else if (activeGroup.value === 'FAVORITES') {
     list = (store.uniqueSeries as SeriesEntry[]).filter(s => favoritesStore.isFavorite(s.id))
   } else if (activeGroup.value === 'CONTINUE') {
-    list = historyStore.activelyWatching
+    const rawList = historyStore.activelyWatching
       .filter(item => item.metadata.type === 'series')
       .map(item => ({
         id: item.metadata.id,
@@ -182,6 +182,14 @@ const filteredSeries = computed(() => {
         serieKey: item.metadata.serieKey || cleanName(item.metadata.name).toLowerCase(),
         episodeCount: 0
       }) as SeriesEntry)
+      
+    const unique = new Map<string, SeriesEntry>()
+    for (const s of rawList) {
+      if (!unique.has(s.serieKey)) {
+        unique.set(s.serieKey, s)
+      }
+    }
+    list = Array.from(unique.values())
   } else {
     list = (store.uniqueSeries as SeriesEntry[]).filter(s => (s.group || 'Sem Categoria') === activeGroup.value)
   }
