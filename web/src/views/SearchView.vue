@@ -14,7 +14,7 @@ import { useSpatialNav } from '../composables/useSpatialNav'
 
 const nav = useSpatialNav()
 const appSidebarZone = computed(() => document.querySelector('[data-tv-zone="sidebar"]') as HTMLElement | null)
-nav.registerZone('sidebar', appSidebarZone, { defaultFocusSelector: '[data-route="search"]' })
+nav.registerZone('sidebar', appSidebarZone, { defaultFocusSelector: '[href="/search"]' })
 
 const searchQuery = ref('')
 const activeItem = ref<PlaylistItem | null>(null)

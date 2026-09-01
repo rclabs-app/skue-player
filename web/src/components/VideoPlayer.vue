@@ -24,6 +24,7 @@ let hls: Hls | null = null
 let tsPlayer: mpegts.Player | null = null
 const historyStore = useHistoryStore()
 let lastUpdateTime = 0
+let isDestroying = false
 
 // TV UI State
 const isPlaying = ref(false)
@@ -424,6 +425,7 @@ function playNativeWithFallback(url: string, onFail: () => void) {
   showDebug(`[Native HTML5] Tentando: ${url.slice(-60)}`)
 
   stopPlayback()
+  isDestroying = false
 
   let nativeFailed = false
   const cleanup = () => {
@@ -561,6 +563,7 @@ function initPlayer() {
   if (!props.url) return
   hasError.value = false
   stopPlayback()
+  isDestroying = false
 
   const url = props.url
 
@@ -659,7 +662,7 @@ function handleNativeError(e: Event) {
 }
 
 function handleTimeUpdate(e: Event) {
-  if (isNativePlatform.value) return
+  if (isNativePlatform.value || isDestroying) return
   const video = e.target as HTMLVideoElement
   currentTime.value = video.currentTime
   duration.value = video.duration || 0
@@ -676,6 +679,18 @@ function handleTimeUpdate(e: Event) {
 }
 
 function stopPlayback() {
+  if (isDestroying) return
+  isDestroying = true
+
+  // Save final progress for browser playback
+  if (!isNativePlatform.value && videoRef.value && props.id && videoRef.value.currentTime > 0) {
+    historyStore.updateProgress(
+      props.id,
+      videoRef.value.currentTime,
+      videoRef.value.duration || 0
+    )
+  }
+
   if (nativePollInterval) {
     clearInterval(nativePollInterval)
     nativePollInterval = null

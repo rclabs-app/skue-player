@@ -98,8 +98,8 @@ const catZone     = ref<HTMLElement | null>(null)
 const gridZone    = ref<HTMLElement | null>(null)
 
 const nav = useSpatialNav()
-nav.registerZone('sidebar',    appSidebarZone, { defaultFocusSelector: '[data-route="series"]' })
-nav.registerZone('categories', catZone, { defaultFocusSelector: '.border-primary' })
+nav.registerZone('sidebar',    appSidebarZone, { defaultFocusSelector: '[href="/series"]' })
+nav.registerZone('categories', catZone, { defaultFocusSelector: '[data-tv-active="true"]' })
 nav.registerZone('grid',       gridZone)
 nav.setZoneRule('sidebar',    'RIGHT', 'categories')
 nav.setZoneRule('categories', 'LEFT',  'sidebar')
@@ -265,19 +265,19 @@ function extractYear(name?: string): string | null {
       </div>
 
       <div class="flex-1 overflow-y-auto py-2">
-        <button @click="selectGroup('ALL')" @keydown.enter.prevent="selectGroup('ALL')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'ALL' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button @click="selectGroup('ALL')" @keydown.enter.prevent="selectGroup('ALL')" :data-tv-active="activeGroup === 'ALL'" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'ALL' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Todos</span>
           <span class="text-xs text-gray-600 tabular-nums">{{ store.uniqueSeries.length.toLocaleString('pt-BR') }}</span>
         </button>
-        <button @click="selectGroup('FAVORITES')" @keydown.enter.prevent="selectGroup('FAVORITES')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'FAVORITES' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button @click="selectGroup('FAVORITES')" @keydown.enter.prevent="selectGroup('FAVORITES')" :data-tv-active="activeGroup === 'FAVORITES'" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'FAVORITES' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Favoritos</span>
           <span class="text-xs text-gray-600 tabular-nums">{{ store.uniqueSeries.filter((s: any) => favoritesStore.isFavorite(s.id)).length.toLocaleString('pt-BR') }}</span>
         </button>
-        <button @click="selectGroup('CONTINUE')" @keydown.enter.prevent="selectGroup('CONTINUE')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'CONTINUE' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button @click="selectGroup('CONTINUE')" @keydown.enter.prevent="selectGroup('CONTINUE')" :data-tv-active="activeGroup === 'CONTINUE'" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'CONTINUE' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span>Continuar Assistindo</span>
           <span class="text-xs text-gray-600 tabular-nums">{{ historyStore.activelyWatching.filter(item => item.metadata.type === 'series').length.toLocaleString('pt-BR') }}</span>
         </button>
-        <button v-for="g in groups" :key="g.name" @click="selectGroup(g.name)" @keydown.enter.prevent="selectGroup(g.name)" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === g.name ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+        <button v-for="g in groups" :key="g.name" @click="selectGroup(g.name)" @keydown.enter.prevent="selectGroup(g.name)" :data-tv-active="activeGroup === g.name" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === g.name ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
           <span class="truncate pr-2">{{ g.name }}</span>
           <span class="text-xs text-gray-600 tabular-nums shrink-0">{{ g.count.toLocaleString('pt-BR') }}</span>
         </button>

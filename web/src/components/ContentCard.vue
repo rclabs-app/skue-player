@@ -15,6 +15,26 @@ defineEmits<{
 function getDisplayName(item: any) {
   return item.displayName || item.name || ''
 }
+
+function getOptimizedLogo(url?: string, isPortrait?: boolean): string | undefined {
+  if (!url) return undefined;
+  
+  if (url.startsWith('data:') || url.startsWith('file://') || url.startsWith('/')) {
+    return url;
+  }
+  
+  if (url.includes('image.tmdb.org')) {
+    if (url.includes('/original/')) {
+       return url.replace('/original/', isPortrait ? '/w300/' : '/w500/');
+    }
+    return url;
+  }
+  
+  const w = isPortrait ? 240 : 320;
+  const h = isPortrait ? 360 : 180;
+  
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=${w}&h=${h}&output=webp&q=70&fit=cover`;
+}
 </script>
 
 <template>
@@ -35,7 +55,7 @@ function getDisplayName(item: any) {
     >
       <img
         v-if="item.logo"
-        :src="item.logo"
+        :src="getOptimizedLogo(item.logo, isPortrait)"
         loading="lazy"
         decoding="async"
         :class="[

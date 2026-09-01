@@ -81,6 +81,28 @@ class TMDBService
                     }
 
                     $backdropPath = $bestMatch['backdrop_path'] ?? null;
+                    $movieId = $bestMatch['id'] ?? null;
+                    
+                    if (empty($backdropPath) && $movieId) {
+                        $imagesEndpoint = $type === 'series' ? "tv/{$movieId}/images" : "movie/{$movieId}/images";
+                        $imgParams = [];
+                        if (!str_starts_with($this->apiKey, 'eyJ')) {
+                            $imgParams['api_key'] = $this->apiKey;
+                        }
+                        
+                        $imgRequest = Http::timeout(5);
+                        if (str_starts_with($this->apiKey, 'eyJ')) {
+                            $imgRequest = $imgRequest->withToken($this->apiKey);
+                        }
+                        
+                        $imgResponse = $imgRequest->get("https://api.themoviedb.org/3/{$imagesEndpoint}", $imgParams);
+                        if ($imgResponse->successful()) {
+                            $backdrops = $imgResponse->json('backdrops');
+                            if (!empty($backdrops)) {
+                                $backdropPath = $backdrops[0]['file_path'] ?? null;
+                            }
+                        }
+                    }
                     
                     return [
                         'overview' => !empty($overview) ? $overview : null,

@@ -14,7 +14,12 @@ export class TMDBService {
       const sevenDays = 7 * 24 * 60 * 60 * 1000
       
       if (cached && (Date.now() - cached.cachedAt) < sevenDays) {
-        return cached
+        // Force refresh if backdrop is missing and cache is older than 1 hour
+        if (!cached.backdrop_url && (Date.now() - cached.cachedAt) > 60 * 60 * 1000) {
+          // Continue to fetch
+        } else {
+          return cached
+        }
       }
       
       // Sanitizer to extract cleaned title and year (e.g. "Inception (2010)" -> "Inception", year "2010")

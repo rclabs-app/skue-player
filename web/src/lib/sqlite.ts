@@ -334,18 +334,28 @@ export class SQLiteDatabaseService {
     )
   }
 
-  async getTopCategories(type: 'live' | 'movie' | 'series', limit = 4): Promise<{ name: string; items: PlaylistItem[] }[]> {
+  async getTopCategories(type: 'live' | 'movie' | 'series', limit = 4): Promise<{ name: string; items: any[] }[]> {
     if (!this.db) await this.init()
 
-    const categories = await this.getCategoriesWithCount(type)
-    const topCats = categories.slice(0, limit)
-
-    const result: { name: string; items: PlaylistItem[] }[] = []
-    for (const cat of topCats) {
-      const items = await this.getItemsByCategoryAndType(cat.name, type, 20)
-      result.push({ name: cat.name, items })
+    if (type === 'series') {
+      const categories = await this.getSeriesCategoriesWithCount()
+      const topCats = categories.slice(0, limit)
+      const result: { name: string; items: SeriesEntry[] }[] = []
+      for (const cat of topCats) {
+        const items = await this.getSeriesByCategory(cat.name, 20)
+        result.push({ name: cat.name, items })
+      }
+      return result
+    } else {
+      const categories = await this.getCategoriesWithCount(type)
+      const topCats = categories.slice(0, limit)
+      const result: { name: string; items: PlaylistItem[] }[] = []
+      for (const cat of topCats) {
+        const items = await this.getItemsByCategoryAndType(cat.name, type, 20)
+        result.push({ name: cat.name, items })
+      }
+      return result
     }
-    return result
   }
 
   // ─── Series Index ──────────────────────────────────────────────────────
