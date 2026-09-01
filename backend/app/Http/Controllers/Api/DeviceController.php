@@ -73,7 +73,7 @@ class DeviceController extends Controller
 
         $playlists = $device->playlists()
             ->where('is_active', true)
-            ->get(['id', 'name', 'type', 'url', 'username', 'password'])
+            ->get(['id', 'name', 'type', 'url', 'username', 'password', 'is_main'])
             ->makeVisible('password');
 
         return response()->json([

@@ -15,10 +15,12 @@ class DevicePlaylist extends Model
         'username',
         'password',
         'is_active',
+        'is_main',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_main' => 'boolean',
     ];
 
     /**

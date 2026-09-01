@@ -32,6 +32,10 @@ const deviceMac = ref('')
 const devicePlaylists = ref<any[]>([])
 const isSyncingPortal = ref(false)
 
+// Swap Playlist State
+const pendingSwapPlaylist = ref<any | null>(null)
+const isSwapping = ref(false)
+
 // ── Computed ───────────────────────────────────────────────────
 const totalMovies = ref(0)
 const totalSeries = ref(0)
@@ -123,18 +127,26 @@ async function syncPortal() {
   }
 }
 
-async function activateRemotePlaylist(playlist: any) {
-  isSyncingPortal.value = true
+async function requestActivateRemotePlaylist(playlist: any) {
+  pendingSwapPlaylist.value = playlist
+}
+
+async function confirmSwapPlaylist() {
+  if (!pendingSwapPlaylist.value) return
+  isSwapping.value = true
+  const playlist = pendingSwapPlaylist.value
   try {
     const targetUrl = buildPlaylistUrl(playlist)
-
+    await store.setMainPlaylist(playlist.id)
     await store.loadPlaylistFromUrl(targetUrl)
     playlistUrl.value = targetUrl
     showNotification(`Lista "${playlist.name}" carregada com sucesso!`)
+    window.location.reload()
   } catch (e) {
-    showNotification('Erro ao carregar a lista do portal.', 'error')
+    showNotification('Erro ao trocar a lista.', 'error')
   } finally {
-    isSyncingPortal.value = false
+    isSwapping.value = false
+    pendingSwapPlaylist.value = null
   }
 }
 function showNotification(msg: string, type: 'success' | 'error' = 'success') {
@@ -373,12 +385,14 @@ function maskUrl(url: string): string {
                     'flex items-center justify-between rounded-lg p-2.5 transition-all',
                     Boolean(playlistUrl && playlistUrl === buildPlaylistUrl(playlist))
                       ? 'bg-primary/10 border border-primary/30'
-                      : 'bg-black/20 hover:bg-black/40 border border-gray-800/50'
+                      : playlist.is_main
+                        ? 'bg-yellow-500/5 border border-yellow-500/30'
+                        : 'bg-black/20 hover:bg-black/40 border border-gray-800/50'
                   ]"
                 >
                   <div class="min-w-0 flex-1 pr-3">
-                    <div class="flex items-center gap-1.5">
-                      <span class="text-xs font-bold text-white truncate">{{ playlist.name }}</span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="text-xs font-bold text-white truncate max-w-full">{{ playlist.name }}</span>
                       <span class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-gray-800 text-gray-400 rounded">
                         {{ playlist.type }}
                       </span>
@@ -388,19 +402,43 @@ function maskUrl(url: string): string {
                       >
                         Carregada
                       </span>
+                      <span 
+                        v-if="playlist.is_main"
+                        class="text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded flex items-center gap-0.5"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                        Principal
+                      </span>
                     </div>
                     <span class="text-[10px] text-gray-500 truncate block mt-0.5 font-mono">{{ playlist.url }}</span>
                   </div>
                   
                   <button 
-                    @click="activateRemotePlaylist(playlist)"
-                    :disabled="Boolean(isSyncingPortal || (playlistUrl && playlistUrl === buildPlaylistUrl(playlist)))"
+                    @click="requestActivateRemotePlaylist(playlist)"
+                    :disabled="Boolean(isSyncingPortal || isSwapping || (playlistUrl && playlistUrl === buildPlaylistUrl(playlist)))"
                     :class="[
                       '!py-1 !px-2.5 !text-[11px]',
                       Boolean(playlistUrl && playlistUrl === buildPlaylistUrl(playlist)) ? 'settings-btn-primary opacity-50 cursor-not-allowed' : 'settings-btn-secondary'
                     ]"
                   >
-                    {{ Boolean(playlistUrl && playlistUrl === buildPlaylistUrl(playlist)) ? 'Ativa' : 'Carregar' }}
+                    {{ Boolean(playlistUrl && playlistUrl === buildPlaylistUrl(playlist)) ? 'Ativa' : 'Trocar' }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Popup Confirmar Troca -->
+              <div v-if="pendingSwapPlaylist" class="mt-3 bg-blue-950/50 border border-blue-800/60 rounded-lg p-4">
+                <p class="text-blue-200 text-xs font-medium mb-1">Deseja carregar a lista <strong>{{ pendingSwapPlaylist.name }}</strong>?</p>
+                <p class="text-blue-300/70 text-[11px] mb-3">Ela passará a ser sua lista principal e o aplicativo será reiniciado.</p>
+                <div class="flex gap-2">
+                  <button @click="confirmSwapPlaylist" :disabled="isSwapping" class="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5">
+                    <svg v-if="isSwapping" class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    {{ isSwapping ? 'Carregando...' : 'Sim, Trocar e Reiniciar' }}
+                  </button>
+                  <button @click="pendingSwapPlaylist = null" :disabled="isSwapping" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs rounded-lg transition-colors">
+                    Cancelar
                   </button>
                 </div>
               </div>

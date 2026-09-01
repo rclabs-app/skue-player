@@ -35,6 +35,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/playlists',       [PortalController::class, 'index']);
         Route::post('/playlists',      [PortalController::class, 'store']);
         Route::put('/playlists/{id}',  [PortalController::class, 'update']);
+        Route::patch('/playlists/{id}/set-main', [PortalController::class, 'setMain']);
         Route::delete('/playlists/{id}', [PortalController::class, 'destroy']);
     });
 

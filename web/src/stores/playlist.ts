@@ -62,6 +62,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     id: number
     name: string
     is_active: boolean
+    is_main: boolean
     username?: string
     password?: string
     url?: string
@@ -74,8 +75,19 @@ export const usePlaylistStore = defineStore('playlist', () => {
     try {
       deviceMac.value = await getDeviceMac()
       const loaded = await db.getConfig('playlist_loaded')
-      if (loaded) await loadFromDb()
-      isLoaded.value = !!loaded
+      if (loaded) {
+          await loadFromDb()
+      } else {
+          // If not loaded locally, check if portal has an is_main playlist
+          const configs = await fetchDeviceConfig()
+          const mainPlaylist = configs.find(p => p.is_main)
+          if (mainPlaylist) {
+              const { buildPlaylistUrl } = await import('../utils/playlist')
+              const targetUrl = buildPlaylistUrl(mainPlaylist)
+              await loadPlaylistFromUrl(targetUrl)
+          }
+      }
+      isLoaded.value = !!(await db.getConfig('playlist_loaded'))
     } catch (e) {
       error.value = 'Failed to initialize database'
       console.error(e)
@@ -112,6 +124,24 @@ export const usePlaylistStore = defineStore('playlist', () => {
       console.error('Fetch config error:', e)
       return []
     }
+  }
+
+  async function setMainPlaylist(playlistId: number): Promise<void> {
+    const token = await db.getConfig('device_token')
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token) headers['Authorization'] = `Bearer ${token}`
+
+    const response = await fetch(getApiUrl(`/api/v1/portal/playlists/${playlistId}/set-main`), {
+      method: 'PATCH',
+      headers,
+    })
+    if (!response.ok) throw new Error('Falha ao definir lista principal')
+
+    // Atualiza estado local
+    devicePlaylists.value = devicePlaylists.value.map(p => ({
+      ...p,
+      is_main: p.id === playlistId
+    }))
   }
 
   // ─── Load from DB (startup path) ─────────────────────────────────────────
@@ -384,6 +414,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     initialize,
     syncHandshake,
     fetchDeviceConfig,
+    setMainPlaylist,
     loadPlaylistFromUrl,
     streamToWorker,
     clearPlaylist,

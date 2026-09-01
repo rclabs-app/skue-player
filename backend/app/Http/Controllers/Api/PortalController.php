@@ -92,6 +92,9 @@ class PortalController extends Controller
 
         $request->validate($rules);
 
+        // Check if this is the first playlist
+        $isFirst = $device->playlists()->count() === 0;
+
         $playlist = $device->playlists()->create([
             'name' => $request->input('name'),
             'type' => $request->input('type'),
@@ -99,6 +102,7 @@ class PortalController extends Controller
             'username' => $request->input('type') === 'xtream' ? $request->input('username') : null,
             'password' => $request->input('type') === 'xtream' ? $request->input('password') : null,
             'is_active' => $request->input('is_active', true),
+            'is_main' => $isFirst,
         ]);
 
         return response()->json($playlist, 201);
@@ -164,7 +168,40 @@ class PortalController extends Controller
 
         $playlist->delete();
 
+        // If the deleted playlist was the main one, and there are other playlists, set the oldest one as main
+        if ($playlist->is_main) {
+            $oldestPlaylist = $device->playlists()->orderBy('created_at', 'asc')->first();
+            if ($oldestPlaylist) {
+                $oldestPlaylist->update(['is_main' => true]);
+            }
+        }
+
         return response()->json(['status' => 'deleted']);
+    }
+
+    /**
+     * PATCH /api/v1/portal/playlists/{id}/set-main
+     * Define esta playlist como principal para o dispositivo.
+     */
+    public function setMain(Request $request, int $id): JsonResponse
+    {
+        $device = $this->resolveDevice($request);
+        if (!$device) {
+            return response()->json(['error' => 'Não autorizado.'], 401);
+        }
+
+        $playlist = $device->playlists()->find($id);
+        if (!$playlist) {
+            return response()->json(['error' => 'Playlist não encontrada.'], 404);
+        }
+
+        // Remove is_main de todas as playlists do device
+        $device->playlists()->update(['is_main' => false]);
+
+        // Marca a nova como principal
+        $playlist->update(['is_main' => true]);
+
+        return response()->json(['status' => 'ok', 'main_playlist_id' => $playlist->id]);
     }
 
     /**

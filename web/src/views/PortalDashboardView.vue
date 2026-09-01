@@ -142,6 +142,22 @@ async function handleDelete(id: number) {
   }
 }
 
+async function handleSetMain(id: number) {
+  try {
+    const response = await fetch(getApiUrl(`/api/v1/portal/playlists/${id}/set-main`), {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token.value}`
+      }
+    })
+
+    if (!response.ok) throw new Error('Falha ao definir como principal.')
+    await fetchPlaylists()
+  } catch (e: any) {
+    alert(e.message)
+  }
+}
+
 function handleLogout() {
   localStorage.removeItem('rc_portal_token')
   localStorage.removeItem('rc_portal_device')
@@ -225,14 +241,23 @@ onMounted(() => {
         <div 
           v-for="item in playlists" 
           :key="item.id"
-          class="bg-surface border border-gray-800 rounded-2xl p-6 flex flex-col justify-between hover:border-gray-700 transition-all group relative overflow-hidden"
+          class="bg-surface border rounded-2xl p-6 flex flex-col justify-between transition-all group relative overflow-hidden"
+          :class="item.is_main ? 'border-yellow-500/30 hover:border-yellow-500/50' : 'border-gray-800 hover:border-gray-700'"
         >
           <!-- Active status glow -->
           <div v-if="item.is_active" class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary"></div>
           
           <div>
             <div class="flex items-center justify-between mb-4">
-              <h3 class="font-bold text-lg text-white group-hover:text-primary transition-colors">{{ item.name }}</h3>
+              <h3 class="font-bold text-lg text-white group-hover:text-primary transition-colors flex items-center gap-2">
+                {{ item.name }}
+                <span v-if="item.is_main" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  Principal
+                </span>
+              </h3>
               <span 
                 class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
                 :class="item.type === 'xtream' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'"
@@ -266,6 +291,14 @@ onMounted(() => {
             </span>
 
             <div class="flex items-center gap-2">
+              <button 
+                v-if="!item.is_main"
+                @click="handleSetMain(item.id)"
+                class="px-3 py-1.5 text-xs font-semibold text-gray-400 hover:text-white bg-gray-850 hover:bg-gray-800 rounded-lg transition-all border border-gray-700 hover:border-gray-600"
+                title="Definir como Principal"
+              >
+                Definir como Principal
+              </button>
               <button 
                 @click="openEditModal(item)"
                 class="p-2 text-gray-400 hover:text-white bg-gray-850 hover:bg-gray-800 rounded-lg transition-all"
