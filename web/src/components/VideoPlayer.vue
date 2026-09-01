@@ -55,6 +55,16 @@ function startNativeSync() {
       if (playing || pos > 0 || dur > 0) {
         isBuffering.value = false
       }
+      
+      const now = Date.now()
+      if (props.id && now - lastUpdateTime > 5000) {
+        lastUpdateTime = now
+        historyStore.updateProgress(
+          props.id,
+          pos,
+          dur
+        )
+      }
     } catch (e) {
       console.error('Error polling NativePlayer state', e)
     }
