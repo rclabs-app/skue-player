@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
 import { buildPlaylistUrl } from '../utils/playlist'
 import QrcodeVue from 'qrcode.vue'
+
+const portalUrl = computed(() => {
+  return typeof window !== 'undefined' ? `${window.location.origin}/portal` : 'https://rcplayer.tv/portal'
+})
 
 const router = useRouter()
 const store = usePlaylistStore()
@@ -153,7 +157,7 @@ onUnmounted(() => {
         
         <div class="flex justify-center">
           <div class="bg-white p-3 rounded-xl shadow-lg inline-block">
-             <qrcode-vue value="https://rc-player-production.up.railway.app/portal" :size="140" level="M" render-as="svg" />
+             <qrcode-vue :value="portalUrl" :size="140" level="M" render-as="svg" />
           </div>
         </div>
 
