@@ -1,8 +1,8 @@
-# Skue Player
+# Skue
 
 > **Modern, High-Performance, Local-First VOD & IPTV Player for Web and Smart TVs**
 
-[![CI](https://github.com/rclabs-app/rc-player/actions/workflows/ci.yml/badge.svg)](https://github.com/rclabs-app/rc-player/actions/workflows/ci.yml)
+[![CI](https://github.com/rclabs-app/skue-player/actions/workflows/ci.yml/badge.svg)](https://github.com/rclabs-app/skue-player/actions/workflows/ci.yml)
 [![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vue.js&logoColor=white)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -14,7 +14,7 @@
 
 ## 1. Visão Geral
 
-O **Skue Player** é um reprodutor e organizador de mídia IPTV / VOD desenvolvido com uma interface de padrão comercial de streaming (inspirada em Netflix, Prime Video e Apple TV), projetado sob o paradigma **Local-First** para oferecer máxima fluidez e responsividade mesmo em dispositivos com hardware restrito (Smart TVs de entrada com 1-2GB de RAM).
+O **Skue** é um reprodutor e organizador de mídia IPTV / VOD desenvolvido com uma interface de padrão comercial de streaming (inspirada em Netflix, Prime Video e Apple TV), projetado sob o paradigma **Local-First** para oferecer máxima fluidez e responsividade mesmo em dispositivos com hardware restrito (Smart TVs de entrada com 1-2GB de RAM).
 
 O sistema opera estritamente como um **reprodutor de mídia neutro** ("*Bring Your Own Content*"). Todo o processamento de listas (`.m3u`), guia de programação (`XMLTV/EPG`), histórico e favoritos ocorre **diretamente no hardware do usuário**.
 
@@ -81,7 +81,7 @@ O sistema opera estritamente como um **reprodutor de mídia neutro** ("*Bring Yo
 ## 4. Estrutura do Repositório
 
 ```
-rc-player/
+skue-player/
 ├── backend/            # API Coordenadora em Laravel 11 (PHP 8.3 + SQLite)
 │   ├── app/            # Controllers, Middlewares e Models
 │   ├── routes/api.php  # Endpoints REST
@@ -184,7 +184,7 @@ cd android
 
 ## 8. Conformidade Legal (Legal Compliance)
 
-O **RC Player** é um reprodutor de mídia neutro e agnóstico de conteúdo.
+O **Skue** é um reprodutor de mídia neutro e agnóstico de conteúdo.
 
 1. **Zero Conteúdo Hospedado:** Nenhum vídeo, transmissão, canal ou arquivo de mídia é armazenado ou retransmitido pelo servidor.
 2. **Fontes Fornecidas pelo Usuário:** O usuário é o exclusivo responsável pelas URLs, listas M3U ou credenciais inseridas na aplicação.

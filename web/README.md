@@ -1,4 +1,4 @@
-# RC Player — Frontend (Web & Smart TV)
+# Skue — Frontend (Web & Smart TV)
 
 Single Page Application construída com **Vue 3**, **TypeScript**, **Vite** e **Tailwind CSS**, otimizada para navegadores desktop, mobile e Smart TVs (Android TV, Tizen e webOS).
 

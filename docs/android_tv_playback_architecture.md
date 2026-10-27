@@ -1,7 +1,7 @@
 # Android TV Native Playback Architecture
 
 ## Overview
-RC Player utilizes a hybrid architecture for Android TV, blending a Vue.js (Capacitor) web interface with a native hardware-accelerated ExoPlayer. To achieve maximum performance (60fps 4K) and proper UI layering, specific configurations must be strictly maintained.
+Skue utilizes a hybrid architecture for Android TV, blending a Vue.js (Capacitor) web interface with a native hardware-accelerated ExoPlayer. To achieve maximum performance (60fps 4K) and proper UI layering, specific configurations must be strictly maintained.
 
 ## Core Rules & Architecture
 

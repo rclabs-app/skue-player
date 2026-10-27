@@ -1,6 +1,6 @@
-# RC Player — Backend API (Laravel 11)
+# Skue — Backend API (Laravel 11)
 
-API RESTful leve de coordenação do RC Player construída com **Laravel 11**, **PHP 8.3** e **SQLite**.
+API RESTful leve de coordenação do Skue construída com **Laravel 11**, **PHP 8.3** e **SQLite**.
 
 ## Responsabilidades
 * **Handshake e Ativação de Dispositivos (`/api/v1/devices`):** Registro e geração de token seguro por endereço MAC.

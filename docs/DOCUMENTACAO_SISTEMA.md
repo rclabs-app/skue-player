@@ -1,6 +1,6 @@
-# RC Player — Documentação Técnica do Sistema
+# Skue — Documentação Técnica do Sistema
 
-Este documento descreve a arquitetura detalhada, as decisões técnicas, os fluxos de segurança e a infraestrutura do **RC Player**, um reprodutor e organizador de mídias IPTV (TV ao vivo, filmes e séries) com arquitetura **local-first** e backend de coordenação.
+Este documento descreve a arquitetura detalhada, as decisões técnicas, os fluxos de segurança e a infraestrutura do **Skue**, um reprodutor e organizador de mídias IPTV (TV ao vivo, filmes e séries) com arquitetura **local-first** e backend de coordenação.
 
 ---
 

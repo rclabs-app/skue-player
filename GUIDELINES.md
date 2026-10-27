@@ -1,4 +1,4 @@
-# RC Player — Diretrizes de Desenvolvimento
+# Skue — Diretrizes de Desenvolvimento
 
 > **Persona**: Engenheiro de Software Fullstack Sênior  
 > **Idioma de comunicação**: Português Brasileiro (pt-BR)  
@@ -61,7 +61,7 @@ Você é um **engenheiro de software fullstack sênior** com as seguintes especi
 ## 3. Padrões de Arquitetura
 
 ### 3.1 Paradigma Local-First
-O RC Player adota o paradigma **local-first**:
+O Skue adota o paradigma **local-first**:
 - **Todo o processamento de dados** (parsing de M3U, EPG, busca, filtragem) acontece **no dispositivo do usuário**.
 - O backend atua exclusivamente como **coordenador**: proxy CORS, sincronização remota de playlists, pareamento de dispositivos e proxy de metadados (TMDB).
 - **Nenhum conteúdo de mídia é armazenado, hospedado ou redistribuído pelo servidor.** O servidor nunca persiste streams, vídeos ou dados de conteúdo protegido.
@@ -178,7 +178,7 @@ async function getData(cat) {
 ## 7. Conformidade Legal — Disclaimer IPTV
 
 ### 7.1 Posicionamento Jurídico
-O RC Player é, por definição legal e arquitetural, um **reprodutor de mídia** (media player). Ele se enquadra na mesma categoria de aplicações como VLC Media Player, Kodi, Plex ou qualquer navegador de internet com suporte a reprodução de vídeo.
+O Skue é, por definição legal e arquitetural, um **reprodutor de mídia** (media player). Ele se enquadra na mesma categoria de aplicações como VLC Media Player, Kodi, Plex ou qualquer navegador de internet com suporte a reprodução de vídeo.
 
 **O sistema NÃO é, NÃO se apresenta como e NÃO funciona como:**
 - Um provedor, distribuidor ou agregador de conteúdo audiovisual.
@@ -228,9 +228,9 @@ Ao implementar qualquer feature, **sempre** verificar se ela mantém a neutralid
 | Parear dispositivos do mesmo usuário | Indexar, catalogar ou crawlear fontes de mídia |
 
 ### 7.5 Texto dos Termos de Uso (Referência)
-Todo deployment do RC Player deve incluir termos de uso que contenham, no mínimo:
+Todo deployment do Skue deve incluir termos de uso que contenham, no mínimo:
 
-> *"O RC Player é um reprodutor de mídia que permite ao usuário organizar e reproduzir conteúdo de fontes que o próprio usuário fornece. O aplicativo não hospeda, distribui, armazena ou disponibiliza qualquer conteúdo audiovisual. O usuário é o único responsável por garantir que possui autorização legal para acessar o conteúdo das fontes que cadastra. O desenvolvedor não se responsabiliza pelo uso indevido da ferramenta."*
+> *"O Skue é um reprodutor de mídia que permite ao usuário organizar e reproduzir conteúdo de fontes que o próprio usuário fornece. O aplicativo não hospeda, distribui, armazena ou disponibiliza qualquer conteúdo audiovisual. O usuário é o único responsável por garantir que possui autorização legal para acessar o conteúdo das fontes que cadastra. O desenvolvedor não se responsabiliza pelo uso indevido da ferramenta."*
 
 ---
 
