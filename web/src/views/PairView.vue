@@ -46,7 +46,7 @@ async function submitPairing() {
     <div class="w-full max-w-md bg-surface border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
       
       <div class="text-center mb-8">
-        <h1 class="text-2xl font-bold text-primary mb-2">RC Player Pareamento</h1>
+        <h1 class="text-2xl font-bold text-primary mb-2">Skue Pareamento</h1>
         <p class="text-gray-400 text-sm">Insira o código exibido na sua TV</p>
       </div>
 

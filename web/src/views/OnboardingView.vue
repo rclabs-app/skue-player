@@ -6,7 +6,7 @@ import { buildPlaylistUrl } from '../utils/playlist'
 import QrcodeVue from 'qrcode.vue'
 
 const portalUrl = computed(() => {
-  return typeof window !== 'undefined' ? `${window.location.origin}/portal` : 'https://rcplayer.tv/portal'
+  return typeof window !== 'undefined' ? `${window.location.origin}/portal` : 'https://skue.tv/portal'
 })
 
 const router = useRouter()
@@ -141,7 +141,7 @@ onUnmounted(() => {
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
         </div>
-        <h1 class="text-2xl font-bold mb-1">RC Player</h1>
+        <h1 class="text-2xl font-bold mb-1">Skue</h1>
         <p class="text-xs text-gray-400">Configure sua lista para começar a assistir</p>
       </div>
       
@@ -152,7 +152,7 @@ onUnmounted(() => {
       <!-- Activation Info -->
       <div class="space-y-5">
         <p class="text-xs text-gray-300 bg-gray-800/50 p-3 rounded-lg border border-gray-700/50 leading-relaxed">
-          Acesse <strong class="text-white text-sm">rcplayer.tv/portal</strong> ou escaneie o QR Code para adicionar suas listas IPTV:
+          Acesse <strong class="text-white text-sm">skue.tv/portal</strong> ou escaneie o QR Code para adicionar suas listas IPTV:
         </p>
         
         <div class="flex justify-center">

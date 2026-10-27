@@ -320,9 +320,9 @@ function maskUrl(url: string): string {
           </div>
         </section>
 
-        <!-- Sobre o RC Player -->
+        <!-- Sobre o Skue -->
         <section class="shrink-0">
-          <h2 class="settings-section-title">Sobre o RC Player</h2>
+          <h2 class="settings-section-title">Sobre o Skue</h2>
           <div class="settings-card">
             <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm mb-3">
               <div class="flex items-center justify-between">
@@ -343,7 +343,7 @@ function maskUrl(url: string): string {
               </div>
             </div>
             <div class="border-t border-gray-800 pt-2 text-[11px] text-gray-600 leading-relaxed">
-              O RC Player é um reprodutor local-first. Nenhum conteúdo é armazenado ou transmitido por nossos servidores. O usuário é responsável pela legalidade das fontes utilizadas.
+              O Skue é um reprodutor local-first. Nenhum conteúdo é armazenado ou transmitido por nossos servidores. O usuário é responsável pela legalidade das fontes utilizadas.
             </div>
           </div>
         </section>
@@ -375,7 +375,7 @@ function maskUrl(url: string): string {
             <div class="border-t border-gray-800/80 pt-3">
               <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-semibold">Listas no Portal</p>
               <div v-if="devicePlaylists.length === 0" class="text-gray-500 text-xs italic">
-                Nenhuma lista configurada no portal remoto. Cadastre em <strong class="text-gray-300">rcplayer.tv/portal</strong> usando seu MAC.
+                Nenhuma lista configurada no portal remoto. Cadastre em <strong class="text-gray-300">skue.tv/portal</strong> usando seu MAC.
               </div>
               <div v-else class="space-y-2 max-h-48 overflow-y-auto pr-1">
                 <div 

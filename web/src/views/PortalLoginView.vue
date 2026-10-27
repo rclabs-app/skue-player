@@ -63,7 +63,7 @@ async function handleLogin() {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
         </div>
-        <h1 class="text-3xl font-extrabold text-white tracking-tight">Portal RC Player</h1>
+        <h1 class="text-3xl font-extrabold text-white tracking-tight">Portal Skue</h1>
         <p class="text-gray-400 mt-2 text-sm">Gerencie remotamente as playlists de sua TV</p>
       </div>
 
@@ -112,7 +112,7 @@ async function handleLogin() {
       
       <div class="mt-8 text-center border-t border-gray-800 pt-6">
         <p class="text-xs text-gray-500">
-          Abra o RC Player em sua Smart TV para obter o MAC e a Chave de Ativação na tela de boas-vindas.
+          Abra o Skue em sua Smart TV para obter o MAC e a Chave de Ativação na tela de boas-vindas.
         </p>
       </div>
     </div>
