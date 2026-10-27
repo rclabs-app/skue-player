@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">rcplayer</string>
-    <string name="title_activity_main">rcplayer</string>
+    <string name="app_name">Skue</string>
+    <string name="title_activity_main">Skue</string>
     <string name="package_name">com.rclabs.player</string>
     <string name="custom_url_scheme">com.rclabs.player</string>
 </resources>

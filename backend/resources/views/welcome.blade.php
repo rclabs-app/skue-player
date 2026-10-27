@@ -124,6 +124,51 @@
     </div>
 </section>
 
+<!-- Download Section -->
+<section id="download" class="py-20 bg-white dark:bg-[#111216] border-t border-gray-200 dark:border-white/5 transition-colors duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4 transition-colors duration-300">Instale no seu Android TV ou Google TV.</h2>
+            <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto transition-colors duration-300">Compatível com Smart TVs TCL, Sony, Philips, Mi TV Stick, Fire TV e Chromecast com Google TV.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <!-- Card 1: Download Direto APK -->
+            <div class="p-8 bg-gray-50 dark:bg-[#1a1c23] border border-gray-200 dark:border-white/5 rounded-lg flex flex-col justify-between">
+                <div>
+                    <div class="w-12 h-12 bg-blue-600/10 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Instalação Direta (.APK)</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">Baixe o pacote oficial atualizado e instale via pendrive ou gerenciador de arquivos na sua TV.</p>
+                </div>
+                <div>
+                    <a href="/downloads/skue-tv.apk" class="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-sm transition-colors text-sm shadow-md shadow-blue-600/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                        Baixar Skue TV (v1.0.0 APK)
+                    </a>
+                    <span class="block text-center text-[11px] text-gray-400 mt-2">Versão 1.0.0-tv · Android 7.0+ · 69 MB</span>
+                </div>
+            </div>
+
+            <!-- Card 2: App Downloader / AFTVnews -->
+            <div class="p-8 bg-gray-50 dark:bg-[#1a1c23] border border-gray-200 dark:border-white/5 rounded-lg flex flex-col justify-between">
+                <div>
+                    <div class="w-12 h-12 bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Instalação via App Downloader</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">Abra o aplicativo <strong>Downloader</strong> na sua Smart TV ou Fire TV e digite a URL direta do instalador:</p>
+                </div>
+                <div class="bg-white dark:bg-[#0c0d10] p-4 rounded border border-gray-200 dark:border-white/10 text-center">
+                    <span class="text-xs text-gray-400 uppercase tracking-widest block mb-1">URL Direta no Downloader</span>
+                    <code class="text-base font-mono font-bold text-blue-600 dark:text-blue-400 select-all">skue.tv/downloads/skue-tv.apk</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Pricing -->
 <section id="pricing" class="py-24 bg-gray-50 dark:bg-[#0c0d10] border-t border-gray-200 dark:border-[#1a1c23] transition-colors duration-300">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

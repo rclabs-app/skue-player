@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.rclabs.player',
-  appName: 'rcplayer',
+  appName: 'Skue',
   webDir: 'dist',
   server: {
     cleartext: true,

@@ -268,6 +268,7 @@ public class MainActivity extends BridgeActivity {
         if (exoPlayer != null && videoContainer != null) {
             try {
                 runOnUiThread(() -> {
+                    getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                     videoContainer.removeAllViews();
                     SurfaceView newSurfaceView = new SurfaceView(MainActivity.this);
                     newSurfaceView.setLayoutParams(new FrameLayout.LayoutParams(
@@ -297,6 +298,7 @@ public class MainActivity extends BridgeActivity {
                 exoPlayer.stop();
                 exoPlayer.clearMediaItems();
                 runOnUiThread(() -> {
+                    getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                     videoContainer.removeAllViews();
                     videoContainer.setVisibility(View.GONE);
                 });
@@ -313,6 +315,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onPause() {
         super.onPause();
+        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (exoPlayer != null && exoPlayer.isPlaying()) {
             exoPlayer.pause();
         }
