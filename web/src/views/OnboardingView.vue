@@ -136,11 +136,7 @@ onUnmounted(() => {
       
       <!-- Brand & Header -->
       <div class="mb-5 flex flex-col items-center">
-        <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mb-3 shadow-lg shadow-blue-500/20">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-          </svg>
-        </div>
+        <img src="/favicon.svg" alt="Skue" class="w-14 h-14 rounded-2xl mb-3 shadow-xl shadow-cyan-500/20" />
         <h1 class="text-2xl font-bold mb-1">Skue</h1>
         <p class="text-xs text-gray-400">Configure sua lista para começar a assistir</p>
       </div>

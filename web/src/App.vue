@@ -103,10 +103,8 @@ onUnmounted(() => {
     >
       
       <!-- Top Logo -->
-      <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-600 mb-10 shadow-lg shadow-blue-500/30">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="5 3 19 12 5 21 5 3"></polygon>
-        </svg>
+      <div class="mb-8 flex items-center justify-center">
+        <img src="/favicon.svg" alt="Skue" class="w-10 h-10 rounded-xl shadow-lg shadow-blue-500/20 hover:scale-105 transition-transform" />
       </div>
       
       <nav class="flex flex-col gap-6 w-full items-center">

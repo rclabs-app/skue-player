@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Painel do Dispositivo - RC Player')
+@section('title', 'Painel do Dispositivo - Skue')
 
 @section('content')
 <div x-data="{ showModal: false, playlistType: 'm3u' }" class="min-h-[calc(100vh-250px)] py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-[#111216] transition-colors duration-300">

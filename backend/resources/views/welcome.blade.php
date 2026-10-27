@@ -15,7 +15,7 @@
                     Sua nova central<br>de mídia.
                 </h1>
                 <p class="text-lg text-gray-600 dark:text-gray-400 mb-8 leading-relaxed font-light transition-colors duration-300">
-                    O RC Player é um reprodutor rápido, organizado e livre de anúncios para Smart TVs, Android e Web. Eleve sua experiência de visualização sem complicações.
+                    O Skue é um reprodutor rápido, organizado e livre de anúncios para Smart TVs, Android e Web. Eleve sua experiência de visualização sem complicações.
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-4 mb-8">
@@ -30,7 +30,7 @@
                 <div class="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-500/10 border-l-4 border-red-500 rounded-r-md transition-colors duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
                     <p class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                        O RC Player <strong class="text-gray-900 dark:text-white">não fornece conteúdo</strong>. Você deve ter sua própria lista.
+                        O Skue <strong class="text-gray-900 dark:text-white">não fornece conteúdo</strong>. Você deve ter sua própria lista.
                     </p>
                 </div>
             </div>
@@ -44,7 +44,7 @@
                         <!-- UI Header -->
                         <div class="flex items-center justify-between p-4 border-b border-gray-800/50">
                             <div class="flex items-center gap-6">
-                                <div class="w-8 h-8 rounded bg-blue-600"></div>
+                                <img src="/images/skue-icon.svg" class="w-8 h-8 rounded-lg shadow-md" alt="Skue" />
                                 <div class="flex gap-4">
                                     <div class="h-3 w-16 bg-white/20 rounded"></div>
                                     <div class="h-3 w-24 bg-white/80 rounded"></div>
@@ -91,7 +91,7 @@
             <div>
                 <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-6 transition-colors duration-300">Desempenho sob o capô.</h2>
                 <p class="text-gray-600 dark:text-gray-400 text-lg mb-6 leading-relaxed transition-colors duration-300">
-                    Esqueça aplicativos lentos que demoram para processar sua lista. Construímos o RC Player com um motor local moderno, garantindo que a navegação seja fluída independente do tamanho do catálogo.
+                    Esqueça aplicativos lentos que demoram para processar sua lista. Construímos o Skue com um motor local moderno, garantindo que a navegação seja fluída independente do tamanho do catálogo.
                 </p>
                 <ul class="space-y-4">
                     <li class="flex items-start gap-3">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Login do Portal - RC Player')
+@section('title', 'Login do Portal - Skue')
 
 @section('content')
 <div class="min-h-[calc(100vh-250px)] flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-[#111216] transition-colors duration-300">
@@ -12,7 +12,7 @@
                 Acesse seu Dispositivo
             </h2>
             <p class="mt-3 text-center text-sm text-gray-600 dark:text-gray-400 transition-colors duration-300">
-                Insira o MAC e a Device Key exibidos na tela principal do RC Player na sua TV.
+                Insira o MAC e a Device Key exibidos na tela principal do Skue na sua TV.
             </p>
         </div>
 
