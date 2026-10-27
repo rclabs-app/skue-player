@@ -1,4 +1,4 @@
-# RC Player
+# Skue Player
 
 > **Modern, High-Performance, Local-First VOD & IPTV Player for Web and Smart TVs**
 
@@ -14,7 +14,7 @@
 
 ## 1. Visão Geral
 
-O **RC Player** é um reprodutor e organizador de mídia IPTV / VOD desenvolvido com uma interface de padrão comercial de streaming (inspirada em Netflix, Prime Video e Apple TV), projetado sob o paradigma **Local-First** para oferecer máxima fluidez e responsividade mesmo em dispositivos com hardware restrito (Smart TVs de entrada com 1-2GB de RAM).
+O **Skue Player** é um reprodutor e organizador de mídia IPTV / VOD desenvolvido com uma interface de padrão comercial de streaming (inspirada em Netflix, Prime Video e Apple TV), projetado sob o paradigma **Local-First** para oferecer máxima fluidez e responsividade mesmo em dispositivos com hardware restrito (Smart TVs de entrada com 1-2GB de RAM).
 
 O sistema opera estritamente como um **reprodutor de mídia neutro** ("*Bring Your Own Content*"). Todo o processamento de listas (`.m3u`), guia de programação (`XMLTV/EPG`), histórico e favoritos ocorre **diretamente no hardware do usuário**.
 
