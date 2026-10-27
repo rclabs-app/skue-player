@@ -1,4 +1,4 @@
-package com.rclabs.player;
+package tv.skue.player;
 
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;

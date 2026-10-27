@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.rclabs.player"
+    namespace = "tv.skue.player"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.rclabs.player"
+        applicationId "tv.skue.player"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 8

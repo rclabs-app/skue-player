@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: rcplayer_backend
+    container_name: skue_backend
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -24,7 +24,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: rcplayer_web
+    container_name: skue_web
     restart: unless-stopped
     ports:
       - "5173:5173"

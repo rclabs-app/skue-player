@@ -38,8 +38,8 @@ async function handleLogin() {
     }
 
     // Save session details
-    localStorage.setItem('rc_portal_token', data.token)
-    localStorage.setItem('rc_portal_device', JSON.stringify(data.device))
+    localStorage.setItem('skue_portal_token', data.token)
+    localStorage.setItem('skue_portal_device', JSON.stringify(data.device))
 
     router.push('/portal/dashboard')
   } catch (e: any) {

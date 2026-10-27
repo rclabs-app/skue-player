@@ -9,8 +9,10 @@
  * structured cloning and transaction overhead.
  */
 
-const OPFS_FILENAME = 'rc-player.db'
-const IDB_DB_NAME = 'rc-player-sqlite-persistence'
+const OPFS_FILENAME = 'skue.db'
+const LEGACY_OPFS_FILENAME = 'rc-player.db'
+const IDB_DB_NAME = 'skue-sqlite-persistence'
+const LEGACY_IDB_DB_NAME = 'rc-player-sqlite-persistence'
 const IDB_STORE = 'database'
 const IDB_KEY = 'main'
 
@@ -68,7 +70,12 @@ async function saveToOPFS(data: Uint8Array): Promise<void> {
 async function loadFromOPFS(): Promise<Uint8Array | null> {
   try {
     const root = await navigator.storage.getDirectory()
-    const fileHandle = await root.getFileHandle(OPFS_FILENAME)
+    let fileHandle: any
+    try {
+      fileHandle = await root.getFileHandle(OPFS_FILENAME)
+    } catch {
+      fileHandle = await root.getFileHandle(LEGACY_OPFS_FILENAME)
+    }
     const file = await fileHandle.getFile()
     const buffer = await file.arrayBuffer()
     return new Uint8Array(buffer)
@@ -89,9 +96,9 @@ async function deleteFromOPFS(): Promise<void> {
 
 // ─── IndexedDB Blob Fallback ────────────────────────────────────────────────
 
-function openIDB(): Promise<IDBDatabase> {
+function openIDB(dbName: string = IDB_DB_NAME): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(IDB_DB_NAME, 1)
+    const req = indexedDB.open(dbName, 1)
     req.onerror = () => reject(req.error)
     req.onsuccess = () => resolve(req.result)
     req.onupgradeneeded = () => {
@@ -100,8 +107,26 @@ function openIDB(): Promise<IDBDatabase> {
   })
 }
 
+async function readFromDb(dbName: string): Promise<Uint8Array | null> {
+  try {
+    const idb = await openIDB(dbName)
+    return new Promise((resolve, reject) => {
+      const tx = idb.transaction(IDB_STORE, 'readonly')
+      const store = tx.objectStore(IDB_STORE)
+      const req = store.get(IDB_KEY)
+      req.onsuccess = () => {
+        idb.close()
+        resolve(req.result ? new Uint8Array(req.result) : null)
+      }
+      req.onerror = () => { idb.close(); reject(req.error) }
+    })
+  } catch {
+    return null
+  }
+}
+
 async function saveToIDB(data: Uint8Array): Promise<void> {
-  const idb = await openIDB()
+  const idb = await openIDB(IDB_DB_NAME)
   return new Promise((resolve, reject) => {
     const tx = idb.transaction(IDB_STORE, 'readwrite')
     const store = tx.objectStore(IDB_STORE)
@@ -112,17 +137,11 @@ async function saveToIDB(data: Uint8Array): Promise<void> {
 }
 
 async function loadFromIDB(): Promise<Uint8Array | null> {
-  const idb = await openIDB()
-  return new Promise((resolve, reject) => {
-    const tx = idb.transaction(IDB_STORE, 'readonly')
-    const store = tx.objectStore(IDB_STORE)
-    const req = store.get(IDB_KEY)
-    req.onsuccess = () => {
-      idb.close()
-      resolve(req.result ? new Uint8Array(req.result) : null)
-    }
-    req.onerror = () => { idb.close(); reject(req.error) }
-  })
+  let data = await readFromDb(IDB_DB_NAME)
+  if (!data) {
+    data = await readFromDb(LEGACY_IDB_DB_NAME)
+  }
+  return data
 }
 
 async function deleteFromIDB(): Promise<void> {

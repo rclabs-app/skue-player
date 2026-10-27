@@ -11,8 +11,8 @@ class HealthController extends Controller
     {
         return response()->json([
             'status'  => 'ok',
-            'service' => 'RC Player API',
-            'version' => config('app.version', '0.1.0'),
+            'service' => 'Skue API',
+            'version' => config('app.version', '1.0.0'),
         ]);
     }
 }

@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Skue</string>
     <string name="title_activity_main">Skue</string>
-    <string name="package_name">com.rclabs.player</string>
-    <string name="custom_url_scheme">com.rclabs.player</string>
+    <string name="package_name">tv.skue.player</string>
+    <string name="custom_url_scheme">tv.skue.player</string>
 </resources>

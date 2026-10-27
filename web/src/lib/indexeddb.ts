@@ -8,7 +8,7 @@ export interface HistoryItem {
   watchedAt: number; // timestamp
 }
 
-const DB_NAME = 'rc-player-db'
+const DB_NAME = 'skue-db'
 const DB_VERSION = 4
 const STORE_PLAYLIST = 'playlist'
 const STORE_SERIES_INDEX = 'series_index'

@@ -1,7 +1,8 @@
 import { Device } from '@capacitor/device'
 import { Preferences } from '@capacitor/preferences'
 
-const STORAGE_KEY = 'rcplayer_device_mac'
+const STORAGE_KEY = 'skue_device_mac'
+const LEGACY_STORAGE_KEY = 'rcplayer_device_mac'
 let cachedMac = ''
 
 function identifierToMac(id: string): string {
@@ -15,7 +16,7 @@ function identifierToMac(id: string): string {
   const hex1 = (h1 >>> 0).toString(16).padStart(8, '0').toUpperCase()
   const hex2 = (h2 >>> 0).toString(16).padStart(8, '0').toUpperCase()
   
-  return `RC:${hex1.slice(0, 2)}:${hex1.slice(2, 4)}:${hex1.slice(4, 6)}:${hex2.slice(0, 2)}:${hex2.slice(2, 4)}`
+  return `SK:${hex1.slice(0, 2)}:${hex1.slice(2, 4)}:${hex1.slice(4, 6)}:${hex2.slice(0, 2)}:${hex2.slice(2, 4)}`
 }
 
 /**
@@ -28,7 +29,10 @@ export async function getDeviceMac(): Promise<string> {
 
   // 1. Try Preferences (Native SharedPreferences - survives reinstall if retained)
   try {
-    const prefResult = await Preferences.get({ key: STORAGE_KEY })
+    let prefResult = await Preferences.get({ key: STORAGE_KEY })
+    if (!prefResult?.value) {
+      prefResult = await Preferences.get({ key: LEGACY_STORAGE_KEY })
+    }
     if (prefResult && prefResult.value) {
       cachedMac = prefResult.value
       localStorage.setItem(STORAGE_KEY, cachedMac)
@@ -38,10 +42,11 @@ export async function getDeviceMac(): Promise<string> {
     // Ignore native preferences error
   }
 
-  // 2. Try localStorage
-  const localMac = localStorage.getItem(STORAGE_KEY)
+  // 2. Try localStorage (current + legacy fallback)
+  const localMac = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY)
   if (localMac) {
     cachedMac = localMac
+    localStorage.setItem(STORAGE_KEY, cachedMac)
     try {
       await Preferences.set({ key: STORAGE_KEY, value: cachedMac })
     } catch {}
@@ -65,7 +70,7 @@ export async function getDeviceMac(): Promise<string> {
 
   // 4. Fallback for pure web browser: generate virtual random MAC
   const chars = '0123456789ABCDEF'
-  const parts = ['RC']
+  const parts = ['SK']
   for (let i = 0; i < 5; i++) {
     let part = ''
     part += chars[Math.floor(Math.random() * 16)]

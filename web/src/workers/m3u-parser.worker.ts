@@ -24,8 +24,8 @@ import { SCHEMA } from '../lib/sqlite'
 const CHUNK_SIZE = 2000
 
 // ─── Persistence helpers (duplicated from sqlite-persistence to avoid import) ─
-const OPFS_FILENAME = 'rc-player.db'
-const IDB_DB_NAME  = 'rc-player-sqlite-persistence'
+const OPFS_FILENAME = 'skue.db'
+const IDB_DB_NAME  = 'skue-sqlite-persistence'
 const IDB_STORE    = 'database'
 const IDB_KEY      = 'main'
 
