@@ -54,38 +54,38 @@
             <div class="flex items-center justify-between h-24">
                 <!-- Logo -->
                 <a href="/" class="flex-shrink-0 flex items-center group py-1" aria-label="Skue - Página Inicial">
-                    <svg class="h-10 w-auto text-gray-900 dark:text-white transition-transform group-hover:scale-105 duration-200" viewBox="0 0 200 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg class="h-10 w-auto text-gray-900 dark:text-white transition-transform group-hover:scale-105 duration-200" viewBox="20 12 205 78" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <defs>
-                            <linearGradient id="header-skue-k-ref" x1="0%" y1="100%" x2="60%" y2="0%">
-                                <stop offset="0%" stop-color="#BAE6FD"/>
-                                <stop offset="45%" stop-color="#38BDF8"/>
-                                <stop offset="100%" stop-color="currentColor" stop-opacity="0.95"/>
+                            <linearGradient id="header-skue-wave-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#00F0FF"/>
+                                <stop offset="35%" stop-color="#0EA5E9"/>
+                                <stop offset="70%" stop-color="#2563EB"/>
+                                <stop offset="100%" stop-color="#8B5CF6"/>
                             </linearGradient>
-                            <linearGradient id="header-skue-e-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stop-color="#0284C7"/>
-                                <stop offset="50%" stop-color="#0EA5E9"/>
+                            <linearGradient id="header-skue-e-shine" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#BAE6FD"/>
+                                <stop offset="50%" stop-color="#38BDF8"/>
                                 <stop offset="100%" stop-color="#00F0FF"/>
                             </linearGradient>
-                            <filter id="header-skue-glow" x="-20%" y="-20%" width="140%" height="140%">
-                                <feGaussianBlur stdDeviation="1" result="blur" />
-                                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                            <filter id="header-skue-wave-glow" x="-20%" y="-50%" width="140%" height="200%">
+                                <feGaussianBlur stdDeviation="2.5" result="blur1" />
+                                <feGaussianBlur stdDeviation="0.8" result="blur2" />
+                                <feMerge>
+                                    <feMergeNode in="blur1" />
+                                    <feMergeNode in="blur2" />
+                                    <feMergeNode in="SourceGraphic" />
+                                </feMerge>
                             </filter>
                         </defs>
-                        <g fill="currentColor">
-                            <!-- Letter S -->
-                            <path d="M 33.5 14.5 C 31 10.5 26.5 8 20 8 C 11.5 8 6 12.5 6 18.5 C 6 29 32.5 24 32.5 34 C 32.5 40 27 44 19.5 44 C 11.5 44 6.5 39.5 4.5 35.5 L 9.5 32 C 11 35 14.5 38 19.5 38 C 23.5 38 26.5 35.5 26.5 32 C 26.5 23 0 27 0 17 C 0 10 6 2 20 2 C 27.5 2 34 5.5 37.5 11 L 33.5 14.5 Z" />
-                            <!-- Letter K -->
-                            <rect x="47" y="3" width="6.5" height="40" rx="0.5" />
-                            <path d="M 53.5 23.5 L 68 5 L 76.5 5 L 59.5 25.5 Z" />
-                            <path d="M 58 23.5 L 74 43 L 83 43 L 64.5 20.5 Z" fill="url(#header-skue-k-ref)" />
-                            <!-- Letter U -->
-                            <path d="M 94 3 L 100.5 3 L 100.5 28 C 100.5 35 105 38.5 112 38.5 C 119 38.5 123.5 35 123.5 28 L 123.5 3 L 130 3 L 130 28 C 130 39 122.5 44 112 44 C 101.5 44 94 39 94 28 L 94 3 Z" />
-                            <!-- Letter E (Top separate bar + bottom connected gradient bracket) -->
-                            <rect x="144" y="3" width="32" height="6.5" rx="0.5" />
-                            <path d="M 144 19.5 L 171 19.5 L 171 26 L 150.5 26 L 150.5 36.5 L 176 36.5 L 176 43 L 144 43 Z" fill="url(#header-skue-e-grad)" filter="url(#header-skue-glow)" />
+                        <g fill="currentColor" transform="translate(5, -5)">
+                            <path d="m 55.947266,22.636719 v 9.257812 q -3.603516,-1.611328 -7.03125,-2.43164 -3.427735,-0.820313 -6.650391,-0.820313 -4.335938,0 -6.591797,1.523438 -2.226563,1.49414 -2.226563,4.335937 0,2.402344 1.699219,3.75 1.728516,1.31836 5.888672,2.490235 l 5.830078,1.640625 q 8.085938,2.255859 11.660156,5.771484 3.574219,3.486328 3.574219,9.404297 0,7.998047 -5.478515,12.304688 -5.478516,4.30664 -15.585938,4.30664 -4.833984,0 -9.609375,-1.113281 -4.746094,-1.142578 -9.140625,-3.36914 v -9.902344 q 4.658203,2.43164 9.169922,3.691406 4.541015,1.259766 8.876953,1.259766 4.628906,0 7.03125,-1.699219 2.43164,-1.728516 2.43164,-4.746094 0,-2.607422 -1.757812,-4.072266 -1.728516,-1.464843 -6.298829,-2.724609 l -5.419921,-1.523437 q -7.587891,-2.167969 -10.957032,-5.507813 -3.36914,-3.369141 -3.36914,-9.052734 0,-7.382813 5.361328,-11.601563 5.390625,-4.248047 14.882813,-4.248047 4.248046,0 8.52539,0.761719 4.277344,0.732422 8.769532,2.255859 z" />
+                            <path d="M 72.720703,21.259766 H 84 v 15.966796 l 16.25977,-15.966796 h 14.70703 L 95.962891,38.632812 116.14844,64.21875 H 101.44141 L 84,41.972656 V 64.21875 H 72.720703 Z" />
+                            <path d="m 122.16016,21.259766 h 11.27929 v 26.220703 q 0,5.419922 1.99219,8.085938 2.02149,2.666015 6.44531,2.666015 4.45313,0 6.44532,-2.666015 2.02148,-2.666016 2.02148,-8.085938 V 21.259766 h 11.2793 v 25.86914 q 0,10.634766 -5.39063,15.644532 -5.39062,4.980468 -14.35547,4.980468 -8.96484,0 -14.35547,-4.980468 -5.36132,-5.009766 -5.36132,-15.644532 z" />
+                            <path d="m 174.88086,21.259766 h 30.43945 v 8.52539 h -19.16015 v 8.115235 h 17.51953 v 8.378906 h -17.51953 v 9.404297 h 19.86328 v 8.535156 h -31.14258 z" />
+                            <rect x="193" y="21.26" width="12" height="8.5" rx="0.5" fill="url(#header-skue-e-shine)" />
                         </g>
-                        <!-- Tagline SEE MORE -->
-                        <text x="100" y="58" text-anchor="middle" font-family="'Instrument Sans', -apple-system, sans-serif" font-size="6.5" font-weight="600" letter-spacing="7" fill="#64748B" opacity="0.9">SEE MORE</text>
+                        <path d="M 32 68 C 65 67, 95 73, 120 74 C 150 75, 175 70, 195 68 C 205 67, 212 68, 216 71 C 210 73.5, 195 72, 175 73.5 C 145 76, 120 77.5, 95 75.5 C 65 73, 45 69.5, 32 68 Z" fill="url(#header-skue-wave-grad)" filter="url(#header-skue-wave-glow)" />
+                        <text x="124" y="88" text-anchor="middle" font-family="'Instrument Sans', -apple-system, sans-serif" font-size="8.5" font-weight="600" letter-spacing="9" fill="#94A3B8" opacity="0.95">SEE MORE</text>
                     </svg>
                 </a>
                 
@@ -124,29 +124,38 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                 <div class="md:col-span-2">
                     <div class="flex items-center gap-3 mb-4">
-                        <svg class="h-8 w-auto text-gray-900 dark:text-white" viewBox="0 0 200 62" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg class="h-8 w-auto text-gray-900 dark:text-white" viewBox="20 12 205 78" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <defs>
-                                <linearGradient id="footer-skue-k-ref" x1="0%" y1="100%" x2="60%" y2="0%">
-                                    <stop offset="0%" stop-color="#BAE6FD"/>
-                                    <stop offset="45%" stop-color="#38BDF8"/>
-                                    <stop offset="100%" stop-color="currentColor" stop-opacity="0.95"/>
+                                <linearGradient id="footer-skue-wave-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#00F0FF"/>
+                                    <stop offset="35%" stop-color="#0EA5E9"/>
+                                    <stop offset="70%" stop-color="#2563EB"/>
+                                    <stop offset="100%" stop-color="#8B5CF6"/>
                                 </linearGradient>
-                                <linearGradient id="footer-skue-e-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stop-color="#0284C7"/>
-                                    <stop offset="50%" stop-color="#0EA5E9"/>
+                                <linearGradient id="footer-skue-e-shine" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stop-color="#BAE6FD"/>
+                                    <stop offset="50%" stop-color="#38BDF8"/>
                                     <stop offset="100%" stop-color="#00F0FF"/>
                                 </linearGradient>
+                                <filter id="footer-skue-wave-glow" x="-20%" y="-50%" width="140%" height="200%">
+                                    <feGaussianBlur stdDeviation="2.5" result="blur1" />
+                                    <feGaussianBlur stdDeviation="0.8" result="blur2" />
+                                    <feMerge>
+                                        <feMergeNode in="blur1" />
+                                        <feMergeNode in="blur2" />
+                                        <feMergeNode in="SourceGraphic" />
+                                    </feMerge>
+                                </filter>
                             </defs>
-                            <g fill="currentColor">
-                                <path d="M 33.5 14.5 C 31 10.5 26.5 8 20 8 C 11.5 8 6 12.5 6 18.5 C 6 29 32.5 24 32.5 34 C 32.5 40 27 44 19.5 44 C 11.5 44 6.5 39.5 4.5 35.5 L 9.5 32 C 11 35 14.5 38 19.5 38 C 23.5 38 26.5 35.5 26.5 32 C 26.5 23 0 27 0 17 C 0 10 6 2 20 2 C 27.5 2 34 5.5 37.5 11 L 33.5 14.5 Z" />
-                                <rect x="47" y="3" width="6.5" height="40" rx="0.5" />
-                                <path d="M 53.5 23.5 L 68 5 L 76.5 5 L 59.5 25.5 Z" />
-                                <path d="M 58 23.5 L 74 43 L 83 43 L 64.5 20.5 Z" fill="url(#footer-skue-k-ref)" />
-                                <path d="M 94 3 L 100.5 3 L 100.5 28 C 100.5 35 105 38.5 112 38.5 C 119 38.5 123.5 35 123.5 28 L 123.5 3 L 130 3 L 130 28 C 130 39 122.5 44 112 44 C 101.5 44 94 39 94 28 L 94 3 Z" />
-                                <rect x="144" y="3" width="32" height="6.5" rx="0.5" />
-                                <path d="M 144 19.5 L 171 19.5 L 171 26 L 150.5 26 L 150.5 36.5 L 176 36.5 L 176 43 L 144 43 Z" fill="url(#footer-skue-e-grad)" />
+                            <g fill="currentColor" transform="translate(5, -5)">
+                                <path d="m 55.947266,22.636719 v 9.257812 q -3.603516,-1.611328 -7.03125,-2.43164 -3.427735,-0.820313 -6.650391,-0.820313 -4.335938,0 -6.591797,1.523438 -2.226563,1.49414 -2.226563,4.335937 0,2.402344 1.699219,3.75 1.728516,1.31836 5.888672,2.490235 l 5.830078,1.640625 q 8.085938,2.255859 11.660156,5.771484 3.574219,3.486328 3.574219,9.404297 0,7.998047 -5.478515,12.304688 -5.478516,4.30664 -15.585938,4.30664 -4.833984,0 -9.609375,-1.113281 -4.746094,-1.142578 -9.140625,-3.36914 v -9.902344 q 4.658203,2.43164 9.169922,3.691406 4.541015,1.259766 8.876953,1.259766 4.628906,0 7.03125,-1.699219 2.43164,-1.728516 2.43164,-4.746094 0,-2.607422 -1.757812,-4.072266 -1.728516,-1.464843 -6.298829,-2.724609 l -5.419921,-1.523437 q -7.587891,-2.167969 -10.957032,-5.507813 -3.36914,-3.369141 -3.36914,-9.052734 0,-7.382813 5.361328,-11.601563 5.390625,-4.248047 14.882813,-4.248047 4.248046,0 8.52539,0.761719 4.277344,0.732422 8.769532,2.255859 z" />
+                                <path d="M 72.720703,21.259766 H 84 v 15.966796 l 16.25977,-15.966796 h 14.70703 L 95.962891,38.632812 116.14844,64.21875 H 101.44141 L 84,41.972656 V 64.21875 H 72.720703 Z" />
+                                <path d="m 122.16016,21.259766 h 11.27929 v 26.220703 q 0,5.419922 1.99219,8.085938 2.02149,2.666015 6.44531,2.666015 4.45313,0 6.44532,-2.666015 2.02148,-2.666016 2.02148,-8.085938 V 21.259766 h 11.2793 v 25.86914 q 0,10.634766 -5.39063,15.644532 -5.39062,4.980468 -14.35547,4.980468 -8.96484,0 -14.35547,-4.980468 -5.36132,-5.009766 -5.36132,-15.644532 z" />
+                                <path d="m 174.88086,21.259766 h 30.43945 v 8.52539 h -19.16015 v 8.115235 h 17.51953 v 8.378906 h -17.51953 v 9.404297 h 19.86328 v 8.535156 h -31.14258 z" />
+                                <rect x="193" y="21.26" width="12" height="8.5" rx="0.5" fill="url(#footer-skue-e-shine)" />
                             </g>
-                            <text x="100" y="58" text-anchor="middle" font-family="'Instrument Sans', -apple-system, sans-serif" font-size="6.5" font-weight="600" letter-spacing="7" fill="#64748B" opacity="0.9">SEE MORE</text>
+                            <path d="M 32 68 C 65 67, 95 73, 120 74 C 150 75, 175 70, 195 68 C 205 67, 212 68, 216 71 C 210 73.5, 195 72, 175 73.5 C 145 76, 120 77.5, 95 75.5 C 65 73, 45 69.5, 32 68 Z" fill="url(#footer-skue-wave-grad)" filter="url(#footer-skue-wave-glow)" />
+                            <text x="124" y="88" text-anchor="middle" font-family="'Instrument Sans', -apple-system, sans-serif" font-size="8.5" font-weight="600" letter-spacing="9" fill="#94A3B8" opacity="0.95">SEE MORE</text>
                         </svg>
                     </div>
                     <p class="text-sm text-gray-500 max-w-sm">

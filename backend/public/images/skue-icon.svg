@@ -1,54 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
   <defs>
     <!-- Background Gradient -->
-    <linearGradient id="icon-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#020617"/>
+    <linearGradient id="backend-icon-bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e131f"/>
+      <stop offset="100%" stop-color="#05070a"/>
     </linearGradient>
 
-    <!-- K Lower Leg Metallic Reflection Gradient -->
-    <linearGradient id="icon-k-ref" x1="0%" y1="100%" x2="60%" y2="0%">
+    <!-- Wave Gradient -->
+    <linearGradient id="backend-icon-wave-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00F0FF"/>
+      <stop offset="35%" stop-color="#0EA5E9"/>
+      <stop offset="70%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+
+    <!-- Metallic Highlight for E top right -->
+    <linearGradient id="backend-icon-e-shine" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#BAE6FD"/>
-      <stop offset="45%" stop-color="#38BDF8"/>
-      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.95"/>
-    </linearGradient>
-
-    <!-- E Bottom Bracket Oceanic Cyan/Blue Gradient -->
-    <linearGradient id="icon-e-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#0284C7"/>
-      <stop offset="50%" stop-color="#0EA5E9"/>
+      <stop offset="50%" stop-color="#38BDF8"/>
       <stop offset="100%" stop-color="#00F0FF"/>
     </linearGradient>
 
-    <filter id="icon-glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="1.5" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter id="backend-icon-wave-glow" x="-20%" y="-50%" width="140%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur1" />
+      <feMerge>
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
     </filter>
   </defs>
 
   <!-- Squircle Base -->
-  <rect x="2" y="2" width="96" height="96" rx="24" fill="url(#icon-bg-grad)" stroke="#1e293b" stroke-width="2"/>
-  <rect x="4" y="4" width="92" height="92" rx="22" stroke="url(#icon-e-grad)" stroke-width="1" stroke-opacity="0.3"/>
+  <rect x="2" y="2" width="96" height="96" rx="24" fill="url(#backend-icon-bg-grad)" stroke="#1e293b" stroke-width="1.5"/>
+  <rect x="3" y="3" width="94" height="94" rx="23" stroke="url(#backend-icon-wave-grad)" stroke-width="1" stroke-opacity="0.3"/>
 
-  <!-- Centered SKUE Logo Mark -->
-  <g transform="translate(10, 24) scale(0.4)" fill="#FFFFFF">
-    <!-- Letter S -->
-    <path d="M 33.5 14.5 C 31 10.5 26.5 8 20 8 C 11.5 8 6 12.5 6 18.5 C 6 29 32.5 24 32.5 34 C 32.5 40 27 44 19.5 44 C 11.5 44 6.5 39.5 4.5 35.5 L 9.5 32 C 11 35 14.5 38 19.5 38 C 23.5 38 26.5 35.5 26.5 32 C 26.5 23 0 27 0 17 C 0 10 6 2 20 2 C 27.5 2 34 5.5 37.5 11 L 33.5 14.5 Z" />
+  <!-- Perfectly Centered Option 06 Mark -->
+  <g transform="translate(5, 23) scale(0.44)">
+    <!-- Letters S, K, U, E -->
+    <g fill="#FFFFFF" transform="translate(5, -5)">
+      <path d="m 55.947266,22.636719 v 9.257812 q -3.603516,-1.611328 -7.03125,-2.43164 -3.427735,-0.820313 -6.47461,-0.820313 -4.042969,0 -5.976562,1.113281 -1.933594,1.113282 -1.933594,3.457032 0,1.757812 1.289062,2.753906 1.31836,0.966797 4.746094,1.669922 l 4.804688,0.966797 q 7.294922,1.464843 10.371093,4.453125 3.076172,2.988281 3.076172,8.496093 0,7.236328 -4.30664,10.78125 -4.277344,3.515625 -13.095703,3.515625 -4.160157,0 -8.34961,-0.791015 -4.189453,-0.791016 -8.378906,-2.34375 v -9.521485 q 4.189453,2.226563 8.085937,3.369141 3.925782,1.113281 7.558594,1.113281 3.691406,0 5.654297,-1.230469 1.962891,-1.230468 1.962891,-3.515625 0,-2.050781 -1.347657,-3.164062 -1.318359,-1.113281 -5.302734,-1.992188 l -4.365234,-0.966796 q -6.5625,-1.40625 -9.609375,-4.482422 -3.017578,-3.076172 -3.017578,-8.291016 0,-6.533203 4.21875,-10.048828 4.21875,-3.515625 12.128906,-3.515625 3.603515,0 7.412109,0.556641 3.808594,0.527343 7.88086,1.611328 z" />
+      <path d="M 72.720703,21.259766 H 84 v 15.966796 l 16.25977,-15.966796 h 13.0957 L 92.291016,41.972656 115.52344,65 h -14.1211 L 84,47.773437 V 65 H 72.720703 Z" />
+      <path d="m 122.16016,21.259766 h 11.27929 v 26.220703 q 0,5.419922 1.75782,7.763672 1.7871,2.314453 5.80078,2.314453 4.04297,0 5.80078,-2.314453 1.78711,-2.34375 1.78711,-7.763672 V 21.259766 h 11.27929 v 26.220703 q 0,9.287109 -4.6582,13.828125 -4.6582,4.541015 -14.20898,4.541015 -9.52149,0 -14.17969,-4.541015 -4.6582,-4.541016 -4.6582,-13.828125 z" />
+      <path d="m 174.88086,21.259766 h 30.43945 v 8.52539 h -19.16015 v 8.144531 h 18.01757 v 8.525391 h -18.01757 v 10.019531 h 19.80468 V 65 h -31.08398 z" />
+      <rect x="193" y="21.26" width="12" height="8.5" rx="0.5" fill="url(#backend-icon-e-shine)" />
+    </g>
 
-    <!-- Letter K -->
-    <rect x="47" y="3" width="6.5" height="40" rx="0.5" />
-    <path d="M 53.5 23.5 L 68 5 L 76.5 5 L 59.5 25.5 Z" />
-    <path d="M 58 23.5 L 74 43 L 83 43 L 64.5 20.5 Z" fill="url(#icon-k-ref)" />
-
-    <!-- Letter U -->
-    <path d="M 94 3 L 100.5 3 L 100.5 28 C 100.5 35 105 38.5 112 38.5 C 119 38.5 123.5 35 123.5 28 L 123.5 3 L 130 3 L 130 28 C 130 39 122.5 44 112 44 C 101.5 44 94 39 94 28 L 94 3 Z" />
-
-    <!-- Letter E -->
-    <rect x="144" y="3" width="32" height="6.5" rx="0.5" />
-    <path d="M 144 19.5 L 171 19.5 L 171 26 L 150.5 26 L 150.5 36.5 L 176 36.5 L 176 43 L 144 43 Z" 
-          fill="url(#icon-e-grad)" filter="url(#icon-glow)" />
+    <!-- Flow Wave -->
+    <path d="M 32 68 C 65 67, 95 73, 120 74 C 150 75, 175 70, 195 68 C 205 67, 212 68, 216 71 C 210 73.5, 195 72, 175 73.5 C 145 76, 120 77.5, 95 75.5 C 65 73, 45 69.5, 32 68 Z" 
+          fill="url(#backend-icon-wave-grad)" filter="url(#backend-icon-wave-glow)" />
 
     <!-- SEE MORE -->
-    <text x="100" y="60" text-anchor="middle" font-family="'Instrument Sans', sans-serif" font-size="8" font-weight="700" letter-spacing="9" fill="#94a3b8">SEE MORE</text>
+    <text x="124" y="88" text-anchor="middle" 
+          font-family="DejaVu Sans, 'Instrument Sans', sans-serif" 
+          font-size="8.5" font-weight="600" letter-spacing="9" fill="#94A3B8" opacity="0.95">SEE MORE</text>
   </g>
 </svg>

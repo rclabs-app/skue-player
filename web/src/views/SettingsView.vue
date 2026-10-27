@@ -324,6 +324,9 @@ function maskUrl(url: string): string {
         <section class="shrink-0">
           <h2 class="settings-section-title">Sobre o Skue</h2>
           <div class="settings-card">
+            <div class="mb-4">
+              <img src="/skue-logo.svg" alt="Skue" class="h-10 w-auto" />
+            </div>
             <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm mb-3">
               <div class="flex items-center justify-between">
                 <span class="text-gray-500 text-xs">Versão</span>

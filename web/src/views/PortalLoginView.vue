@@ -57,14 +57,9 @@ async function handleLogin() {
       <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
       
       <div class="text-center mb-8 relative z-10">
-        <!-- Logo Icon -->
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary border border-primary/20 mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-          </svg>
-        </div>
-        <h1 class="text-3xl font-extrabold text-white tracking-tight">Portal Skue</h1>
-        <p class="text-gray-400 mt-2 text-sm">Gerencie remotamente as playlists de sua TV</p>
+        <img src="/skue-logo.svg" alt="Skue" class="h-14 w-auto mx-auto mb-4 filter drop-shadow-[0_4px_16px_rgba(0,240,255,0.25)]" />
+        <h1 class="text-2xl font-bold text-white tracking-tight">Portal do Dispositivo</h1>
+        <p class="text-gray-400 mt-1 text-sm">Gerencie remotamente as playlists de sua TV</p>
       </div>
 
       <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm flex items-start gap-2">
