@@ -75,7 +75,7 @@ async function handleLogin() {
           <input
             v-model="mac"
             type="text"
-            placeholder="Ex: RC:A1:B2:C3:D4:E5"
+            placeholder="Ex: SK:A1:B2:C3:D4:E5"
             class="w-full bg-background border border-gray-700 rounded-xl p-3.5 text-white focus:border-primary focus:outline-none transition-all placeholder:text-gray-600 font-mono text-center tracking-wide"
             :disabled="isLoading"
             required

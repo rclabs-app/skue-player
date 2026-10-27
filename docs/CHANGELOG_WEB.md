@@ -1,6 +1,6 @@
 # Changelog - Desenvolvimento Web (Interface Premium)
 
-Este documento sumariza as alterações, melhorias de UI/UX e refatorações arquiteturais implementadas no Frontend Web (RC Player) para atingir um padrão de qualidade de plataformas premium de streaming (ex: Netflix, Prime Video).
+Este documento sumariza as alterações, melhorias de UI/UX e refatorações arquiteturais implementadas no Frontend Web (Skue) para atingir um padrão de qualidade de plataformas premium de streaming (ex: Netflix, Prime Video).
 
 ---
 
@@ -70,7 +70,7 @@ Este documento sumariza as alterações, melhorias de UI/UX e refatorações arq
 - **Gerenciamento de Playlist:** Exibição da URL configurada (com máscara de senha), botões "Sincronizar" (re-fetch da mesma URL) e "Trocar URL" (input inline com validação).
 - **Gerenciamento de Histórico:** Seção dedicada mostrando total de itens assistidos e quantos estão "em andamento". Botão de limpeza com confirmação modal (dupla ação), chamando `db.clearHistory()` e esvaziando o array reativo.
 - **Zona de Perigo:** Funcionalidade de "Limpar todos os dados" com confirmação dupla, que apaga playlist + histórico + favoritos e redireciona ao Onboarding.
-- **Seção "Sobre o RC Player":** Grid com versão (v0.2.0), plataforma, armazenamento e total de conteúdos. Disclaimer legal sobre responsabilidade do usuário.
+- **Seção "Sobre o Skue":** Grid com versão (v0.2.0), plataforma, armazenamento e total de conteúdos. Disclaimer legal sobre responsabilidade do usuário.
 - **Toast Notifications:** Sistema de notificações animadas (toast) com ícones de sucesso/erro e auto-dismiss.
 - **Layout 2 Colunas:** Interface profissional dividida em coluna esquerda (Fonte + Sobre) e coluna direita (Histórico + Zona de Perigo).
 
@@ -221,7 +221,7 @@ Este documento sumariza as alterações, melhorias de UI/UX e refatorações arq
   - Navegar para as extremidades (esquerda/direita) aciona limitadores lógicos que impedem o ponteiro (D-Pad) de pular cegamente pela tela ou causar rolagens inesperadas, prendendo o usuário à grid visível.
 - **Auto-Foco de "Assistir Agora":** Ao acessar a tela de detalhes (Filme ou Série), o ciclo de vida do componente Vue (`nextTick` no evento `onMounted` e de alteração de URL) posiciona automaticamente o seletor do D-Pad sobre o botão principal "Assistir", reduzindo a quantidade de cliques até a visualização.
 - **Otimização da Grid de Capas e Auto-Scroll:** O tamanho e aspecto visual dos cards na tela de Episódios foi formatado estritamente para `grid-cols-6`, seguindo a padronização dimensional estabelecida em Filmes e Séries. A cada clique na rolagem para baixo durante a visualização de episódios (D-Pad down), a página processa a instrução `.scrollIntoView({ behavior: 'smooth' })`, certificando-se de que a capa focada jamais desapareça sob as bordas da tela.
-- **Identidade de Marca no Menu de Navegação:** Substituição do placeholder padrão circular amarelo pelo logotipo nativo oficial do RC Player (fundo azul `#2563eb`, bordas sutilmente arredondadas) no topo da barra de navegação lateral (`App.vue`), fixando uma experiência visual orgânica com a animação de splash recém-construída.
+- **Identidade de Marca no Menu de Navegação:** Substituição do placeholder padrão circular amarelo pelo logotipo nativo oficial do Skue (fundo azul `#2563eb`, bordas sutilmente arredondadas) no topo da barra de navegação lateral (`App.vue`), fixando uma experiência visual orgânica com a animação de splash recém-construída.
 
 ## 24. Otimização Extrema de Imagens e Correções (v0.7.4)
 

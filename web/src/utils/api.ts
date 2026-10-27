@@ -9,7 +9,7 @@ export function getApiBaseUrl(): string {
   }
 
   // 2. Local storage override (for testing on TV against local PC IP)
-  const storedUrl = localStorage.getItem('skue_api_url') || localStorage.getItem('rcplayer_api_url')
+  const storedUrl = localStorage.getItem('skue_api_url')
   if (storedUrl) {
     return storedUrl.replace(/\/$/, '')
   }

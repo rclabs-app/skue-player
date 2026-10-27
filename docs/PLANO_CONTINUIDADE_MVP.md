@@ -1,4 +1,4 @@
-# Plano de Continuidade — RC Player (Rumo ao MVP)
+# Plano de Continuidade — Skue (Rumo ao MVP)
 
 **Data da Sessão:** 20 de Outubro de 2026  
 **Status do Repositório:** Ramo `main` — sincronizado, containers ativos, testes do backend passando (25/25), build web funcional (Vite/TypeScript sem erros).
@@ -24,7 +24,7 @@
 - Correção no container do frontend, instalando a dependência ausente `mpegts.js` no volume.
 
 ### 1.4 Resolução do Erro de Conexão no Onboarding (CORS / 404)
-- **Causa:** O arquivo `web/.env.local` continha `VITE_API_BASE_URL=https://rc-player-production.up.railway.app`, que apontava para um ambiente remoto inativo no Railway (retornando 404 sem CORS).
+- **Causa:** O arquivo `web/.env.local` continha `VITE_API_BASE_URL=https://api.skue.tv`, que apontava para um ambiente remoto inativo no Railway (retornando 404 sem CORS).
 - **Ações Realizadas:**
   - Desativamos a variável no `web/.env.local` para usar o proxy interno do Vite (`/api`).
   - Atualizamos o componente `web/src/views/OnboardingView.vue` para que o QR Code e o portal usem `${window.location.origin}/portal` dinamicamente.
@@ -37,7 +37,7 @@
 - **Frontend Web:** Totalmente funcional, compilando em 3.6s via `npm run build` com zero erros de tipagem.
 - **Backend:** 25 testes automatizados de Feature passando (`DeviceActivationTest`, `PairingTest`, `TMDBControllerTest`).
 - **Android TV Bridge:** Código nativo no `MainActivity.java` configurado com `SurfaceView` e WebView transparente para ExoPlayer a 60fps.
-- **APK Atual:** O arquivo em `download/rcplayer.apk` é datado de **29 de Agosto de 2026** e precisa ser regerado para incorporar todas as melhorias de Setembro e Outubro.
+- **APK Atual:** O arquivo em `download/skue-tv.apk` é datado de **29 de Agosto de 2026** e precisa ser regerado para incorporar todas as melhorias de Setembro e Outubro.
 
 ---
 
@@ -49,7 +49,7 @@ Para a próxima sessão, as seguintes tarefas foram priorizadas para a publicaç
 - [ ] Executar `npx cap sync android` na pasta `web/` com os assets mais recentes compilados (`dist/`).
 - [ ] Incrementar a versão no `web/android/app/build.gradle` (ex: `versionCode 8`, `versionName "0.8.0-mvp"`).
 - [ ] Compilar o novo APK (`./gradlew assembleRelease` ou `assembleDebug`).
-- [ ] Copiar o APK gerado para `download/rcplayer.apk`.
+- [ ] Copiar o APK gerado para `download/skue-tv.apk`.
 - [ ] Realizar teste prático de instalação e reprodução na TV TCL C6K.
 
 ### Etapa 2: Deploy e Infraestrutura de Produção

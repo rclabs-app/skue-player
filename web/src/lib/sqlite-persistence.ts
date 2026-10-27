@@ -10,9 +10,7 @@
  */
 
 const OPFS_FILENAME = 'skue.db'
-const LEGACY_OPFS_FILENAME = 'rc-player.db'
 const IDB_DB_NAME = 'skue-sqlite-persistence'
-const LEGACY_IDB_DB_NAME = 'rc-player-sqlite-persistence'
 const IDB_STORE = 'database'
 const IDB_KEY = 'main'
 
@@ -70,12 +68,7 @@ async function saveToOPFS(data: Uint8Array): Promise<void> {
 async function loadFromOPFS(): Promise<Uint8Array | null> {
   try {
     const root = await navigator.storage.getDirectory()
-    let fileHandle: any
-    try {
-      fileHandle = await root.getFileHandle(OPFS_FILENAME)
-    } catch {
-      fileHandle = await root.getFileHandle(LEGACY_OPFS_FILENAME)
-    }
+    const fileHandle = await root.getFileHandle(OPFS_FILENAME)
     const file = await fileHandle.getFile()
     const buffer = await file.arrayBuffer()
     return new Uint8Array(buffer)
@@ -137,11 +130,7 @@ async function saveToIDB(data: Uint8Array): Promise<void> {
 }
 
 async function loadFromIDB(): Promise<Uint8Array | null> {
-  let data = await readFromDb(IDB_DB_NAME)
-  if (!data) {
-    data = await readFromDb(LEGACY_IDB_DB_NAME)
-  }
-  return data
+  return readFromDb(IDB_DB_NAME)
 }
 
 async function deleteFromIDB(): Promise<void> {

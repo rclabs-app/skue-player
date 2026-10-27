@@ -1,8 +1,8 @@
-# Análise Crítica — RC Player MVP (Parte 1)
+# Análise Crítica — Skue MVP (Parte 1)
 
 ## 1. Resumo do Produto
 
-**O que é:** RC Player é um reprodutor e organizador de mídia local-first. O usuário fornece sua própria fonte M3U/M3U8 e o app organiza e reproduz o conteúdo — TV ao vivo, filmes e séries — sem qualquer catálogo próprio.
+**O que é:** Skue é um reprodutor e organizador de mídia local-first. O usuário fornece sua própria fonte M3U/M3U8 e o app organiza e reproduz o conteúdo — TV ao vivo, filmes e séries — sem qualquer catálogo próprio.
 
 **Problema que resolve:** Ausência de um player moderno, bonito e controlável para fontes M3U privadas que funcione tanto no navegador quanto na TV, sem depender de apps genéricos (VLC, IPTV Smarters) com UX ruim ou foco questionável.
 
@@ -95,7 +95,7 @@
 **Complexidade que aumenta manutenção:**
 - Jetpack Compose for TV é relativamente novo e documentação ainda é escassa. Aumenta a curva de aprendizado.
 - Criptografia do payload de pareamento requer decisão de algoritmo, gerenciamento de chave e implementação nos dois lados (web + Android). Não é trivial.
-# Análise Crítica — RC Player MVP (Parte 2)
+# Análise Crítica — Skue MVP (Parte 2)
 
 ## 4. Viabilidade Técnica por Plataforma
 
@@ -244,7 +244,7 @@ Os textos de termos e políticas gerados por IA ou template são insuficientes p
 O documento exige um canal de denúncias, mas não define quem responde, em qual prazo e com qual processo. Um canal que não funciona na prática pode ser usado contra o produto.
 
 **Risco 5 — Nomeação do produto**
-"RC Player" é genérico e provavelmente livre. Mas antes de publicar, verificar no INPI (Brasil) e no USPTO se há marcas conflitantes.
+"Skue" é genérico e provavelmente livre. Mas antes de publicar, verificar no INPI (Brasil) e no USPTO se há marcas conflitantes.
 
 ### Diferenciando as proteções
 | Tipo | O que o documento faz |
@@ -258,7 +258,7 @@ O documento exige um canal de denúncias, mas não define quem responde, em qual
 - **QR Code na TV apontando para um domínio específico:** se o domínio for associado ao produto publicamente, aumenta a superfície de ataque jurídico.
 - **EPG XMLTV:** exibir grade de programação de emissoras pode configurar uso de dados protegidos dependendo da fonte.
 - **Publicação na Google Play:** aumenta exposição e risco de remoção.
-# Análise Crítica — RC Player MVP (Parte 3)
+# Análise Crítica — Skue MVP (Parte 3)
 
 ## 8. Requisitos Problemáticos
 
@@ -435,7 +435,7 @@ GET  /api/v1/app-version  ← pode ser JSON estático
 ## 11. Estrutura Mínima de Pastas
 
 ```
-rc-player/
+skue-player/
 ├── backend/
 │   ├── app/
 │   │   ├── Http/Controllers/
@@ -477,7 +477,7 @@ rc-player/
 │
 ├── android-tv/
 │   └── app/src/main/
-│       ├── java/com/rclabs/player/
+│       ├── java/tv/skue/player/
 │       │   ├── ui/
 │       │   │   ├── home/
 │       │   │   ├── player/
@@ -500,7 +500,7 @@ rc-player/
 ├── .gitignore
 └── README.md
 ```
-# Análise Crítica — RC Player MVP (Parte 4)
+# Análise Crítica — Skue MVP (Parte 4)
 
 ## 12. Tabela de Decisões
 
@@ -599,13 +599,13 @@ Estas são as únicas decisões que realmente **impedem o início do desenvolvim
 ---
 
 ### Decisão 6 — Domínio e identidade do produto
-**Pergunta:** O nome "RC Player" e o domínio associado estão definidos e disponíveis?
+**Pergunta:** O nome "Skue" e o domínio associado estão definidos e disponíveis?
 
 Isso afeta:
 - O QR Code exibido na TV
 - A URL de pareamento
 - A descrição nos termos
-- O nome do pacote Android (`com.rclabs.player` ou outro)
+- O nome do pacote Android (`tv.skue.player` ou outro)
 
 > **Recomendação:** Confirmar antes de começar o Android, pois o package name não pode mudar depois da instalação sem reinstalação.
 

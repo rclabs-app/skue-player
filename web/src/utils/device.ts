@@ -2,7 +2,6 @@ import { Device } from '@capacitor/device'
 import { Preferences } from '@capacitor/preferences'
 
 const STORAGE_KEY = 'skue_device_mac'
-const LEGACY_STORAGE_KEY = 'rcplayer_device_mac'
 let cachedMac = ''
 
 function identifierToMac(id: string): string {
@@ -29,10 +28,7 @@ export async function getDeviceMac(): Promise<string> {
 
   // 1. Try Preferences (Native SharedPreferences - survives reinstall if retained)
   try {
-    let prefResult = await Preferences.get({ key: STORAGE_KEY })
-    if (!prefResult?.value) {
-      prefResult = await Preferences.get({ key: LEGACY_STORAGE_KEY })
-    }
+    const prefResult = await Preferences.get({ key: STORAGE_KEY })
     if (prefResult && prefResult.value) {
       cachedMac = prefResult.value
       localStorage.setItem(STORAGE_KEY, cachedMac)
@@ -42,8 +38,8 @@ export async function getDeviceMac(): Promise<string> {
     // Ignore native preferences error
   }
 
-  // 2. Try localStorage (current + legacy fallback)
-  const localMac = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY)
+  // 2. Try localStorage
+  const localMac = localStorage.getItem(STORAGE_KEY)
   if (localMac) {
     cachedMac = localMac
     localStorage.setItem(STORAGE_KEY, cachedMac)

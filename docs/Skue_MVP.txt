@@ -1,5 +1,5 @@
 Atue como arquiteto e desenvolvedor sênior responsável pela criação de um MVP chamado
-provisoriamente RC Player.
+provisoriamente Skue.
 O objetivo é criar um player moderno para fontes de mídia pertencentes ao próprio usuário,
 funcionando inicialmente em:
 1. navegador web;
@@ -9,7 +9,7 @@ Não transforme este projeto em uma plataforma grande. Implemente um MVP enxuto,
 visualmente profissional, mantendo espaço para expansão futura.
 
 1. DEFINIÇÃO DO PRODUTO
-O RC Player será apenas um reprodutor e organizador de mídia.
+O Skue será apenas um reprodutor e organizador de mídia.
 O usuário poderá inserir sua própria fonte compatível e visualizar:
 • TV ao vivo;
 • filmes;
@@ -19,7 +19,7 @@ O usuário poderá inserir sua própria fonte compatível e visualizar:
 • conteúdos recentes;
 • progresso de reprodução;
 • guia de programação, quando houver XMLTV.
-O RC Player não deverá:
+O Skue não deverá:
 • vender canais;
 • oferecer listas;
 • indicar fornecedores;
@@ -91,7 +91,7 @@ Não utilize microsserviços, Kubernetes, GraphQL, CQRS, event sourcing ou abstr
 4. ESTRUTURA DO REPOSITÓRIO
 Crie:
 
-rc-player/
+skue-player/
 ├── backend/
 ├── web/
 ├── android-tv/
@@ -354,8 +354,8 @@ O usuário deverá declarar que:
 • possui autorização para acessá-la;
 • é responsável pelo conteúdo informado;
 • não utilizará o aplicativo para violar direitos de terceiros;
-• entende que o RC Player não vende nem fornece conteúdo;
-• entende que a disponibilidade da fonte não é controlada pelo RC Player.
+• entende que o Skue não vende nem fornece conteúdo;
+• entende que a disponibilidade da fonte não é controlada pelo Skue.
 Além do texto, implemente as seguintes medidas técnicas:
 • nenhum conteúdo ou fonte padrão;
 • nenhum catálogo pré-carregado;

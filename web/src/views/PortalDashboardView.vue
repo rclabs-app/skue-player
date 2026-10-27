@@ -167,17 +167,13 @@ function handleLogout() {
 }
 
 onMounted(() => {
-  const storedToken = localStorage.getItem('skue_portal_token') || localStorage.getItem('rc_portal_token')
-  const storedDevice = localStorage.getItem('skue_portal_device') || localStorage.getItem('rc_portal_device')
+  const storedToken = localStorage.getItem('skue_portal_token')
+  const storedDevice = localStorage.getItem('skue_portal_device')
 
   if (!storedToken || !storedDevice) {
     handleLogout()
     return
   }
-
-  // Migrate to skue_ if from legacy
-  localStorage.setItem('skue_portal_token', storedToken)
-  localStorage.setItem('skue_portal_device', storedDevice)
 
   token.value = storedToken
   device.value = JSON.parse(storedDevice)
