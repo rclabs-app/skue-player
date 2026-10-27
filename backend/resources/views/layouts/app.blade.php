@@ -54,29 +54,38 @@
             <div class="flex items-center justify-between h-24">
                 <!-- Logo -->
                 <a href="/" class="flex-shrink-0 flex items-center group py-1" aria-label="Skue - Página Inicial">
-                    <svg class="h-9 w-auto text-gray-900 dark:text-white transition-transform group-hover:scale-105 duration-200" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg class="h-10 w-auto text-gray-900 dark:text-white transition-transform group-hover:scale-105 duration-200" viewBox="0 0 200 62" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <defs>
-                            <linearGradient id="header-skue-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stop-color="#00E5FF"/>
-                                <stop offset="100%" stop-color="#2563EB"/>
+                            <linearGradient id="header-skue-k-ref" x1="0%" y1="100%" x2="60%" y2="0%">
+                                <stop offset="0%" stop-color="#BAE6FD"/>
+                                <stop offset="45%" stop-color="#38BDF8"/>
+                                <stop offset="100%" stop-color="currentColor" stop-opacity="0.95"/>
+                            </linearGradient>
+                            <linearGradient id="header-skue-e-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#0284C7"/>
+                                <stop offset="50%" stop-color="#0EA5E9"/>
+                                <stop offset="100%" stop-color="#00F0FF"/>
                             </linearGradient>
                             <filter id="header-skue-glow" x="-20%" y="-20%" width="140%" height="140%">
-                                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                                <feGaussianBlur stdDeviation="1" result="blur" />
                                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
                             </filter>
                         </defs>
-                        <!-- Letter S -->
-                        <path d="M 28 11.5 C 26 9.5 22.5 8 18 8 C 11.5 8 7 11.5 7 16.5 C 7 26 29 20.5 29 30.5 C 29 36 24 39.5 17 39.5 C 10.5 39.5 6 36.5 4 33.5" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                        <!-- Letter K -->
-                        <path d="M 43 8 L 43 39 M 64 8 L 46 23.5 M 49 20.5 L 65 39" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                        <!-- Letter U -->
-                        <path d="M 80 8 L 80 26 C 80 34 86 39.5 95 39.5 C 104 39.5 110 34 110 26 L 110 8" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                        <!-- Letter E (Stylized 3 horizontal glowing gradient bars) -->
-                        <rect x="124" y="8" width="28" height="5" rx="2.5" fill="url(#header-skue-grad)" filter="url(#header-skue-glow)" />
-                        <rect x="124" y="21" width="24" height="5" rx="2.5" fill="url(#header-skue-grad)" filter="url(#header-skue-glow)" />
-                        <rect x="124" y="34" width="28" height="5" rx="2.5" fill="url(#header-skue-grad)" filter="url(#header-skue-glow)" />
+                        <g fill="currentColor">
+                            <!-- Letter S -->
+                            <path d="M 33.5 14.5 C 31 10.5 26.5 8 20 8 C 11.5 8 6 12.5 6 18.5 C 6 29 32.5 24 32.5 34 C 32.5 40 27 44 19.5 44 C 11.5 44 6.5 39.5 4.5 35.5 L 9.5 32 C 11 35 14.5 38 19.5 38 C 23.5 38 26.5 35.5 26.5 32 C 26.5 23 0 27 0 17 C 0 10 6 2 20 2 C 27.5 2 34 5.5 37.5 11 L 33.5 14.5 Z" />
+                            <!-- Letter K -->
+                            <rect x="47" y="3" width="6.5" height="40" rx="0.5" />
+                            <path d="M 53.5 23.5 L 68 5 L 76.5 5 L 59.5 25.5 Z" />
+                            <path d="M 58 23.5 L 74 43 L 83 43 L 64.5 20.5 Z" fill="url(#header-skue-k-ref)" />
+                            <!-- Letter U -->
+                            <path d="M 94 3 L 100.5 3 L 100.5 28 C 100.5 35 105 38.5 112 38.5 C 119 38.5 123.5 35 123.5 28 L 123.5 3 L 130 3 L 130 28 C 130 39 122.5 44 112 44 C 101.5 44 94 39 94 28 L 94 3 Z" />
+                            <!-- Letter E (Top separate bar + bottom connected gradient bracket) -->
+                            <rect x="144" y="3" width="32" height="6.5" rx="0.5" />
+                            <path d="M 144 19.5 L 171 19.5 L 171 26 L 150.5 26 L 150.5 36.5 L 176 36.5 L 176 43 L 144 43 Z" fill="url(#header-skue-e-grad)" filter="url(#header-skue-glow)" />
+                        </g>
                         <!-- Tagline SEE MORE -->
-                        <text x="88" y="47" text-anchor="middle" font-family="'Instrument Sans', -apple-system, sans-serif" font-size="5" font-weight="700" letter-spacing="4.5" fill="#64748b">SEE MORE</text>
+                        <text x="100" y="58" text-anchor="middle" font-family="'Instrument Sans', -apple-system, sans-serif" font-size="6.5" font-weight="600" letter-spacing="7" fill="#64748B" opacity="0.9">SEE MORE</text>
                     </svg>
                 </a>
                 
@@ -115,19 +124,29 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                 <div class="md:col-span-2">
                     <div class="flex items-center gap-3 mb-4">
-                        <svg class="h-7 w-auto text-gray-900 dark:text-white" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg class="h-8 w-auto text-gray-900 dark:text-white" viewBox="0 0 200 62" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <defs>
-                                <linearGradient id="footer-skue-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stop-color="#00E5FF"/>
-                                    <stop offset="100%" stop-color="#2563EB"/>
+                                <linearGradient id="footer-skue-k-ref" x1="0%" y1="100%" x2="60%" y2="0%">
+                                    <stop offset="0%" stop-color="#BAE6FD"/>
+                                    <stop offset="45%" stop-color="#38BDF8"/>
+                                    <stop offset="100%" stop-color="currentColor" stop-opacity="0.95"/>
+                                </linearGradient>
+                                <linearGradient id="footer-skue-e-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stop-color="#0284C7"/>
+                                    <stop offset="50%" stop-color="#0EA5E9"/>
+                                    <stop offset="100%" stop-color="#00F0FF"/>
                                 </linearGradient>
                             </defs>
-                            <path d="M 28 11.5 C 26 9.5 22.5 8 18 8 C 11.5 8 7 11.5 7 16.5 C 7 26 29 20.5 29 30.5 C 29 36 24 39.5 17 39.5 C 10.5 39.5 6 36.5 4 33.5" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                            <path d="M 43 8 L 43 39 M 64 8 L 46 23.5 M 49 20.5 L 65 39" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                            <path d="M 80 8 L 80 26 C 80 34 86 39.5 95 39.5 C 104 39.5 110 34 110 26 L 110 8" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                            <rect x="124" y="8" width="28" height="5" rx="2.5" fill="url(#footer-skue-grad)" />
-                            <rect x="124" y="21" width="24" height="5" rx="2.5" fill="url(#footer-skue-grad)" />
-                            <rect x="124" y="34" width="28" height="5" rx="2.5" fill="url(#footer-skue-grad)" />
+                            <g fill="currentColor">
+                                <path d="M 33.5 14.5 C 31 10.5 26.5 8 20 8 C 11.5 8 6 12.5 6 18.5 C 6 29 32.5 24 32.5 34 C 32.5 40 27 44 19.5 44 C 11.5 44 6.5 39.5 4.5 35.5 L 9.5 32 C 11 35 14.5 38 19.5 38 C 23.5 38 26.5 35.5 26.5 32 C 26.5 23 0 27 0 17 C 0 10 6 2 20 2 C 27.5 2 34 5.5 37.5 11 L 33.5 14.5 Z" />
+                                <rect x="47" y="3" width="6.5" height="40" rx="0.5" />
+                                <path d="M 53.5 23.5 L 68 5 L 76.5 5 L 59.5 25.5 Z" />
+                                <path d="M 58 23.5 L 74 43 L 83 43 L 64.5 20.5 Z" fill="url(#footer-skue-k-ref)" />
+                                <path d="M 94 3 L 100.5 3 L 100.5 28 C 100.5 35 105 38.5 112 38.5 C 119 38.5 123.5 35 123.5 28 L 123.5 3 L 130 3 L 130 28 C 130 39 122.5 44 112 44 C 101.5 44 94 39 94 28 L 94 3 Z" />
+                                <rect x="144" y="3" width="32" height="6.5" rx="0.5" />
+                                <path d="M 144 19.5 L 171 19.5 L 171 26 L 150.5 26 L 150.5 36.5 L 176 36.5 L 176 43 L 144 43 Z" fill="url(#footer-skue-e-grad)" />
+                            </g>
+                            <text x="100" y="58" text-anchor="middle" font-family="'Instrument Sans', -apple-system, sans-serif" font-size="6.5" font-weight="600" letter-spacing="7" fill="#64748B" opacity="0.9">SEE MORE</text>
                         </svg>
                     </div>
                     <p class="text-sm text-gray-500 max-w-sm">
