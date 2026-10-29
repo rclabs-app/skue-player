@@ -7,34 +7,41 @@ export const useHistoryStore = defineStore('history', () => {
   const historyItems = ref<HistoryItem[]>([])
   const isLoaded = ref(false)
 
+  function isActiveHistoryItem(item: Pick<HistoryItem, 'currentTime' | 'duration'>): boolean {
+    if (!item || !Number.isFinite(item.currentTime) || !Number.isFinite(item.duration)) return false
+    if (item.duration <= 0) return false
+    const pct = (item.currentTime / item.duration) * 100
+    return item.currentTime > 15 && pct > 2 && pct < 95
+  }
+
   async function loadHistory() {
     try {
       const items = await db.getHistoryItems()
       items.sort((a, b) => b.watchedAt - a.watchedAt)
       historyItems.value = items
-      
-      // Filter out invalid items and map
-      const enriched = []
+
+      const enriched = [] as Array<HistoryItem & { metadata: PlaylistItem }>
       for (const hist of items) {
-         let meta = await db.getPlaylistItemById(hist.id) as PlaylistItem
-         if (!meta) meta = await db.getSeriesById(hist.id) as unknown as PlaylistItem
-         if (meta) {
-           enriched.push({ ...hist, metadata: meta })
-         }
+        let meta = await db.getPlaylistItemById(hist.id) as PlaylistItem
+        if (!meta) meta = await db.getSeriesById(hist.id) as unknown as PlaylistItem
+        if (meta) {
+          const candidate = { ...hist, metadata: meta }
+          if (isActiveHistoryItem(candidate)) {
+            enriched.push(candidate)
+          }
+        }
       }
-      
-      // Deduplicate by ID just in case
-      const uniqueEnriched = []
-      const seen = new Set()
+
+      const uniqueEnriched = [] as Array<HistoryItem & { metadata: PlaylistItem }>
+      const seen = new Set<string>()
       for (const e of enriched) {
         if (!seen.has(e.id)) {
           seen.add(e.id)
           uniqueEnriched.push(e)
         }
       }
-      
+
       continueWatchingItems.value = uniqueEnriched
-      
       isLoaded.value = true
     } catch (e) {
       console.error('Failed to load history:', e)
@@ -42,45 +49,49 @@ export const useHistoryStore = defineStore('history', () => {
   }
 
   async function updateProgress(id: string, currentTime: number, duration: number) {
+    const safeCurrentTime = Number.isFinite(currentTime) ? Math.max(0, currentTime) : 0
+    const safeDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0
     const item: HistoryItem = {
       id,
-      currentTime,
-      duration,
+      currentTime: safeCurrentTime,
+      duration: safeDuration,
       watchedAt: Date.now()
     }
-    
-    // Update local state immediately
+
     const index = historyItems.value.findIndex(i => i.id === id)
     if (index >= 0) {
       historyItems.value[index] = item
     } else {
       historyItems.value.push(item)
     }
-    
-    // Re-sort
+
     historyItems.value.sort((a, b) => b.watchedAt - a.watchedAt)
-    
-    // Also update continueWatchingItems immediately if the item exists in DB
-    const cwIndex = continueWatchingItems.value.findIndex(i => i.id === id)
-    if (cwIndex >= 0) {
-      continueWatchingItems.value[cwIndex] = { ...continueWatchingItems.value[cwIndex], ...item }
-      continueWatchingItems.value.sort((a, b) => b.watchedAt - a.watchedAt)
-    } else {
-       let meta = await db.getPlaylistItemById(item.id) as PlaylistItem
-       if (!meta) meta = await db.getSeriesById(item.id) as unknown as PlaylistItem
-       if (meta) {
-         continueWatchingItems.value.unshift({ ...item, metadata: meta })
-       }
+
+    const existingIndex = continueWatchingItems.value.findIndex(i => i.id === id)
+    let meta = await db.getPlaylistItemById(item.id) as PlaylistItem
+    if (!meta) meta = await db.getSeriesById(item.id) as unknown as PlaylistItem
+
+    const entry = meta ? { ...item, metadata: meta } : null
+
+    if (entry && isActiveHistoryItem(item)) {
+      if (existingIndex >= 0) {
+        continueWatchingItems.value[existingIndex] = entry
+      } else {
+        continueWatchingItems.value.unshift(entry)
+      }
+    } else if (existingIndex >= 0) {
+      continueWatchingItems.value.splice(existingIndex, 1)
     }
-    
-    // Save to DB
+
+    continueWatchingItems.value = continueWatchingItems.value.filter(it => isActiveHistoryItem(it))
+
     await db.saveHistoryItem(item)
   }
 
   function getProgress(id: string): HistoryItem | undefined {
     return historyItems.value.find(i => i.id === id)
   }
-  
+
   function getProgressPercentage(id: string): number {
     const item = getProgress(id)
     if (!item || !item.duration) return 0
@@ -89,19 +100,10 @@ export const useHistoryStore = defineStore('history', () => {
 
   const continueWatchingItems = ref<(HistoryItem & { metadata: PlaylistItem })[]>([])
 
-  // Expose items that are currently in progress (watched > 15s and less than 95%)
   const activelyWatching = computed(() => {
-    return continueWatchingItems.value.filter(item => {
-      // If duration is missing or invalid, assume it's incomplete if watched for a bit
-      if (!item.duration || isNaN(item.duration) || item.duration === Infinity) {
-        return item.currentTime > 15
-      }
-      const pct = (item.currentTime / item.duration) * 100
-      return item.currentTime > 15 && pct < 95
-    })
+    return continueWatchingItems.value.filter(item => isActiveHistoryItem(item))
   })
 
-  // Full history
   const fullHistory = computed(() => continueWatchingItems.value)
 
   return {

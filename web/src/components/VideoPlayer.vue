@@ -5,6 +5,8 @@ import mpegts from 'mpegts.js'
 import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { useHistoryStore } from '../stores/history'
+import PlayerTopBar from './PlayerTopBar.vue'
+import PlayerActionCenter from './PlayerActionCenter.vue'
 
 const props = defineProps<{
   id?: string
@@ -127,7 +129,6 @@ function retryPlay() {
 // Navigation Refs
 const backButtonRef = ref<HTMLElement | null>(null)
 const aspectRatioRef = ref<HTMLElement | null>(null)
-const rewButtonRef = ref<HTMLElement | null>(null)
 const playButtonRef = ref<HTMLElement | null>(null)
 const ffButtonRef = ref<HTMLElement | null>(null)
 const progressBarRef = ref<HTMLElement | null>(null)
@@ -135,7 +136,6 @@ const progressBarRef = ref<HTMLElement | null>(null)
 function focusBack() { setTimeout(() => backButtonRef.value?.focus(), 10) }
 function focusProgress() { setTimeout(() => progressBarRef.value?.focus(), 10) }
 function focusPlay() { setTimeout(() => playButtonRef.value?.focus(), 10) }
-function focusREW() { setTimeout(() => rewButtonRef.value?.focus(), 10) }
 function focusFF() { setTimeout(() => ffButtonRef.value?.focus(), 10) }
 function focusAspectRatio() { setTimeout(() => aspectRatioRef.value?.focus(), 10) }
 
@@ -878,26 +878,14 @@ onUnmounted(() => {
         <div v-show="showControls" class="absolute inset-0 flex flex-col justify-between pointer-events-none">
           
           <!-- Top Bar -->
-          <div class="p-3 md:px-6 md:py-4 flex justify-between items-center pointer-events-auto bg-gradient-to-b from-black/70 via-black/20 to-transparent">
-            <!-- Left: Back Button Liquid Pill (Compact Glass Circle) -->
-            <button 
-              ref="backButtonRef"
-              @click="handleClose()" 
-              @keydown.down.prevent="focusPlay"
-              @keydown.left.prevent
-              @keydown.right.prevent
-              @keydown.up.prevent
-              class="group text-white/90 hover:text-white focus:text-white focus:bg-white/40 focus:scale-105 outline-none focus:outline-none w-8 h-8 rounded-full bg-white/10 backdrop-blur-xl border border-white/10 shadow-md flex items-center justify-center" 
-              aria-label="Fechar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
-
-            <!-- Right: Clock Pill -->
-            <div class="px-3 py-1 rounded-full bg-white/15 backdrop-blur-xl border border-white/20 shadow-md text-white text-[11px] font-semibold tracking-wider flex items-center gap-1.5">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              {{ currentClock }}
-            </div>
+          <div class="p-3 md:px-6 md:py-4 pointer-events-auto bg-gradient-to-b from-black/70 via-black/20 to-transparent">
+            <PlayerTopBar
+              :title="title || 'Reproduzindo'"
+              :subtitle="isLive ? 'Ao vivo • TV' : 'Filme • Reprodução'"
+              :is-live="Boolean(isLive)"
+              :current-clock="currentClock"
+              @close="handleClose()"
+            />
           </div>
 
           <!-- Bottom Full-Width Controls Overlay (Compact, canto a canto) -->
@@ -948,45 +936,12 @@ onUnmounted(() => {
 
             <!-- Row 2: Centralized Refined Player Buttons (Compact & Balanced) -->
             <div class="flex items-center justify-center gap-4 py-0.5">
-              <button 
-                v-if="!isLive"
-                ref="rewButtonRef"
-                @click="seek(-10)" 
-                @keydown.left.prevent
-                @keydown.right.prevent="focusPlay"
-                @keydown.up.prevent="focusBack"
-                @keydown.down.prevent="focusProgress"
-                class="text-white/80 hover:text-white focus:text-white focus:bg-white/40 focus:scale-105 outline-none focus:outline-none w-8 h-8 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-md flex items-center justify-center" 
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="11 19 2 12 11 5 11 19"/><polygon points="22 19 13 12 22 5 22 19"/></svg>
-              </button>
-
-              <!-- Central Main Play/Pause Button (Compact 40px Glass Pill) -->
-              <button 
-                ref="playButtonRef"
-                @click="togglePlay" 
-                @keydown.left.prevent="!isLive && focusREW()"
-                @keydown.right.prevent="!isLive ? focusFF() : focusAspectRatio()"
-                @keydown.up.prevent="focusBack"
-                @keydown.down.prevent="focusProgress"
-                class="text-white hover:scale-105 focus:scale-105 focus:bg-white/40 outline-none focus:outline-none w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-xl border border-white/10 shadow-[0_0_12px_rgba(255,255,255,0.1)] flex items-center justify-center" 
-              >
-                <svg v-if="!isPlaying" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="ml-0.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
-              </button>
-
-              <button 
-                v-if="!isLive"
-                ref="ffButtonRef"
-                @click="seek(10)" 
-                @keydown.left.prevent="focusPlay"
-                @keydown.right.prevent="focusAspectRatio"
-                @keydown.up.prevent="focusBack"
-                @keydown.down.prevent="focusProgress"
-                class="text-white/80 hover:text-white focus:text-white focus:bg-white/40 focus:scale-105 outline-none focus:outline-none w-8 h-8 rounded-full bg-white/10 border border-white/10 backdrop-blur-md shadow-md flex items-center justify-center" 
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>
-              </button>
+              <PlayerActionCenter
+                :is-live="Boolean(isLive)"
+                :is-playing="isPlaying"
+                @toggle-play="togglePlay"
+                @forward="seek(10)"
+              />
             </div>
 
             <!-- Row 3: Progress Bar (Edge-to-Edge, Posicionada Abaixo dos Botões) -->
@@ -1006,6 +961,20 @@ onUnmounted(() => {
               <span class="text-white/80 text-[11px] font-mono font-semibold min-w-[38px]">{{ formatTime(duration) }}</span>
             </div>
 
+          </div>
+
+          <!-- Ação Central do Player (HUD) - Visível Durante a Reprodução -->
+          <div v-if="showControls && isPlaying && !hasError" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <PlayerActionCenter 
+              @play="togglePlay"
+              @ff="seek(10)"
+              :duration="duration"
+              :current-time="currentTime"
+              :is-live="isLive"
+              :seeking-target="seekingTarget"
+              @seek="seekTo"
+              @focus="wakeControls"
+            />
           </div>
         </div>
       </Transition>

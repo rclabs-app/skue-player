@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
 import { useHistoryStore } from '../stores/history'
-import { useFavoritesStore } from '../stores/favorites'
 import { useTvRemote } from '../composables/useTvRemote'
 import { cleanName } from '../utils/text'
 import type { PlaylistItem, SeriesEntry } from '../types/m3u'
@@ -18,7 +17,6 @@ import { Capacitor } from '@capacitor/core'
 
 const store = usePlaylistStore()
 const historyStore = useHistoryStore()
-const favoritesStore = useFavoritesStore()
 const router = useRouter()
 const { onRemoteKey } = useTvRemote()
 
@@ -48,7 +46,6 @@ const categoryContent = ref<{ live: PlaylistItem[], movies: PlaylistItem[], seri
 // ── Horizontal rows ────────────────────────────────────────────
 const recentMovies = ref<PlaylistItem[]>([])
 const recentSeries = ref<SeriesEntry[]>([])
-const favoriteItems = ref<(PlaylistItem | SeriesEntry)[]>([])
 const movieRows = ref<{name: string, items: PlaylistItem[]}[]>([])
 const seriesRows = ref<{name: string, items: SeriesEntry[]}[]>([])
 
@@ -75,16 +72,6 @@ async function loadHomeData() {
     items: cat.items as unknown as SeriesEntry[] // Just passing the type through
   }))
 
-  // Favorites
-  const ids = favoritesStore.favoriteIds
-  const favItems: (PlaylistItem | SeriesEntry)[] = []
-  for (const id of ids) {
-    let item: any = await db.getPlaylistItemById(id)
-    if (!item) item = await db.getSeriesById(id)
-    if (item) favItems.push(item)
-  }
-  favoriteItems.value = favItems
-  
   const moviesWithLogo = withLogo(dbRecentMovies).slice(0, 6)
   const seriesEntries = withLogo(dbRecentSeries).slice(0, 6)
   
@@ -326,7 +313,6 @@ onMounted(async () => {
   }
   isPageLoading.value = true
   await historyStore.loadHistory()
-  await favoritesStore.loadFavorites()
   preloadHeroMetadata()
   if (activeCategory.value === 'Home') {
     startHeroTimer()
@@ -883,25 +869,9 @@ onRemoteKey('BACK', () => {
         </div>
       </template>
 
-      <!-- Meus Favoritos -->
-      <template v-if="favoriteItems.length > 0">
-        <div>
-          <div class="flex items-center justify-between mb-3 px-1">
-            <h2 class="text-base md:text-lg font-bold text-gray-100"><span class="text-primary font-extrabold text-sm tracking-wider mr-2">❤️</span>Meus Favoritos</h2>
-          </div>
-          <div class="relative group/row">
-            <div id="row-favorites" class="content-row flex gap-3 overflow-x-auto overflow-y-hidden no-scrollbar px-1 py-4 -my-4" tabindex="-1">
-              <ContentCard
-                v-for="item in favoriteItems" 
-                :key="item.id"
-                :item="item"
-                :is-portrait="true"
-                :show-title="false"
-                class="card-portrait"
-                @play="play(item)" @focus="setCategoryHovered(item)"
-              />
-            </div>
-          </div>
+      <template v-else>
+        <div class="mb-6 rounded-xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-sm text-gray-400">
+          Nenhuma reprodução em andamento no momento.
         </div>
       </template>
 
