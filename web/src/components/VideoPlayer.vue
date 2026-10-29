@@ -891,14 +891,8 @@ onUnmounted(() => {
           <!-- Bottom Full-Width Controls Overlay (Compact, canto a canto) -->
           <div v-if="!hasError" class="w-full pointer-events-auto p-3 md:px-6 md:pb-4 pt-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col gap-2">
             
-            <!-- Row 1: Title & Aspect Ratio Button -->
-            <div class="flex items-center justify-between gap-3 w-full">
-              <div class="flex items-center gap-2">
-                <div v-if="isLive" class="bg-gradient-to-r from-red-500 to-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm">
-                  LIVE
-                </div>
-                <h2 class="text-sm md:text-base font-bold text-white tracking-tight drop-shadow-md truncate max-w-lg">{{ title || 'Reproduzindo' }}</h2>
-              </div>
+            <!-- Row 1: Aspect Ratio Button (título exibido apenas no PlayerTopBar) -->
+            <div class="flex items-center justify-end gap-3 w-full">
 
               <!-- Aspect Ratio Selector Pill -->
               <div class="relative">
@@ -961,20 +955,6 @@ onUnmounted(() => {
               <span class="text-white/80 text-[11px] font-mono font-semibold min-w-[38px]">{{ formatTime(duration) }}</span>
             </div>
 
-          </div>
-
-          <!-- Ação Central do Player (HUD) - Visível Durante a Reprodução -->
-          <div v-if="showControls && isPlaying && !hasError" class="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <PlayerActionCenter 
-              @play="togglePlay"
-              @ff="seek(10)"
-              :duration="duration"
-              :current-time="currentTime"
-              :is-live="isLive"
-              :seeking-target="seekingTarget"
-              @seek="seekTo"
-              @focus="wakeControls"
-            />
           </div>
         </div>
       </Transition>
