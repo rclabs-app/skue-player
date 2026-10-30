@@ -96,23 +96,34 @@ CREATE TABLE IF NOT EXISTS tmdb_cache (
 
 export class SQLiteDatabaseService {
   private db: Database | null = null
-
+  private initPromise: Promise<void> | null = null
   private persistTimer: ReturnType<typeof setTimeout> | null = null
 
   async init(): Promise<void> {
-    const SQL = await initSqlJs({
-      locateFile: () => wasmUrl
-    })
+    if (this.db) return
+    if (this.initPromise) return this.initPromise
 
-    const saved = await loadDatabase()
-    if (saved) {
-      this.db = new SQL.Database(saved)
-      // Run schema in case of new tables (IF NOT EXISTS = safe)
-      this.db.run(SCHEMA)
-    } else {
-      this.db = new SQL.Database()
-      this.db.run(SCHEMA)
-    }
+    this.initPromise = (async () => {
+      try {
+        const SQL = await initSqlJs({
+          locateFile: () => wasmUrl
+        })
+
+        const saved = await loadDatabase()
+        if (saved) {
+          this.db = new SQL.Database(saved)
+          // Run schema in case of new tables (IF NOT EXISTS = safe)
+          this.db.run(SCHEMA)
+        } else {
+          this.db = new SQL.Database()
+          this.db.run(SCHEMA)
+        }
+      } finally {
+        this.initPromise = null
+      }
+    })()
+
+    return this.initPromise
   }
 
   /** Import a pre-built database binary (e.g. from Worker after parsing) */
@@ -152,14 +163,18 @@ export class SQLiteDatabaseService {
     return this.db.export()
   }
 
-  /** Persist the database to OPFS/IDB */
+  /** Persist the database to OPFS/IDB immediately */
   async persist(): Promise<void> {
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer)
+      this.persistTimer = null
+    }
     if (!this.db) return
     const data = this.db.export()
     await saveDatabase(data)
   }
 
-  /** Debounced persist — batches multiple writes into one save */
+  /** Debounced persist — batches multiple bulk writes into one save */
   private schedulePersist(): void {
     if (this.persistTimer) clearTimeout(this.persistTimer)
     this.persistTimer = setTimeout(() => this.persist(), 1000)
@@ -550,7 +565,7 @@ export class SQLiteDatabaseService {
   async saveConfig<T>(key: string, value: T): Promise<void> {
     if (!this.db) await this.init()
     this.db!.run('INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)', [key, JSON.stringify(value)])
-    this.schedulePersist()
+    await this.persist()
   }
 
   async getConfig<T>(key: string): Promise<T | null> {
@@ -573,7 +588,7 @@ export class SQLiteDatabaseService {
       'INSERT OR REPLACE INTO history (id, current_time, duration, watched_at) VALUES (?, ?, ?, ?)',
       [item.id, item.currentTime, item.duration, item.watchedAt]
     )
-    this.schedulePersist()
+    await this.persist()
   }
 
   async getHistoryItems(): Promise<HistoryItem[]> {
@@ -604,7 +619,7 @@ export class SQLiteDatabaseService {
   async clearHistory(): Promise<void> {
     if (!this.db) await this.init()
     this.db!.run('DELETE FROM history')
-    this.schedulePersist()
+    await this.persist()
   }
 
   // ─── Favorites ──────────────────────────────────────────────────────────
@@ -612,13 +627,13 @@ export class SQLiteDatabaseService {
   async addFavorite(id: string): Promise<void> {
     if (!this.db) await this.init()
     this.db!.run('INSERT OR IGNORE INTO favorites (id) VALUES (?)', [id])
-    this.schedulePersist()
+    await this.persist()
   }
 
   async removeFavorite(id: string): Promise<void> {
     if (!this.db) await this.init()
     this.db!.run('DELETE FROM favorites WHERE id = ?', [id])
-    this.schedulePersist()
+    await this.persist()
   }
 
   async getFavorites(): Promise<string[]> {

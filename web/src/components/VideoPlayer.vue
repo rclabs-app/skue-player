@@ -64,6 +64,49 @@ function checkResumeTime() {
   }
 }
 
+function tryApplyResume() {
+  if (resumeTime.value <= 0 || hasResumed.value) return
+  const video = videoRef.value
+  if (!video) return
+
+  if (video.readyState >= 1 || (Number.isFinite(video.duration) && video.duration > 0)) {
+    try {
+      const maxSeek = video.duration && Number.isFinite(video.duration) && video.duration > 5
+        ? Math.max(0, video.duration - 5)
+        : resumeTime.value
+      const target = Math.min(resumeTime.value, maxSeek)
+
+      if (Math.abs(video.currentTime - target) <= 2) {
+        hasResumed.value = true
+        currentTime.value = video.currentTime
+        return
+      }
+
+      video.currentTime = target
+    } catch (e) {
+      console.warn('Could not seek video to resume position', e)
+    }
+  }
+}
+
+function handleLoadedMetadata(e: Event) {
+  const video = e.target as HTMLVideoElement
+  duration.value = video.duration || 0
+  tryApplyResume()
+}
+
+function handleCanPlay() {
+  tryApplyResume()
+}
+
+function handleSeeked(e: Event) {
+  const video = e.target as HTMLVideoElement
+  currentTime.value = video.currentTime
+  if (resumeTime.value > 0 && !hasResumed.value && video.currentTime >= resumeTime.value - 2) {
+    hasResumed.value = true
+  }
+}
+
 function startNativeSync() {
   if (nativePollInterval) clearInterval(nativePollInterval)
   nativePollInterval = setInterval(() => {
@@ -502,22 +545,10 @@ function playNativeWithFallback(url: string, onFail: () => void) {
   isDestroying = false
 
   let nativeFailed = false
-  const applyNativeResume = () => {
-    if (resumeTime.value > 0 && !hasResumed.value) {
-      try {
-        video.currentTime = resumeTime.value
-        hasResumed.value = true
-      } catch (e) {
-        console.warn('Could not seek native video on load', e)
-      }
-    }
-  }
 
   const cleanup = () => {
     video.removeEventListener('error', onError)
     video.removeEventListener('playing', onPlaying)
-    video.removeEventListener('loadedmetadata', applyNativeResume)
-    video.removeEventListener('canplay', applyNativeResume)
   }
 
   const onError = (e: Event) => {
@@ -531,14 +562,12 @@ function playNativeWithFallback(url: string, onFail: () => void) {
 
   const onPlaying = () => {
     cleanup()
-    applyNativeResume()
+    tryApplyResume()
     showDebug(`[Native HTML5] Playback iniciado com sucesso!`)
   }
 
   video.addEventListener('error', onError, { once: true })
   video.addEventListener('playing', onPlaying, { once: true })
-  video.addEventListener('loadedmetadata', applyNativeResume, { once: true })
-  video.addEventListener('canplay', applyNativeResume, { once: true })
 
   video.src = url
   video.play().catch(e => {
@@ -566,15 +595,12 @@ function playWithHls(url: string, fallbackUrl: string | null = null, onErrorCall
   hls.attachMedia(video)
 
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
-    if (resumeTime.value > 0 && !hasResumed.value) {
-      try {
-        video.currentTime = resumeTime.value
-        hasResumed.value = true
-      } catch (e) {
-        console.warn('Could not seek HLS on manifest parsed', e)
-      }
-    }
+    tryApplyResume()
     video.play().catch(e => console.error('HLS play prevented', e))
+  })
+
+  hls.on(Hls.Events.LEVEL_LOADED, () => {
+    tryApplyResume()
   })
 
   hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -618,22 +644,10 @@ function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () 
 
   let mpegtsErrorFired = false
 
-  const applyMpegtsResume = () => {
-    if (resumeTime.value > 0 && !hasResumed.value) {
-      try {
-        video.currentTime = resumeTime.value
-        hasResumed.value = true
-      } catch (e) {
-        console.warn('Could not seek mpegts on loadedmetadata', e)
-      }
-    }
-  }
-
   const handleMpegtsFailure = (msg: string) => {
     if (mpegtsErrorFired) return
     mpegtsErrorFired = true
     video.removeEventListener('error', onVideoError)
-    video.removeEventListener('loadedmetadata', applyMpegtsResume)
     if (tsPlayer) {
       tsPlayer.destroy()
       tsPlayer = null
@@ -652,7 +666,8 @@ function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () 
   }
 
   video.addEventListener('error', onVideoError, { once: true })
-  video.addEventListener('loadedmetadata', applyMpegtsResume, { once: true })
+  video.addEventListener('loadedmetadata', () => tryApplyResume(), { once: true })
+  video.addEventListener('canplay', () => tryApplyResume(), { once: true })
   tsPlayer.attachMediaElement(video)
   tsPlayer.load()
 
@@ -792,12 +807,13 @@ function handleTimeUpdate(e: Event) {
     if (video.currentTime >= resumeTime.value - 2) {
       hasResumed.value = true
     } else {
+      tryApplyResume()
       return
     }
   }
 
   const now = Date.now()
-  if (props.id && !props.isLive && now - lastUpdateTime > 5000 && video.currentTime >= 5) {
+  if (props.id && !props.isLive && now - lastUpdateTime > 3000 && video.currentTime >= 5) {
     lastUpdateTime = now
     historyStore.updateProgress(
       props.id,
@@ -807,17 +823,21 @@ function handleTimeUpdate(e: Event) {
   }
 }
 
-function stopPlayback() {
+async function stopPlayback() {
   if (isDestroying) return
   isDestroying = true
 
   // Save final progress for all platforms (browser & Android native)
   if (props.id && !props.isLive && currentTime.value >= 5) {
-    historyStore.updateProgress(
-      props.id,
-      currentTime.value,
-      duration.value || 0
-    )
+    try {
+      await historyStore.updateProgress(
+        props.id,
+        currentTime.value,
+        duration.value || 0
+      )
+    } catch (e) {
+      console.error('Error saving progress on stopPlayback', e)
+    }
   }
 
   if (nativePollInterval) {
@@ -848,9 +868,15 @@ function stopPlayback() {
   }
 }
 
-function handleClose() {
-  stopPlayback()
+async function handleClose() {
+  await stopPlayback()
   emit('close')
+}
+
+function onBeforeUnload() {
+  if (props.id && !props.isLive && currentTime.value >= 5) {
+    historyStore.updateProgress(props.id, currentTime.value, duration.value || 0)
+  }
 }
 
 function updateClock() {
@@ -878,6 +904,7 @@ onMounted(() => {
   clockInterval = setInterval(updateClock, 1000)
   window.addEventListener('keydown', handleKeydown)
   window.addEventListener('mousemove', wakeControls)
+  window.addEventListener('beforeunload', onBeforeUnload)
 
   // Native Android TV Event Listeners
   ;(window as any).onNativePlayerPrepared = () => {
@@ -956,6 +983,7 @@ onUnmounted(() => {
   stopPlayback()
   window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('mousemove', wakeControls)
+  window.removeEventListener('beforeunload', onBeforeUnload)
   if (hideTimeout) clearTimeout(hideTimeout)
   if (clockInterval) clearInterval(clockInterval)
   if (bufferingTimeout) clearTimeout(bufferingTimeout)
@@ -976,7 +1004,9 @@ onUnmounted(() => {
         autoplay
         :poster="!isLive ? poster : undefined"
         @timeupdate="handleTimeUpdate"
-        @loadedmetadata="duration = ($event.target as HTMLVideoElement).duration"
+        @loadedmetadata="handleLoadedMetadata"
+        @canplay="handleCanPlay"
+        @seeked="handleSeeked"
         @play="handlePlaying(); wakeControls()"
         @pause="isPlaying = false; wakeControls()"
         @waiting="handleWaiting"

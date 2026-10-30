@@ -18,14 +18,26 @@ const IDB_KEY = 'main'
 
 export async function saveDatabase(data: Uint8Array): Promise<void> {
   if (await supportsOPFS()) {
-    return saveToOPFS(data)
+    try {
+      await saveToOPFS(data)
+      return
+    } catch (e) {
+      console.warn('OPFS save failed, falling back to IDB:', e)
+      _supportsOPFS = false
+    }
   }
   return saveToIDB(data)
 }
 
 export async function loadDatabase(): Promise<Uint8Array | null> {
   if (await supportsOPFS()) {
-    return loadFromOPFS()
+    try {
+      const data = await loadFromOPFS()
+      if (data) return data
+    } catch (e) {
+      console.warn('OPFS load failed, falling back to IDB:', e)
+      _supportsOPFS = false
+    }
   }
   return loadFromIDB()
 }

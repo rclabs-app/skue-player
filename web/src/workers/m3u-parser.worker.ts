@@ -42,15 +42,19 @@ async function canUseOPFS(): Promise<boolean> {
 
 async function persistDb(data: Uint8Array): Promise<void> {
   if (await canUseOPFS()) {
-    // @ts-ignore
-    const root = await self.navigator.storage.getDirectory()
-    // @ts-ignore
-    const fh = await root.getFileHandle(OPFS_FILENAME, { create: true })
-    // @ts-ignore
-    const writable = await fh.createWritable()
-    await writable.write(data)
-    await writable.close()
-    return
+    try {
+      // @ts-ignore
+      const root = await self.navigator.storage.getDirectory()
+      // @ts-ignore
+      const fh = await root.getFileHandle(OPFS_FILENAME, { create: true })
+      // @ts-ignore
+      const writable = await fh.createWritable()
+      await writable.write(data)
+      await writable.close()
+      return
+    } catch (e) {
+      console.warn('Worker OPFS persist failed, falling back to IDB:', e)
+    }
   }
   // IDB fallback
   await new Promise<void>((resolve, reject) => {

@@ -17,6 +17,40 @@ export const useHistoryStore = defineStore('history', () => {
     return true
   }
 
+  async function resolveMetadata(id: string): Promise<PlaylistItem> {
+    const pItem = await db.getPlaylistItemById(id)
+    if (pItem) {
+      if (pItem.type === 'series' && pItem.serieKey && !pItem.logo) {
+        const seriesEntry = await db.getSeriesByKey(pItem.serieKey)
+        if (seriesEntry && seriesEntry.logo) {
+          pItem.logo = seriesEntry.logo
+        }
+      }
+      return pItem
+    }
+
+    const sItem = await db.getSeriesById(id)
+    if (sItem) {
+      return {
+        id: sItem.id,
+        name: sItem.displayName,
+        url: '',
+        group: sItem.group || 'Séries',
+        logo: sItem.logo,
+        type: 'series',
+        serieKey: sItem.serieKey
+      }
+    }
+
+    return {
+      id,
+      name: 'Item ' + id.slice(0, 8),
+      url: '',
+      group: 'Outros',
+      type: 'movie'
+    }
+  }
+
   async function loadHistory() {
     try {
       const items = await db.getHistoryItems()
@@ -25,19 +59,10 @@ export const useHistoryStore = defineStore('history', () => {
 
       const enriched = [] as Array<HistoryItem & { metadata: PlaylistItem }>
       for (const hist of items) {
-        let meta = await db.getPlaylistItemById(hist.id) as PlaylistItem
-        if (!meta) meta = await db.getSeriesById(hist.id) as unknown as PlaylistItem
-        if (meta) {
-          const candidate = { ...hist, metadata: meta }
-          if (isActiveHistoryItem(candidate)) {
-            if (meta.type === 'series' && meta.serieKey && !meta.logo) {
-              const seriesEntry = await db.getSeriesByKey(meta.serieKey)
-              if (seriesEntry && seriesEntry.logo) {
-                meta.logo = seriesEntry.logo
-              }
-            }
-            enriched.push(candidate)
-          }
+        const meta = await resolveMetadata(hist.id)
+        const candidate = { ...hist, metadata: meta }
+        if (isActiveHistoryItem(candidate)) {
+          enriched.push(candidate)
         }
       }
 
@@ -86,17 +111,9 @@ export const useHistoryStore = defineStore('history', () => {
 
     historyItems.value.sort((a, b) => b.watchedAt - a.watchedAt)
 
-    let meta = await db.getPlaylistItemById(item.id) as PlaylistItem
-    if (!meta) meta = await db.getSeriesById(item.id) as unknown as PlaylistItem
+    const meta = await resolveMetadata(item.id)
 
-    if (meta && meta.type === 'series' && meta.serieKey && !meta.logo) {
-      const seriesEntry = await db.getSeriesByKey(meta.serieKey)
-      if (seriesEntry && seriesEntry.logo) {
-        meta.logo = seriesEntry.logo
-      }
-    }
-
-    const dedupeKey = meta && meta.type === 'series' && meta.serieKey
+    const dedupeKey = meta.type === 'series' && meta.serieKey
       ? `series:${meta.serieKey}`
       : item.id
 
@@ -107,9 +124,9 @@ export const useHistoryStore = defineStore('history', () => {
       return itDedupeKey === dedupeKey
     })
 
-    const entry = meta ? { ...item, metadata: meta } : null
+    const entry = { ...item, metadata: meta }
 
-    if (entry && isActiveHistoryItem(item)) {
+    if (isActiveHistoryItem(item)) {
       if (existingIndex >= 0) {
         continueWatchingItems.value.splice(existingIndex, 1)
         continueWatchingItems.value.unshift(entry)
