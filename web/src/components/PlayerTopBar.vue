@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 withDefaults(defineProps<{
   title?: string
   subtitle?: string
@@ -13,16 +15,30 @@ withDefaults(defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void
+  (e: 'navigate-down'): void
 }>()
+
+const backButtonRef = ref<HTMLButtonElement | null>(null)
+
+function focusBack() {
+  backButtonRef.value?.focus()
+}
+
+defineExpose({
+  focusBack,
+  backButtonRef
+})
 </script>
 
 <template>
-  <div class="pointer-events-auto flex w-full items-center justify-between gap-3 rounded-full border border-white/10 bg-black/20 px-3 py-2 shadow-[0_8px_25px_rgba(0,0,0,0.25)] backdrop-blur-xl">
+  <div class="pointer-events-auto flex w-full items-center justify-between gap-3 rounded-full border border-white/10 bg-black/30 px-3 py-2 shadow-[0_8px_25px_rgba(0,0,0,0.25)] backdrop-blur-xl">
     <div class="flex items-center gap-3 min-w-0">
       <button
+        ref="backButtonRef"
         type="button"
         @click="emit('close')"
-        class="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:bg-white/20 focus:bg-white/25 focus:outline-none"
+        @keydown.down.prevent="emit('navigate-down')"
+        class="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white transition hover:bg-white/20 focus:bg-white/30 focus:ring-2 focus:ring-white/50 focus:scale-105 focus:outline-none"
         aria-label="Fechar player"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

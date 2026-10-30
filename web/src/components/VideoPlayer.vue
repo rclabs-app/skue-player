@@ -127,16 +127,15 @@ function retryPlay() {
 }
 
 // Navigation Refs
-const backButtonRef = ref<HTMLElement | null>(null)
+const topBarRef = ref<InstanceType<typeof PlayerTopBar> | null>(null)
+const actionCenterRef = ref<InstanceType<typeof PlayerActionCenter> | null>(null)
 const aspectRatioRef = ref<HTMLElement | null>(null)
-const playButtonRef = ref<HTMLElement | null>(null)
-const ffButtonRef = ref<HTMLElement | null>(null)
 const progressBarRef = ref<HTMLElement | null>(null)
 
-function focusBack() { setTimeout(() => backButtonRef.value?.focus(), 10) }
+function focusBack() { setTimeout(() => topBarRef.value?.focusBack(), 10) }
 function focusProgress() { setTimeout(() => progressBarRef.value?.focus(), 10) }
-function focusPlay() { setTimeout(() => playButtonRef.value?.focus(), 10) }
-function focusFF() { setTimeout(() => ffButtonRef.value?.focus(), 10) }
+function focusPlay() { setTimeout(() => actionCenterRef.value?.focusPlay(), 10) }
+function focusFF() { setTimeout(() => actionCenterRef.value?.focusForward(), 10) }
 function focusAspectRatio() { setTimeout(() => aspectRatioRef.value?.focus(), 10) }
 
 function openRatioMenu() {
@@ -322,7 +321,9 @@ function selectAspectRatio(ratio: string) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' || e.key === 'Backspace') {
+  // Support standard Back as well as Samsung Tizen (10009), LG webOS (461), and XF86Back
+  const isBackKey = e.key === 'Escape' || e.key === 'Backspace' || e.key === 'XF86Back' || e.keyCode === 10009 || e.keyCode === 461
+  if (isBackKey) {
     if (showRatioMenu.value) {
       e.preventDefault()
       closeRatioMenu()
@@ -334,6 +335,48 @@ function handleKeydown(e: KeyboardEvent) {
       wakeControls()
       focusBack()
     }
+    return
+  }
+
+  // Smart TV dedicated remote media keys (Tizen, webOS, Android TV, Fire TV)
+  const isPlayPause = e.key === 'MediaPlayPause' || e.keyCode === 10252 || e.keyCode === 10135 || e.keyCode === 179 || e.keyCode === 85
+  if (isPlayPause) {
+    e.preventDefault()
+    togglePlay()
+    return
+  }
+  const isPlay = e.key === 'MediaPlay' || e.keyCode === 415 || e.keyCode === 126
+  if (isPlay) {
+    e.preventDefault()
+    if (!isPlaying.value) togglePlay()
+    return
+  }
+  const isPause = e.key === 'MediaPause' || e.keyCode === 19 || e.keyCode === 127
+  if (isPause) {
+    e.preventDefault()
+    if (isPlaying.value) togglePlay()
+    return
+  }
+  const isRewind = e.key === 'MediaRewind' || e.keyCode === 412 || e.keyCode === 89
+  if (isRewind) {
+    if (!props.isLive) {
+      e.preventDefault()
+      seek(-10)
+    }
+    return
+  }
+  const isForward = e.key === 'MediaFastForward' || e.keyCode === 417 || e.keyCode === 90
+  if (isForward) {
+    if (!props.isLive) {
+      e.preventDefault()
+      seek(10)
+    }
+    return
+  }
+  const isStop = e.key === 'MediaStop' || e.keyCode === 413 || e.keyCode === 86
+  if (isStop) {
+    e.preventDefault()
+    handleClose()
     return
   }
 
@@ -588,9 +631,18 @@ function initPlayer() {
   const isMp4 = isMp4Url(url)
   const isVod = isVodUrl(url)
 
-  if (isHls && Hls.isSupported()) {
-    showDebug(`[Iniciando] HLS direto: ${url.slice(-50)}`)
-    playWithHls(url)
+  if (isHls) {
+    if (Hls.isSupported()) {
+      showDebug(`[Iniciando] HLS direto: ${url.slice(-50)}`)
+      playWithHls(url)
+    } else if (videoRef.value && (videoRef.value.canPlayType('application/vnd.apple.mpegurl') || videoRef.value.canPlayType('application/x-mpegURL'))) {
+      showDebug(`[Iniciando] HLS nativo SmartTV/Safari: ${url.slice(-50)}`)
+      playNativeWithFallback(url, () => {
+        showError('Erro de Reprodução HLS', 'Não foi possível carregar o vídeo via HLS nativo na Smart TV.')
+      })
+    } else {
+      showError('Formato Não Suportado', 'Seu dispositivo não suporta reprodução HLS.')
+    }
 
   } else if (isTs && mpegts.isSupported()) {
     showDebug(`[Iniciando] TS direto: ${url.slice(-50)}`)
@@ -880,11 +932,13 @@ onUnmounted(() => {
           <!-- Top Bar -->
           <div class="p-3 md:px-6 md:py-4 pointer-events-auto bg-gradient-to-b from-black/70 via-black/20 to-transparent">
             <PlayerTopBar
+              ref="topBarRef"
               :title="title || 'Reproduzindo'"
               :subtitle="isLive ? 'Ao vivo • TV' : 'Filme • Reprodução'"
               :is-live="Boolean(isLive)"
               :current-clock="currentClock"
               @close="handleClose()"
+              @navigate-down="focusPlay"
             />
           </div>
 
@@ -931,10 +985,15 @@ onUnmounted(() => {
             <!-- Row 2: Centralized Refined Player Buttons (Compact & Balanced) -->
             <div class="flex items-center justify-center gap-4 py-0.5">
               <PlayerActionCenter
+                ref="actionCenterRef"
                 :is-live="Boolean(isLive)"
                 :is-playing="isPlaying"
+                @rewind="seek(-10)"
                 @toggle-play="togglePlay"
                 @forward="seek(10)"
+                @navigate-up="focusBack"
+                @navigate-down="focusProgress"
+                @navigate-right="focusAspectRatio"
               />
             </div>
 
@@ -946,6 +1005,8 @@ onUnmounted(() => {
                 ref="progressBarRef"
                 tabindex="0"
                 @keydown.up.prevent="focusPlay"
+                @keydown.left.prevent="seek(-10)"
+                @keydown.right.prevent="seek(10)"
                 @click="seekTo"
                 class="flex-1 h-1.5 bg-white/20 hover:h-2 focus:h-2 outline-none focus:outline-none focus:bg-white/40 focus:ring-2 focus:ring-white/50 focus:scale-[1.01] rounded-full cursor-pointer relative overflow-hidden shadow-inner" 
               >

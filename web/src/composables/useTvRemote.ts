@@ -48,6 +48,7 @@ const KEY_MAP: Record<string, RemoteKey> = {
   // Back / Escape
   Escape: 'BACK',
   Backspace: 'BACK',
+  XF86Back: 'BACK',
 
   // Page navigation (mapped to channel up/down for category scrolling)
   PageUp: 'PAGE_UP',
@@ -161,9 +162,29 @@ function _dispatch(e: KeyboardEvent) {
   }
 }
 
+function _registerTizenKeys() {
+  try {
+    const tizenObj = typeof window !== 'undefined' ? (window as any).tizen : null
+    if (tizenObj?.tvinputdevice?.registerKey) {
+      const keys = [
+        'MediaPlay', 'MediaPause', 'MediaPlayPause', 'MediaStop',
+        'MediaFastForward', 'MediaRewind',
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue'
+      ]
+      for (const k of keys) {
+        try {
+          tizenObj.tvinputdevice.registerKey(k)
+        } catch {}
+      }
+    }
+  } catch {}
+}
+
 function _install() {
   if (_installed) return
   _installed = true
+  _registerTizenKeys()
   window.addEventListener('keydown', _dispatch, { capture: true })
   if (Capacitor.isNativePlatform()) {
     CapApp.addListener('backButton', () => {

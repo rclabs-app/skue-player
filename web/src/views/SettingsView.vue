@@ -8,6 +8,7 @@ import { db } from '../lib/database'
 import { getDeviceMac } from '../utils/device'
 import { EPGService } from '../services/epg.service'
 import { buildPlaylistUrl } from '../utils/playlist'
+import TermsModal from '../components/TermsModal.vue'
 
 const router = useRouter()
 const store = usePlaylistStore()
@@ -15,6 +16,7 @@ const historyStore = useHistoryStore()
 const favoritesStore = useFavoritesStore()
 
 // ── State ─────────────────────────────────────────────────────
+const showTermsModal = ref(false)
 const playlistUrl = ref<string | null>(null)
 const showClearConfirm = ref(false)
 const showHistoryConfirm = ref(false)
@@ -344,9 +346,20 @@ function maskUrl(url: string): string {
                 <span class="text-gray-500 text-xs">Total de conteúdos</span>
                 <span class="text-white font-mono text-xs">{{ totalContent.toLocaleString('pt-BR') }}</span>
               </div>
+              <div class="flex items-center justify-between">
+                <span class="text-gray-500 text-xs">Suporte / DMCA</span>
+                <span class="text-white text-xs font-mono">contato@skue.tv</span>
+              </div>
             </div>
-            <div class="border-t border-gray-800 pt-2 text-[11px] text-gray-600 leading-relaxed">
-              O Skue é um reprodutor local-first. Nenhum conteúdo é armazenado ou transmitido por nossos servidores. O usuário é responsável pela legalidade das fontes utilizadas.
+            <div class="border-t border-gray-800 pt-2 text-[11px] text-gray-500 leading-relaxed space-y-2">
+              <p>O Skue é um reprodutor local-first neutro. Nenhum conteúdo é armazenado ou transmitido por nossos servidores. O usuário é responsável pela legalidade das fontes utilizadas.</p>
+              <button
+                type="button"
+                @click="showTermsModal = true"
+                class="text-primary hover:text-blue-400 underline text-xs font-medium focus:outline-none"
+              >
+                Ler Termos de Uso e Declaração de Neutralidade
+              </button>
             </div>
           </div>
         </section>
@@ -525,6 +538,9 @@ function maskUrl(url: string): string {
       </div>
 
     </div>
+
+    <!-- Terms Modal -->
+    <TermsModal v-model="showTermsModal" />
   </div>
 </template>
 

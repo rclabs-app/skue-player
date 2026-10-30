@@ -3,6 +3,7 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import { usePlaylistStore } from './stores/playlist'
 import { useTvRemote } from './composables/useTvRemote'
+import TermsModal from './components/TermsModal.vue'
 
 const store = usePlaylistStore()
 const route = useRoute()
@@ -199,6 +200,9 @@ onUnmounted(() => {
       <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary mb-6 shadow-[0_0_15px_rgba(37,99,235,0.5)]"></div>
       <div class="text-2xl font-bold tracking-wide text-white">{{ store.processingProgress }}</div>
     </div>
+
+    <!-- Mandatory Legal Terms / Disclaimer Modal -->
+    <TermsModal />
   </div>
 </template>
 

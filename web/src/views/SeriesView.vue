@@ -346,7 +346,8 @@ function extractYear(name?: string): string | null {
             <div class="flex items-center gap-3">
               <button 
                 @click="playSeries(currentHero as SeriesEntry)" 
-                class="flex items-center gap-2 bg-white text-black px-8 py-3 rounded-full font-bold text-sm hover:bg-gray-200 hover:scale-105 active:scale-95 transition-all duration-200 shadow-xl"
+                @keydown.enter.prevent="playSeries(currentHero as SeriesEntry)"
+                class="flex items-center gap-2 bg-white text-black px-8 py-3 rounded-full font-bold text-sm hover:bg-gray-200 hover:scale-105 active:scale-95 focus:scale-105 focus:bg-white focus:ring-4 focus:ring-primary/60 outline-none transition-all duration-200 shadow-xl"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="mr-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                 Saiba mais
@@ -355,10 +356,11 @@ function extractYear(name?: string): string | null {
           </div>
           
           <!-- Dots -->
-          <div v-if="heroItems.length > 1" class="absolute bottom-4 right-8 z-20 flex gap-2 items-center">
+          <div v-if="heroItems.length > 1" class="absolute bottom-4 right-8 z-20 flex gap-2 items-center" data-tv-ignore>
             <button
               v-for="(_, i) in heroItems"
               :key="i"
+              tabindex="-1"
               @click="heroIndex = i"
               :class="['rounded-full transition-all duration-300', i === heroIndex ? 'bg-white w-6 h-2' : 'bg-white/30 hover:bg-white/50 w-2 h-2']"
             />
@@ -367,6 +369,8 @@ function extractYear(name?: string): string | null {
           <!-- Arrows -->
           <button
             v-if="heroItems.length > 1"
+            data-tv-ignore
+            tabindex="-1"
             @click.stop="prevHero"
             class="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm border border-white/10 hover:border-white/30 transition-all"
           >
@@ -374,6 +378,8 @@ function extractYear(name?: string): string | null {
           </button>
           <button
             v-if="heroItems.length > 1"
+            data-tv-ignore
+            tabindex="-1"
             @click.stop="nextHero"
             class="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm border border-white/10 hover:border-white/30 transition-all"
           >

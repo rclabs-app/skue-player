@@ -67,7 +67,7 @@ function getOptimizedLogo(url?: string, isPortrait?: boolean): string | undefine
       />
       <div v-else class="w-full h-full flex items-center justify-center bg-gray-800">
         <span :class="['text-gray-400 font-bold text-center', isPortrait ? 'p-3 text-xs line-clamp-3' : 'text-sm p-2']">
-          {{ isPortrait ? getDisplayName(item) : 'RC' }}
+          {{ isPortrait ? getDisplayName(item) : 'SKUE' }}
         </span>
       </div>
 
