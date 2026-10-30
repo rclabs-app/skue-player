@@ -289,6 +289,11 @@ function play(item: PlaylistItem | SeriesEntry) {
   }
 }
 
+async function onPlayerClose() {
+  activeItem.value = null
+  await historyStore.loadHistory()
+}
+
 function clearData() {
   store.clearPlaylist()
   router.push('/onboarding')
@@ -948,7 +953,7 @@ onRemoteKey('BACK', () => {
       :url="activeItem.url"
       :title="activeItem.name"
       :poster="activeItem.logo"
-      @close="activeItem = null"
+      @close="onPlayerClose"
       @error="errorMsg = $event"
     />
 

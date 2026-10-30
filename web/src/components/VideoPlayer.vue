@@ -41,6 +41,29 @@ const isNativePlatform = computed(() => {
 })
 let nativePollInterval: ReturnType<typeof setInterval> | null = null
 
+const resumeTime = ref(0)
+const hasResumed = ref(false)
+
+function checkResumeTime() {
+  if (!props.id || props.isLive) {
+    resumeTime.value = 0
+    hasResumed.value = true
+    return
+  }
+  const saved = historyStore.getProgress(props.id)
+  if (
+    saved &&
+    saved.currentTime >= 5 &&
+    (!saved.duration || (saved.duration > 0 && (saved.currentTime / saved.duration) < 0.95))
+  ) {
+    resumeTime.value = saved.currentTime
+    hasResumed.value = false
+  } else {
+    resumeTime.value = 0
+    hasResumed.value = true
+  }
+}
+
 function startNativeSync() {
   if (nativePollInterval) clearInterval(nativePollInterval)
   nativePollInterval = setInterval(() => {
@@ -59,8 +82,16 @@ function startNativeSync() {
         isBuffering.value = false
       }
       
+      // If waiting to resume, don't overwrite saved progress with initial 0s
+      if (resumeTime.value > 0 && !hasResumed.value) {
+        if (pos >= resumeTime.value - 2) {
+          hasResumed.value = true
+        }
+        return
+      }
+
       const now = Date.now()
-      if (props.id && now - lastUpdateTime > 5000) {
+      if (props.id && !props.isLive && now - lastUpdateTime > 5000 && pos >= 5) {
         lastUpdateTime = now
         historyStore.updateProgress(
           props.id,
@@ -471,9 +502,22 @@ function playNativeWithFallback(url: string, onFail: () => void) {
   isDestroying = false
 
   let nativeFailed = false
+  const applyNativeResume = () => {
+    if (resumeTime.value > 0 && !hasResumed.value) {
+      try {
+        video.currentTime = resumeTime.value
+        hasResumed.value = true
+      } catch (e) {
+        console.warn('Could not seek native video on load', e)
+      }
+    }
+  }
+
   const cleanup = () => {
     video.removeEventListener('error', onError)
     video.removeEventListener('playing', onPlaying)
+    video.removeEventListener('loadedmetadata', applyNativeResume)
+    video.removeEventListener('canplay', applyNativeResume)
   }
 
   const onError = (e: Event) => {
@@ -487,11 +531,14 @@ function playNativeWithFallback(url: string, onFail: () => void) {
 
   const onPlaying = () => {
     cleanup()
+    applyNativeResume()
     showDebug(`[Native HTML5] Playback iniciado com sucesso!`)
   }
 
   video.addEventListener('error', onError, { once: true })
   video.addEventListener('playing', onPlaying, { once: true })
+  video.addEventListener('loadedmetadata', applyNativeResume, { once: true })
+  video.addEventListener('canplay', applyNativeResume, { once: true })
 
   video.src = url
   video.play().catch(e => {
@@ -513,11 +560,20 @@ function playWithHls(url: string, fallbackUrl: string | null = null, onErrorCall
     enableWorker: true,
     maxBufferLength: 30,
     maxMaxBufferLength: 60,
+    startPosition: resumeTime.value > 0 ? resumeTime.value : -1
   })
   hls.loadSource(url)
   hls.attachMedia(video)
 
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    if (resumeTime.value > 0 && !hasResumed.value) {
+      try {
+        video.currentTime = resumeTime.value
+        hasResumed.value = true
+      } catch (e) {
+        console.warn('Could not seek HLS on manifest parsed', e)
+      }
+    }
     video.play().catch(e => console.error('HLS play prevented', e))
   })
 
@@ -562,10 +618,22 @@ function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () 
 
   let mpegtsErrorFired = false
 
+  const applyMpegtsResume = () => {
+    if (resumeTime.value > 0 && !hasResumed.value) {
+      try {
+        video.currentTime = resumeTime.value
+        hasResumed.value = true
+      } catch (e) {
+        console.warn('Could not seek mpegts on loadedmetadata', e)
+      }
+    }
+  }
+
   const handleMpegtsFailure = (msg: string) => {
     if (mpegtsErrorFired) return
     mpegtsErrorFired = true
     video.removeEventListener('error', onVideoError)
+    video.removeEventListener('loadedmetadata', applyMpegtsResume)
     if (tsPlayer) {
       tsPlayer.destroy()
       tsPlayer = null
@@ -584,6 +652,7 @@ function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () 
   }
 
   video.addEventListener('error', onVideoError, { once: true })
+  video.addEventListener('loadedmetadata', applyMpegtsResume, { once: true })
   tsPlayer.attachMediaElement(video)
   tsPlayer.load()
 
@@ -719,8 +788,16 @@ function handleTimeUpdate(e: Event) {
   currentTime.value = video.currentTime
   duration.value = video.duration || 0
 
+  if (resumeTime.value > 0 && !hasResumed.value) {
+    if (video.currentTime >= resumeTime.value - 2) {
+      hasResumed.value = true
+    } else {
+      return
+    }
+  }
+
   const now = Date.now()
-  if (props.id && now - lastUpdateTime > 5000) {
+  if (props.id && !props.isLive && now - lastUpdateTime > 5000 && video.currentTime >= 5) {
     lastUpdateTime = now
     historyStore.updateProgress(
       props.id,
@@ -734,12 +811,12 @@ function stopPlayback() {
   if (isDestroying) return
   isDestroying = true
 
-  // Save final progress for browser playback
-  if (!isNativePlatform.value && videoRef.value && props.id && videoRef.value.currentTime > 0) {
+  // Save final progress for all platforms (browser & Android native)
+  if (props.id && !props.isLive && currentTime.value >= 5) {
     historyStore.updateProgress(
       props.id,
-      videoRef.value.currentTime,
-      videoRef.value.duration || 0
+      currentTime.value,
+      duration.value || 0
     )
   }
 
@@ -806,6 +883,16 @@ onMounted(() => {
   ;(window as any).onNativePlayerPrepared = () => {
     isBuffering.value = false
     isPlaying.value = true
+    if (resumeTime.value > 0 && !hasResumed.value) {
+      try {
+        const np = (window as any).NativePlayer
+        np.seekNativeVideo(resumeTime.value * 1000)
+        currentTime.value = resumeTime.value
+        hasResumed.value = true
+      } catch (e) {
+        console.error('Failed to seek NativePlayer on prepare', e)
+      }
+    }
     wakeControls()
   }
   ;(window as any).onNativePlayerRenderingStart = () => {
@@ -823,6 +910,7 @@ onMounted(() => {
     handleClose()
   }
 
+  checkResumeTime()
   initPlayer()
   wakeControls()
   
@@ -848,7 +936,8 @@ onMounted(() => {
 
 let backListener: any = null
 
-watch(() => props.url, () => {
+watch(() => [props.url, props.id], () => {
+  checkResumeTime()
   initPlayer()
 })
 

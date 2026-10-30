@@ -154,6 +154,8 @@ function getEpisodeProgress(epId: string) {
 
 const tmdbMetadata = ref<TMDBMetadata | null>(null)
 
+const activePlaybackEpisode = ref<PlaylistItem | null>(null)
+
 onMounted(async () => {
   if (!store.isLoaded) {
     router.push('/onboarding')
@@ -168,7 +170,21 @@ onMounted(async () => {
     
     let found = await db.getPlaylistItemById(decodedId)
     
-    if (!found) {
+    if (found && found.type === 'series' && found.serieKey) {
+      // If the resolved item is an episode, load the parent series metadata
+      const seriesEntry = await db.getSeriesByKey(found.serieKey)
+      if (seriesEntry) {
+        found = {
+          id: seriesEntry.id,
+          name: seriesEntry.displayName,
+          url: '',
+          group: seriesEntry.group,
+          logo: seriesEntry.logo || found.logo,
+          type: 'series' as const,
+          serieKey: seriesEntry.serieKey
+        }
+      }
+    } else if (!found) {
       const foundSeries = await db.getSeriesById(decodedId)
       if (foundSeries) {
         found = {
@@ -220,11 +236,14 @@ function goBack() {
 
 function startPlayback() {
   if (item.value?.type === 'series') {
-    if (nextEpisodeToWatch.value) {
-      item.value = nextEpisodeToWatch.value
-      const info = parseEpisodeInfo(item.value.name)
+    const ep = nextEpisodeToWatch.value
+    if (ep) {
+      activePlaybackEpisode.value = ep
+      const info = parseEpisodeInfo(ep.name)
       activeSeason.value = info.season
     }
+  } else {
+    activePlaybackEpisode.value = null
   }
   isPlaying.value = true
 }
@@ -248,10 +267,16 @@ function parseEpisodeInfo(name: string) {
 }
 
 function playEpisode(ep: PlaylistItem) {
-  item.value = ep
+  activePlaybackEpisode.value = ep
   const info = parseEpisodeInfo(ep.name)
   activeSeason.value = info.season
   isPlaying.value = true
+}
+
+async function onPlayerClose() {
+  isPlaying.value = false
+  activePlaybackEpisode.value = null
+  await historyStore.loadHistory()
 }
 
 function focusPlayButton() {
@@ -502,11 +527,11 @@ function handleKeydown(e: KeyboardEvent) {
     <!-- Player Overlay -->
     <VideoPlayer
       v-if="isPlaying && item"
-      :id="item.id"
-      :url="item.url"
-      :title="item.name"
+      :id="activePlaybackEpisode ? activePlaybackEpisode.id : item.id"
+      :url="activePlaybackEpisode ? activePlaybackEpisode.url : item.url"
+      :title="activePlaybackEpisode ? activePlaybackEpisode.name : item.name"
       :poster="item.logo"
-      @close="isPlaying = false"
+      @close="onPlayerClose"
       @error="errorMsg = $event"
     />
   </div>

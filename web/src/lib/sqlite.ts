@@ -517,6 +517,24 @@ export class SQLiteDatabaseService {
     }
   }
 
+  async getSeriesByKey(key: string): Promise<SeriesEntry | null> {
+    if (!this.db) await this.init()
+    const rows = this.db!.exec(
+      'SELECT id, display_name, group_title, logo, serie_key, episode_count FROM series_index WHERE serie_key = ? LIMIT 1',
+      [key]
+    )
+    if (rows.length === 0 || rows[0].values.length === 0) return null
+    const row = rows[0].values[0]
+    return {
+      id: row[0] as string,
+      displayName: row[1] as string,
+      group: row[2] as string,
+      logo: row[3] as string | undefined,
+      serieKey: row[4] as string,
+      episodeCount: row[5] as number,
+    }
+  }
+
   async getAllSeriesIds(): Promise<Set<string>> {
     if (!this.db) await this.init()
     const rows = this.db!.exec('SELECT id FROM series_index')
