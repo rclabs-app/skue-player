@@ -58,6 +58,13 @@ export const usePlaylistStore = defineStore('playlist', () => {
   }
 
   // ─── Device State ──────────────────────────────────────────────────────────
+  interface DeviceLicense {
+    status: 'trial' | 'active' | 'expired' | 'blocked'
+    is_licensed: boolean
+    days_remaining: number
+    trial_ends_at?: string | null
+  }
+
   interface DevicePlaylist {
     id: number
     name: string
@@ -70,10 +77,18 @@ export const usePlaylistStore = defineStore('playlist', () => {
   
   const deviceMac = ref('')
   const devicePlaylists = shallowRef<DevicePlaylist[]>([])
+  const deviceLicense = ref<DeviceLicense>({
+    status: 'trial',
+    is_licensed: true,
+    days_remaining: 7,
+    trial_ends_at: null
+  })
 
   async function initialize() {
     try {
       deviceMac.value = await getDeviceMac()
+      await syncHandshake().catch(err => console.warn('Handshake sync background failed:', err))
+
       const loaded = await db.getConfig('playlist_loaded')
       if (loaded) {
           await loadFromDb()
@@ -94,7 +109,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     }
   }
 
-  async function syncHandshake(): Promise<{ device_key: string; key_expires_at: string; playlists_count: number }> {
+  async function syncHandshake(): Promise<{ device_key: string; key_expires_at: string; playlists_count: number; license?: DeviceLicense }> {
     const response = await fetch(getApiUrl('/api/v1/devices/handshake'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -103,10 +118,14 @@ export const usePlaylistStore = defineStore('playlist', () => {
     if (!response.ok) throw new Error('Handshake failed')
     const data = await response.json()
     if (data.device_token) await db.saveConfig('device_token', data.device_token)
+    if (data.license) {
+      deviceLicense.value = data.license
+    }
     return {
       device_key: data.device_key,
       key_expires_at: data.key_expires_at,
-      playlists_count: data.playlists_count
+      playlists_count: data.playlists_count,
+      license: data.license
     }
   }
 
@@ -118,6 +137,9 @@ export const usePlaylistStore = defineStore('playlist', () => {
       const response = await fetch(getApiUrl(`/api/v1/devices/${deviceMac.value}/config`), { headers })
       if (!response.ok) throw new Error('Failed to fetch remote config')
       const data = await response.json()
+      if (data.license) {
+        deviceLicense.value = data.license
+      }
       devicePlaylists.value = data.playlists || []
       return devicePlaylists.value
     } catch (e) {
@@ -409,6 +431,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     epgSyncStatus,
     deviceMac,
     devicePlaylists,
+    deviceLicense,
     getSeriesEpisodes,
     isSeriesId,
     initialize,

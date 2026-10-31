@@ -387,6 +387,40 @@ function maskUrl(url: string): string {
               </button>
             </div>
 
+            <!-- Status da Licença -->
+            <div class="bg-black/30 border border-gray-800/80 rounded-xl p-3 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <div 
+                  :class="[
+                    'w-2.5 h-2.5 rounded-full animate-pulse',
+                    store.deviceLicense.status === 'active' ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]' :
+                    store.deviceLicense.status === 'trial' ? 'bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.6)]' : 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.6)]'
+                  ]"
+                ></div>
+                <div>
+                  <span class="text-[10px] text-gray-500 uppercase tracking-wider font-semibold block">Licença do Software</span>
+                  <span class="text-xs font-bold text-white">
+                    {{ 
+                      store.deviceLicense.status === 'active' 
+                        ? (store.deviceLicense.days_remaining > 365 ? 'Licença Vitalícia' : `Licença Ativa (${store.deviceLicense.days_remaining} dias restantes)`)
+                        : store.deviceLicense.status === 'trial' 
+                          ? `Período de Degustação (${store.deviceLicense.days_remaining} dias restantes)`
+                          : 'Licença Expirada / Suspensa'
+                    }}
+                  </span>
+                </div>
+              </div>
+              <span 
+                :class="[
+                  'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border',
+                  store.deviceLicense.status === 'active' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                  store.deviceLicense.status === 'trial' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
+                ]"
+              >
+                {{ store.deviceLicense.status === 'active' ? 'Ativo' : store.deviceLicense.status === 'trial' ? 'Trial' : 'Expirado' }}
+              </span>
+            </div>
+
             <!-- List of remote playlists -->
             <div class="border-t border-gray-800/80 pt-3">
               <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-semibold">Listas no Portal</p>

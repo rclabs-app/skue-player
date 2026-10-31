@@ -4,6 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 import { usePlaylistStore } from './stores/playlist'
 import { useTvRemote } from './composables/useTvRemote'
 import TermsModal from './components/TermsModal.vue'
+import LicenseExpiredModal from './components/LicenseExpiredModal.vue'
 
 const store = usePlaylistStore()
 const route = useRoute()
@@ -203,6 +204,9 @@ onUnmounted(() => {
 
     <!-- Mandatory Legal Terms / Disclaimer Modal -->
     <TermsModal />
+
+    <!-- License Enforcement Modal (Trial Expirado / Bloqueado) -->
+    <LicenseExpiredModal />
   </div>
 </template>
 
