@@ -26,12 +26,6 @@ class PaymentController extends Controller
             'currency' => 'brl',
             'duration_days' => 365,
         ],
-        'lifetime' => [
-            'name' => 'Skue Player - Licença Vitalícia (Perpétua)',
-            'amount_cents' => 4990, // R$ 49,90
-            'currency' => 'brl',
-            'duration_days' => null,
-        ],
     ];
 
     /**
@@ -42,7 +36,7 @@ class PaymentController extends Controller
     {
         $request->validate([
             'mac' => 'required|string|max:50',
-            'plan' => 'required|in:yearly,lifetime',
+            'plan' => 'required|in:yearly',
             'customer_email' => 'nullable|email',
             'customer_name' => 'nullable|string|max:100',
         ]);

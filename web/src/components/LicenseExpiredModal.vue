@@ -25,7 +25,7 @@ const portalCheckoutUrl = computed(() => {
   return `${base}/portal?mac=${encodeURIComponent(mac.value)}&action=activate`
 })
 
-async function handleStartCheckout(plan: 'yearly' | 'lifetime') {
+async function handleStartCheckout(plan: 'yearly') {
   if (isProcessingCheckout.value) return
   isProcessingCheckout.value = true
   checkoutError.value = ''
@@ -99,38 +99,24 @@ onRemoteKey('OK', () => {
       </p>
 
       <!-- Plan options (se não estiver bloqueado) -->
-      <div v-if="!isBlocked" class="grid grid-cols-2 gap-3 w-full mb-5">
+      <div v-if="!isBlocked" class="w-full mb-5">
         <!-- Plano Anual -->
         <button
           @click="handleStartCheckout('yearly')"
           :disabled="isProcessingCheckout"
-          class="bg-black/40 hover:bg-black/60 border border-sky-500/40 hover:border-sky-400 rounded-xl p-4 text-left transition-all group flex flex-col justify-between"
+          class="w-full bg-black/40 hover:bg-black/60 border border-sky-500/40 hover:border-sky-400 rounded-xl p-4 transition-all group flex items-center justify-between shadow-lg shadow-sky-500/10"
         >
-          <div>
-            <span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider block mb-1">Mais Popular</span>
-            <div class="text-sm font-bold text-white group-hover:text-sky-300">Licença 1 Ano</div>
-            <div class="text-xl font-extrabold text-white mt-1">R$ 19,90</div>
+          <div class="text-left">
+            <span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider block mb-0.5">Plano Recomendado</span>
+            <div class="text-base font-bold text-white group-hover:text-sky-300">Licença Anual (1 Ano de Acesso)</div>
+            <div class="text-xs text-gray-400">Ativação imediata para este dispositivo</div>
           </div>
-          <div class="mt-3 text-[11px] text-gray-400 flex items-center gap-1">
-            <span>Pagar c/ Cartão</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
-          </div>
-        </button>
-
-        <!-- Plano Vitalício -->
-        <button
-          @click="handleStartCheckout('lifetime')"
-          :disabled="isProcessingCheckout"
-          class="bg-black/40 hover:bg-black/60 border border-amber-500/40 hover:border-amber-400 rounded-xl p-4 text-left transition-all group flex flex-col justify-between"
-        >
-          <div>
-            <span class="text-[10px] uppercase font-bold text-amber-400 tracking-wider block mb-1">Acesso Perpétuo</span>
-            <div class="text-sm font-bold text-white group-hover:text-amber-300">Licença Vitalícia</div>
-            <div class="text-xl font-extrabold text-white mt-1">R$ 49,90</div>
-          </div>
-          <div class="mt-3 text-[11px] text-gray-400 flex items-center gap-1">
-            <span>Pagar c/ Cartão</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          <div class="text-right">
+            <div class="text-2xl font-extrabold text-white">R$ 19,90</div>
+            <div class="mt-1 text-[11px] text-sky-400 font-semibold flex items-center justify-end gap-1">
+              <span>Pagar c/ Cartão</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+            </div>
           </div>
         </button>
       </div>
