@@ -334,13 +334,6 @@ function extractYear(name: string): string | null {
 
     <!-- ── Content Area ── -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- Top bar -->
-      <div class="flex items-center justify-between px-6 py-3 border-b border-gray-800/40 shrink-0">
-        <div>
-          <h2 class="text-white font-bold text-lg">{{ activeGroup === 'ALL' ? 'Todos os Filmes' : activeGroup }}</h2>
-        </div>
-      </div>
-
       <!-- Error toast -->
       <div v-if="errorMsg" class="mx-6 mt-3 bg-red-900/80 border border-red-700 text-red-200 px-4 py-3 rounded-lg flex justify-between items-center text-sm shrink-0">
         <span>{{ errorMsg }}</span>
@@ -350,7 +343,7 @@ function extractYear(name: string): string | null {
       <!-- Fixed Compact Hero Banner (atualiza ao passar o mouse ou dar foco nos filmes) -->
       <div 
         v-if="currentHero" 
-        class="mx-6 mt-4 h-48 min-h-[192px] max-h-[192px] bg-gray-900/90 border border-gray-800 rounded-2xl flex items-center gap-6 shrink-0 shadow-2xl relative overflow-hidden group"
+        class="mx-6 mt-5 h-60 min-h-[240px] max-h-[240px] bg-gray-900/90 border border-gray-800 rounded-2xl flex items-center gap-7 shrink-0 shadow-2xl relative overflow-hidden group"
         @mouseenter="stopHeroTimer"
         @mouseleave="startHeroTimer"
       >
@@ -369,7 +362,7 @@ function extractYear(name: string): string | null {
         </div>
 
         <!-- Poster Thumbnail -->
-        <div class="w-28 h-40 ml-5 bg-black/60 rounded-xl flex-shrink-0 border border-gray-700/60 flex items-center justify-center relative z-10 overflow-hidden shadow-xl">
+        <div class="w-36 h-52 ml-6 bg-black/60 rounded-xl flex-shrink-0 border border-gray-700/60 flex items-center justify-center relative z-10 overflow-hidden shadow-xl">
           <img 
             v-if="currentHero.logo" 
             :src="currentHero.logo" 

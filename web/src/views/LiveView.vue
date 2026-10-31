@@ -271,25 +271,19 @@ function getProgress(prog: EPGProgram) {
 
     <!-- ── Content Area ── -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800/40 shrink-0">
-        <div>
-          <h2 class="text-white font-bold text-lg">{{ activeGroup === 'ALL' ? 'Todos os Canais' : activeGroup }}</h2>
-        </div>
-      </div>
-
       <div v-if="errorMsg" class="mx-6 mt-3 bg-red-900/80 border border-red-700 text-red-200 px-4 py-3 rounded-lg flex justify-between items-center text-sm shrink-0">
         <span>{{ errorMsg }}</span>
         <button @click="errorMsg = ''" class="ml-4 hover:text-white">✕</button>
       </div>
 
       <!-- EPG BANNER (Now Playing) -->
-      <div v-if="focusedChannel" class="mx-6 mt-4 p-6 min-h-[190px] bg-gray-900/90 border border-gray-800 rounded-2xl flex items-center gap-7 shrink-0 shadow-2xl relative overflow-hidden">
+      <div v-if="focusedChannel" class="mx-6 mt-5 p-6 min-h-[220px] bg-gray-900/90 border border-gray-800 rounded-2xl flex items-center gap-7 shrink-0 shadow-2xl relative overflow-hidden">
         <!-- Background Blur of Channel Logo -->
         <div class="absolute inset-0 opacity-15 blur-3xl z-0 pointer-events-none">
           <img v-if="focusedChannel.logo" :src="focusedChannel.logo" class="w-full h-full object-cover" />
         </div>
         
-        <div class="w-36 h-36 bg-black/60 rounded-xl flex-shrink-0 border border-gray-700/60 flex items-center justify-center relative z-10 overflow-hidden shadow-xl p-2">
+        <div class="w-40 h-40 bg-black/60 rounded-xl flex-shrink-0 border border-gray-700/60 flex items-center justify-center relative z-10 overflow-hidden shadow-xl p-2.5">
           <img v-if="focusedChannel.logo" :src="focusedChannel.logo" class="w-full h-full object-contain drop-shadow" />
           <svg v-else xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
         </div>
