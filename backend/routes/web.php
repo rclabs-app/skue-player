@@ -7,6 +7,17 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Download direto do APK para instalação em Smart TVs (via app Downloader)
+Route::get('/download/skue-tv.apk', function () {
+    $apkPath = base_path('../download/skue-tv.apk');
+    if (!file_exists($apkPath)) {
+        abort(404, 'Arquivo de instalação não encontrado.');
+    }
+    return response()->download($apkPath, 'skue-tv.apk', [
+        'Content-Type' => 'application/vnd.android.package-archive',
+    ]);
+});
+
 // Portal Routes
 Route::prefix('portal')->group(function () {
     Route::get('/', [PortalController::class, 'showLoginForm'])->name('portal.login');
