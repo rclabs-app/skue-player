@@ -19,6 +19,32 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('hls.js')) {
+              return 'vendor-hls'
+            }
+            if (id.includes('mpegts.js')) {
+              return 'vendor-mpegts'
+            }
+            if (id.includes('sql.js')) {
+              return 'vendor-sql'
+            }
+            if (id.includes('vue') || id.includes('pinia')) {
+              return 'vendor-vue'
+            }
+            if (id.includes('@capacitor')) {
+              return 'vendor-capacitor'
+            }
+          }
+        },
+      },
+    },
+  },
   test: {
     environment: 'happy-dom',
     globals: true,
