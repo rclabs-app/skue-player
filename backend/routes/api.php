@@ -47,6 +47,12 @@ Route::prefix('v1')->group(function () {
         Route::post('/{code}/consume',      [PairingController::class, 'consume']);
     });
 
+    // Pagamentos e Webhooks (Stripe Checkout)
+    Route::prefix('payments')->middleware('throttle:30,1')->group(function () {
+        Route::post('/checkout-session',    [\App\Http\Controllers\Api\PaymentController::class, 'createCheckoutSession']);
+    });
+    Route::post('/webhooks/stripe',         [\App\Http\Controllers\Api\PaymentController::class, 'handleWebhook']);
+
     Route::post('/proxy', function (\Illuminate\Http\Request $request) {
         $url = $request->input('url');
         if (!$url) return response()->json(['error' => 'URL required'], 400);

@@ -26,4 +26,13 @@ Route::prefix('portal')->group(function () {
     Route::get('/dashboard', [PortalController::class, 'dashboard'])->name('portal.dashboard');
     Route::post('/playlists', [PortalController::class, 'storePlaylist'])->name('portal.playlists.store');
     Route::delete('/playlists/{id}', [PortalController::class, 'destroyPlaylist'])->name('portal.playlists.destroy');
+
+    // Telas de Retorno do Stripe Checkout
+    Route::get('/payment/success', function () {
+        return view('portal.payment_success');
+    })->name('portal.payment.success');
+
+    Route::get('/payment/cancel', function () {
+        return redirect()->route('portal.login')->with('error', 'O pagamento foi cancelado.');
+    })->name('portal.payment.cancel');
 });
