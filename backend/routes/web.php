@@ -9,7 +9,10 @@ Route::get('/', function () {
 
 // Download direto do APK para instalação em Smart TVs (via app Downloader)
 Route::get('/download/skue-tv.apk', function () {
-    $apkPath = base_path('../download/skue-tv.apk');
+    $apkPath = public_path('download/skue-tv.apk');
+    if (!file_exists($apkPath)) {
+        $apkPath = base_path('../download/skue-tv.apk');
+    }
     if (!file_exists($apkPath)) {
         abort(404, 'Arquivo de instalação não encontrado.');
     }
