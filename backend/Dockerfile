@@ -5,9 +5,12 @@ RUN apt-get update && apt-get install -y \
     unzip \
     sqlite3 \
     libsqlite3-dev \
+    libicu-dev \
+    libzip-dev \
     nodejs \
     npm \
-    && docker-php-ext-install pdo pdo_sqlite pdo_mysql \
+    && docker-php-ext-configure intl \
+    && docker-php-ext-install pdo pdo_sqlite pdo_mysql intl zip \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
