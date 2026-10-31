@@ -168,7 +168,7 @@ onUnmounted(() => {
           </span>
         </router-link>
 
-        <!-- Guide (EPG) -->
+        <!-- Guide (EPG) - temporariamente desabilitado
         <router-link
           to="/guide"
           class="tv-nav-icon relative flex items-center justify-center w-11 h-11 rounded-full text-gray-500 hover:text-gray-300 transition-all duration-300"
@@ -177,6 +177,7 @@ onUnmounted(() => {
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
         </router-link>
+        -->
       </nav>
 
       <div class="mt-auto mb-4">

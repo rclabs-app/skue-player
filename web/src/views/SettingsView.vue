@@ -6,7 +6,6 @@ import { useHistoryStore } from '../stores/history'
 import { useFavoritesStore } from '../stores/favorites'
 import { db } from '../lib/database'
 import { getDeviceMac } from '../utils/device'
-import { EPGService } from '../services/epg.service'
 import { buildPlaylistUrl } from '../utils/playlist'
 import TermsModal from '../components/TermsModal.vue'
 
@@ -23,11 +22,11 @@ const showHistoryConfirm = ref(false)
 const clearingHistory = ref(false)
 const notification = ref<{ msg: string; type: 'success' | 'error' } | null>(null)
 
-// EPG State
+// EPG State (desabilitado temporariamente)
 const epgUrl = ref<string | null>(null)
-const showEpgUrlInput = ref(false)
-const newEpgUrl = ref('')
-const epgUpdateError = ref('')
+// const showEpgUrlInput = ref(false)
+// const newEpgUrl = ref('')
+// const epgUpdateError = ref('')
 
 // Remote Activation State
 const deviceMac = ref('')
@@ -46,8 +45,8 @@ const totalLive = ref(0)
 const totalContent = computed(
   () => totalMovies.value + totalSeries.value + totalLive.value
 )
-const isSyncingEpg = computed(() => store.isProcessing || EPGService.isSyncing)
-const epgSyncStatus = computed(() => store.epgSyncStatus)
+// const isSyncingEpg = computed(() => store.isProcessing || EPGService.isSyncing)
+// const epgSyncStatus = computed(() => store.epgSyncStatus)
 
 const appVersion = '0.3.0'
 
@@ -73,47 +72,9 @@ onMounted(async () => {
 })
 
 // ── Actions ───────────────────────────────────────────────────
-async function syncCurrentEpg() {
-  if (!epgUrl.value) return
-  try {
-    await store.syncEpg(epgUrl.value)
-    showNotification('EPG sincronizado com sucesso!')
-  } catch (e) {
-    showNotification('Falha ao sincronizar EPG.', 'error')
-  }
-}
-
-async function updateEpgUrl() {
-  const urlVal = newEpgUrl.value.trim()
-  epgUpdateError.value = ''
-  if (!urlVal) {
-    epgUpdateError.value = 'Informe uma URL de EPG válida.'
-    return
-  }
-  try {
-    await store.syncEpg(urlVal)
-    await db.saveConfig('epg_url', urlVal)
-    epgUrl.value = urlVal
-    showEpgUrlInput.value = false
-    newEpgUrl.value = ''
-    showNotification('Guia EPG configurado e sincronizado!')
-  } catch (e: any) {
-    epgUpdateError.value = e.message || 'Falha ao sincronizar o EPG desta URL.'
-  }
-}
-
-async function clearEpg() {
-  try {
-    await db.saveConfig('epg_url', null)
-    await db.clearEpg()
-    epgUrl.value = null
-    store.epgUrl = null
-    store.epgSyncStatus = ''
-    showNotification('Guia EPG removido!')
-  } catch (e) {
-    showNotification('Erro ao remover EPG.', 'error')
-  }
-}
+// async function syncCurrentEpg() { ... }
+// async function updateEpgUrl() { ... }
+// async function clearEpg() { ... }
 
 async function syncPortal() {
   isSyncingPortal.value = true
@@ -175,16 +136,16 @@ function clearAllData() {
   router.push('/onboarding')
 }
 
-function maskUrl(url: string): string {
-  try {
-    const u = new URL(url)
-    if (u.password) u.password = '***'
-    if (u.username) u.username = u.username.substring(0, 3) + '***'
-    return u.toString()
-  } catch {
-    return url.length > 60 ? url.substring(0, 60) + '...' : url
-  }
-}
+// function maskUrl(url: string): string {
+//   try {
+//     const u = new URL(url)
+//     if (u.password) u.password = '***'
+//     if (u.username) u.username = u.username.substring(0, 3) + '***'
+//     return u.toString()
+//   } catch {
+//     return url.length > 60 ? url.substring(0, 60) + '...' : url
+//   }
+// }
 </script>
 
 <template>
@@ -247,80 +208,14 @@ function maskUrl(url: string): string {
       <div class="flex flex-col gap-4 min-h-0">
 
 
-        <!-- Guia de Programação (EPG) -->
+        <!-- Guia de Programação (EPG) - Temporariamente desabilitado
         <section class="flex flex-col min-h-0">
           <h2 class="settings-section-title">Guia de Programação (EPG)</h2>
           <div class="settings-card flex flex-col gap-3">
-            <!-- URL atual -->
-            <div>
-              <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1 font-semibold">URL do Guia (XMLTV)</p>
-              <div v-if="epgUrl" class="flex items-center gap-2 bg-black/30 rounded-lg px-3 py-2 border border-gray-700/60">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-500 shrink-0"><path d="M4 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M20 5A16 16 0 0 0 4 5"/><path d="M15.5 9.5A11 11 0 0 0 4 9.5"/><path d="M11 14A6 6 0 0 0 4 14"/></svg>
-                <code class="text-gray-300 text-[11px] break-all flex-1 font-mono leading-tight">{{ maskUrl(epgUrl) }}</code>
-              </div>
-              <div v-else class="text-gray-500 text-xs italic">
-                Nenhuma URL de EPG configurada.
-              </div>
-            </div>
-
-            <!-- Status de Sincronização -->
-            <div v-if="epgSyncStatus" class="bg-black/20 rounded-lg p-2.5 border border-gray-800/40">
-              <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5 font-semibold">Status de Sincronização</p>
-              <p class="text-gray-300 text-xs flex items-center gap-2">
-                <span v-if="isSyncingEpg" class="w-3.5 h-3.5 border-2 border-gray-600 border-t-primary rounded-full animate-spin shrink-0"></span>
-                {{ epgSyncStatus }}
-              </p>
-            </div>
-
-            <!-- Ações -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                v-if="epgUrl && !store.isProcessing"
-                @click="syncCurrentEpg"
-                :disabled="isSyncingEpg"
-                class="settings-btn-primary"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :class="['shrink-0', isSyncingEpg ? 'animate-spin' : '']"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
-                {{ isSyncingEpg ? 'Atualizando...' : 'Atualizar Guia' }}
-              </button>
-              <button
-                v-if="!showEpgUrlInput"
-                @click="showEpgUrlInput = true; newEpgUrl = epgUrl || ''"
-                class="settings-btn-secondary"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4Z"/></svg>
-                {{ epgUrl ? 'Trocar URL EPG' : 'Configurar EPG' }}
-              </button>
-              <button
-                v-if="epgUrl && !showEpgUrlInput"
-                @click="clearEpg"
-                class="settings-btn-danger"
-              >
-                Remover Guia
-              </button>
-            </div>
-
-            <!-- Input nova URL EPG -->
-            <div v-if="showEpgUrlInput" class="mt-2 space-y-2">
-              <input
-                v-model="newEpgUrl"
-                type="url"
-                placeholder="http://servidor.com/epg.xml"
-                class="w-full bg-black/30 border border-gray-700 rounded-lg px-3 py-2 text-white text-xs placeholder-gray-600 focus:border-primary focus:outline-none transition-colors"
-                @keyup.enter="updateEpgUrl"
-              />
-              <p v-if="epgUpdateError" class="text-red-400 text-[11px]">{{ epgUpdateError }}</p>
-              <div class="flex gap-2">
-                <button @click="updateEpgUrl" :disabled="isSyncingEpg" class="settings-btn-primary">
-                  {{ isSyncingEpg ? 'Carregando...' : 'Confirmar' }}
-                </button>
-                <button @click="showEpgUrlInput = false; epgUpdateError = ''" class="settings-btn-secondary">
-                  Cancelar
-                </button>
-              </div>
-            </div>
+            ...
           </div>
         </section>
+        -->
 
         <!-- Sobre o Skue -->
         <section class="shrink-0">

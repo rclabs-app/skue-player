@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import GuideView from '../views/GuideView.vue'
 import { usePlaylistStore } from '../stores/playlist'
 
 // Router configuration
@@ -51,7 +50,7 @@ const router = createRouter({
     {
       path: '/guide',
       name: 'guide',
-      component: GuideView
+      redirect: '/live'
     },
     {
       path: '/details/:id',
