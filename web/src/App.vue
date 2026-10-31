@@ -104,9 +104,22 @@ onUnmounted(() => {
       data-tv-zone="sidebar"
     >
       
-      <!-- Top Logo -->
-      <div class="mb-8 flex items-center justify-center">
-        <img src="/favicon.svg" alt="Skue" class="w-10 h-10 rounded-xl shadow-lg shadow-blue-500/20 hover:scale-105 transition-transform" />
+      <!-- Top Logo / Brandmark -->
+      <div class="mb-8 flex items-center justify-center w-full px-2">
+        <router-link to="/" class="group flex flex-col items-center justify-center transition-transform hover:scale-105 active:scale-95 focus:outline-none" title="Skue Player">
+          <div class="relative flex items-center justify-center">
+            <!-- Ambient Glow -->
+            <div class="absolute -inset-1 bg-gradient-to-r from-sky-500 to-indigo-600 rounded-2xl blur-md opacity-40 group-hover:opacity-80 transition duration-500"></div>
+            <!-- Wordmark Badge -->
+            <div class="relative w-12 h-12 rounded-xl bg-gradient-to-b from-[#16202c] to-[#0b1016] border border-sky-500/30 flex items-center justify-center shadow-xl">
+              <span class="font-extrabold text-sm tracking-wider bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-500 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(14,165,233,0.5)]">
+                SKUE
+              </span>
+            </div>
+          </div>
+          <!-- Subtitle Wave Pip -->
+          <div class="w-4 h-0.5 mt-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 shadow-[0_0_6px_rgba(56,189,248,0.8)]"></div>
+        </router-link>
       </div>
       
       <nav class="flex flex-col gap-6 w-full items-center">
