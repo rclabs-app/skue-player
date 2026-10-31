@@ -30,10 +30,11 @@ function getOptimizedLogo(url?: string, isPortrait?: boolean): string | undefine
     return url;
   }
   
-  const w = isPortrait ? 240 : 320;
-  const h = isPortrait ? 360 : 180;
+  const w = isPortrait ? 240 : 360;
+  const h = isPortrait ? 360 : 202;
   
-  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=${w}&h=${h}&output=webp&q=70&fit=cover`;
+  // fit=contain garante que a capa inteira apareça sem cortes
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=${w}&h=${h}&output=webp&q=75&fit=contain`;
 }
 </script>
 
@@ -49,7 +50,7 @@ function getOptimizedLogo(url?: string, isPortrait?: boolean): string | undefine
     <!-- Image / Thumbnail Container -->
     <div 
       :class="[
-        'relative overflow-hidden bg-gray-900 rounded-md transition-all duration-200 flex items-center justify-center',
+        'relative overflow-hidden bg-gray-900/90 rounded-md transition-all duration-200 flex items-center justify-center border border-gray-800/60 group-hover:border-primary/50 group-focus:border-primary',
         isPortrait ? 'aspect-[2/3] w-full' : 'aspect-video w-full'
       ]"
     >
@@ -60,7 +61,7 @@ function getOptimizedLogo(url?: string, isPortrait?: boolean): string | undefine
         decoding="async"
         :class="[
           'max-w-full max-h-full transition-all duration-300 group-hover:scale-105 group-focus:scale-105',
-          isPortrait ? 'w-full h-full object-cover' : (item.type === 'live' ? 'w-full h-full object-cover' : 'object-contain p-2 opacity-85 group-hover:opacity-100 group-focus:opacity-100'),
+          isPortrait ? 'w-full h-full object-cover' : 'w-full h-full object-contain p-1.5',
           progress !== undefined && isPortrait ? 'h-[calc(100%-4px)]' : ''
         ]"
         @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"

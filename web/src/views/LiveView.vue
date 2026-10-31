@@ -283,19 +283,19 @@ function getProgress(prog: EPGProgram) {
       </div>
 
       <!-- EPG BANNER (Now Playing) -->
-      <div v-if="focusedChannel" class="mx-6 mt-4 p-5 bg-gray-900/80 border border-gray-800 rounded-xl flex gap-6 shrink-0 shadow-2xl relative overflow-hidden">
+      <div v-if="focusedChannel" class="mx-6 mt-4 p-6 min-h-[190px] bg-gray-900/90 border border-gray-800 rounded-2xl flex items-center gap-7 shrink-0 shadow-2xl relative overflow-hidden">
         <!-- Background Blur of Channel Logo -->
-        <div class="absolute inset-0 opacity-10 blur-2xl z-0 pointer-events-none">
+        <div class="absolute inset-0 opacity-15 blur-3xl z-0 pointer-events-none">
           <img v-if="focusedChannel.logo" :src="focusedChannel.logo" class="w-full h-full object-cover" />
         </div>
         
-        <div class="w-32 h-32 bg-black/50 rounded-lg flex-shrink-0 border border-gray-700/50 flex items-center justify-center relative z-10 overflow-hidden shadow-lg">
-          <img v-if="focusedChannel.logo" :src="focusedChannel.logo" class="w-full h-full object-contain p-2" />
-          <svg v-else xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+        <div class="w-36 h-36 bg-black/60 rounded-xl flex-shrink-0 border border-gray-700/60 flex items-center justify-center relative z-10 overflow-hidden shadow-xl p-2">
+          <img v-if="focusedChannel.logo" :src="focusedChannel.logo" class="w-full h-full object-contain drop-shadow" />
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
         </div>
         
         <div class="flex-1 flex flex-col justify-center relative z-10">
-          <h3 class="text-white font-bold text-2xl mb-1 drop-shadow-md">{{ focusedChannel.name }}</h3>
+          <h3 class="text-white font-bold text-3xl mb-1.5 drop-shadow-md tracking-tight">{{ focusedChannel.name }}</h3>
           
           <template v-if="currentProgram">
             <div class="text-primary font-semibold text-lg drop-shadow mb-1">{{ currentProgram.title }}</div>
@@ -320,18 +320,11 @@ function getProgress(prog: EPGProgram) {
             </div>
           </template>
           <template v-else>
-            <div class="flex items-center gap-2 text-gray-500 text-sm h-full font-medium">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div class="flex items-center gap-2 text-gray-400 text-sm font-medium mt-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               Programação indisponível no momento.
             </div>
           </template>
-        </div>
-
-        <div class="flex flex-col justify-center relative z-10 ml-auto">
-          <button @click="playChannel(focusedChannel)" class="bg-primary hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg flex items-center gap-2 transition-transform hover:scale-105 active:scale-95">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Assistir
-          </button>
         </div>
       </div>
 
