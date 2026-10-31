@@ -23,24 +23,45 @@ const heroItems = computed(() => {
   return store.uniqueSeries.slice(0, 5) as SeriesEntry[]
 })
 const heroIndex = ref(0)
-const currentHero = computed(() => heroItems.value[heroIndex.value] || null)
+const hoveredItem = ref<SeriesEntry | null>(null)
+const currentHero = computed(() => hoveredItem.value || heroItems.value[heroIndex.value] || null)
 let heroInterval: number | null = null
 const tmdbHeroMetadata = ref<TMDBMetadata | null>(null)
 const heroMetaCache = ref<Record<string, TMDBMetadata>>({})
 
+let hoverMetaTimeout: any = null
+
 watch(currentHero, async (newVal) => {
-  tmdbHeroMetadata.value = null
-  if (newVal) {
-    const cached = heroMetaCache.value[newVal.id]
-    if (cached) {
-      tmdbHeroMetadata.value = cached
-    } else {
-      const meta = await TMDBService.getMetadata(newVal.id, newVal.displayName, 'series')
-      heroMetaCache.value[newVal.id] = meta
-      tmdbHeroMetadata.value = meta
-    }
+  if (!newVal) {
+    tmdbHeroMetadata.value = null
+    return
   }
+
+  const cached = heroMetaCache.value[newVal.id]
+  if (cached) {
+    tmdbHeroMetadata.value = cached
+    return
+  }
+
+  // Se for por hover rápido, coloca um debounce leve
+  clearTimeout(hoverMetaTimeout)
+  hoverMetaTimeout = setTimeout(async () => {
+    try {
+      const meta = await TMDBService.getMetadata(newVal.id, (newVal as SeriesEntry).displayName, 'series')
+      heroMetaCache.value[newVal.id] = meta
+      if (currentHero.value?.id === newVal.id) {
+        tmdbHeroMetadata.value = meta
+      }
+    } catch {
+      // ignore
+    }
+  }, 150)
 }, { immediate: true })
+
+function onHoverSeries(series: any) {
+  hoveredItem.value = series as SeriesEntry
+  stopHeroTimer()
+}
 
 // Preload TMDB wallpapers for all hero items so the banner doesn't flash
 // with the poster/logo while auto-rotating.
@@ -59,22 +80,13 @@ async function preloadHeroMetadata() {
 }
 
 function startHeroTimer() {
+  if (hoveredItem.value) return
   if (heroInterval) clearInterval(heroInterval)
   heroInterval = window.setInterval(() => {
-    if (heroItems.value.length > 0) {
+    if (heroItems.value.length > 0 && !hoveredItem.value) {
       heroIndex.value = (heroIndex.value + 1) % heroItems.value.length
     }
   }, 6000)
-}
-
-function nextHero() {
-  if (heroItems.value.length > 1)
-    heroIndex.value = (heroIndex.value + 1) % heroItems.value.length
-}
-
-function prevHero() {
-  if (heroItems.value.length > 1)
-    heroIndex.value = (heroIndex.value - 1 + heroItems.value.length) % heroItems.value.length
 }
 
 function stopHeroTimer() {
@@ -286,7 +298,8 @@ function extractYear(name?: string): string | null {
 
     <!-- ── Content Area ── -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <div class="flex items-center justify-between px-6 py-4 shrink-0">
+      <!-- Top bar -->
+      <div class="flex items-center justify-between px-6 py-3 border-b border-gray-800/40 shrink-0">
         <div>
           <h2 class="text-white font-bold text-lg">{{ activeGroup === 'ALL' ? 'Todas as Séries' : activeGroup }}</h2>
           <p class="text-gray-500 text-xs mt-0.5">
@@ -295,103 +308,69 @@ function extractYear(name?: string): string | null {
         </div>
       </div>
 
+      <!-- Error toast -->
       <div v-if="errorMsg" class="mx-6 mt-3 bg-red-900/80 border border-red-700 text-red-200 px-4 py-3 rounded-lg flex justify-between items-center text-sm shrink-0">
         <span>{{ errorMsg }}</span>
         <button @click="errorMsg = ''" class="ml-4 hover:text-white">✕</button>
       </div>
 
-      <div ref="scrollArea" class="flex-1 overflow-y-auto">
-        <div ref="gridZone">
-        <!-- Hero Banner Carousel -->
-        <div 
-          v-if="currentHero && activeGroup === 'ALL' && !searchQuery" 
-          class="relative w-full h-[60vh] min-h-[550px] mb-6 flex-shrink-0 group overflow-hidden"
-          @mouseenter="stopHeroTimer"
-          @mouseleave="startHeroTimer"
-        >
-          
+      <!-- Fixed Compact Hero Banner (atualiza ao passar o mouse ou dar foco nas séries) -->
+      <div 
+        v-if="currentHero" 
+        class="mx-6 mt-4 h-48 min-h-[192px] max-h-[192px] bg-gray-900/90 border border-gray-800 rounded-2xl flex items-center gap-6 shrink-0 shadow-2xl relative overflow-hidden group"
+        @mouseenter="stopHeroTimer"
+        @mouseleave="startHeroTimer"
+      >
+        <!-- Background Wallpaper with Blur & Fade -->
+        <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <transition name="fade" mode="out-in">
             <div :key="currentHero.id" class="absolute inset-0 bg-[#0f171e]">
-              <!-- Image Container without heavy masks -->
-              <div class="absolute inset-0 w-full h-full">
-                <img :src="(tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) || currentHero.logo" :class="['w-full h-full', (tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) ? 'opacity-75 object-cover object-[75%_center] md:object-right-top' : 'opacity-60 object-cover object-top']" />
-              </div>
-              
-              <!-- Overlays for extra text contrast -->
-              <div class="absolute inset-0 bg-gradient-to-r from-[#0f171e] via-[#0f171e]/70 to-transparent w-full md:w-[70%] z-0 pointer-events-none"></div>
-              <div class="absolute inset-0 bg-gradient-to-t from-[#0f171e] via-[#0f171e]/40 to-transparent z-0 pointer-events-none"></div>
+              <img 
+                :src="(tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) || currentHero.logo" 
+                :class="['w-full h-full', (tmdbHeroMetadata && tmdbHeroMetadata.backdrop_url) ? 'opacity-40 object-cover object-[75%_center]' : 'opacity-25 object-cover object-center blur-sm']" 
+              />
+              <div class="absolute inset-0 bg-gradient-to-r from-[#0f171e] via-[#0f171e]/85 to-transparent w-full md:w-[75%]"></div>
+              <div class="absolute inset-0 bg-gradient-to-t from-[#0f171e] via-transparent to-transparent"></div>
             </div>
           </transition>
-
-          <div class="relative h-full flex flex-col justify-end pl-16 md:pl-20 pr-8 md:pr-12 md:w-2/3 z-10">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wider shadow-lg shadow-primary/30">SÉRIE</span>
-              <span class="text-green-400 text-[10px] font-bold tracking-widest uppercase">98% RELEVANTE</span>
-              <span class="w-1 h-1 rounded-full bg-gray-500 inline-block"></span>
-              <span class="text-gray-400 text-xs font-medium">{{ currentHero.group }}</span>
-            </div>
-            
-            <h2 class="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-2 drop-shadow-2xl">{{ (currentHero as SeriesEntry).displayName }}</h2>
-            
-            <div class="flex items-center gap-3 mb-4 mt-2">
-              <span class="bg-transparent border border-white/40 text-white/80 text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wider">HD</span>
-              <span class="text-gray-300 text-[10px] font-bold tracking-widest uppercase flex items-center gap-2"><span class="w-1 h-1 rounded-full bg-green-500"></span> DUBLADO / LEGENDADO</span>
-              <span v-if="extractYear(currentHero.displayName)" class="text-gray-400 text-[10px] font-bold tracking-widest uppercase"> {{ extractYear(currentHero.displayName) }}</span>
-            </div>
-
-            <p class="text-gray-300 text-sm md:text-base line-clamp-3 leading-relaxed max-w-2xl mb-8 drop-shadow-md">
-              {{ (tmdbHeroMetadata && tmdbHeroMetadata.overview) || 'Assista agora a este título exclusivo. Uma experiência completa em alta definição disponível na sua grade de séries.' }}
-            </p>
-
-            <div class="flex items-center gap-3">
-              <button 
-                @click="playSeries(currentHero as SeriesEntry)" 
-                @keydown.enter.prevent="playSeries(currentHero as SeriesEntry)"
-                class="flex items-center gap-2 bg-white text-black px-8 py-3 rounded-full font-bold text-sm hover:bg-gray-200 hover:scale-105 active:scale-95 focus:scale-105 focus:bg-white focus:ring-4 focus:ring-primary/60 outline-none transition-all duration-200 shadow-xl"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="mr-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                Saiba mais
-              </button>
-            </div>
-          </div>
-          
-          <!-- Dots -->
-          <div v-if="heroItems.length > 1" class="absolute bottom-4 right-8 z-20 flex gap-2 items-center" data-tv-ignore>
-            <button
-              v-for="(_, i) in heroItems"
-              :key="i"
-              tabindex="-1"
-              @click="heroIndex = i"
-              :class="['rounded-full transition-all duration-300', i === heroIndex ? 'bg-white w-6 h-2' : 'bg-white/30 hover:bg-white/50 w-2 h-2']"
-            />
-          </div>
-
-          <!-- Arrows -->
-          <button
-            v-if="heroItems.length > 1"
-            data-tv-ignore
-            tabindex="-1"
-            @click.stop="prevHero"
-            class="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm border border-white/10 hover:border-white/30 transition-all"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          </button>
-          <button
-            v-if="heroItems.length > 1"
-            data-tv-ignore
-            tabindex="-1"
-            @click.stop="nextHero"
-            class="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center backdrop-blur-sm border border-white/10 hover:border-white/30 transition-all"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
         </div>
 
-        <div class="px-6 pb-6">
+        <!-- Poster Thumbnail -->
+        <div class="w-28 h-40 ml-5 bg-black/60 rounded-xl flex-shrink-0 border border-gray-700/60 flex items-center justify-center relative z-10 overflow-hidden shadow-xl">
+          <img 
+            v-if="currentHero.logo" 
+            :src="currentHero.logo" 
+            class="w-full h-full object-cover" 
+          />
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 12h18"/></svg>
+        </div>
+
+        <!-- Series Details -->
+        <div class="flex-1 flex flex-col justify-center relative z-10 pr-6 py-2 overflow-hidden">
+          <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span class="bg-primary text-white text-[10px] font-bold px-1.5 py-0.5 rounded tracking-wider shadow-sm">SÉRIE</span>
+            <span class="text-green-400 text-[10px] font-bold tracking-widest uppercase">98% RELEVANTE</span>
+            <span class="w-1 h-1 rounded-full bg-gray-500 inline-block"></span>
+            <span class="text-gray-400 text-xs font-medium truncate max-w-xs">{{ currentHero.group }}</span>
+            <span v-if="extractYear((currentHero as SeriesEntry).displayName)" class="text-gray-400 text-xs font-semibold">· {{ extractYear((currentHero as SeriesEntry).displayName) }}</span>
+            <span class="bg-transparent border border-white/30 text-white/80 text-[9px] font-bold px-1.5 py-0.2 rounded tracking-wider ml-1">HD</span>
+          </div>
+
+          <h3 class="text-white font-bold text-2xl lg:text-3xl mb-1.5 drop-shadow-md tracking-tight truncate">{{ (currentHero as SeriesEntry).displayName }}</h3>
+
+          <p class="text-gray-300 text-xs md:text-sm line-clamp-2 leading-relaxed max-w-4xl drop-shadow">
+            {{ (tmdbHeroMetadata && tmdbHeroMetadata.overview) || 'Selecione ou clique na série para navegar pelas temporadas, episódios e assistir em alta definição.' }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Scrollable grid -->
+      <div ref="scrollArea" class="flex-1 overflow-y-auto p-6">
+        <div ref="gridZone">
           <div v-if="filteredSeries.length === 0" class="flex flex-col items-center justify-center h-48 text-gray-600 gap-3">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16"/><path d="M4 14h16"/><rect width="16" height="16" x="4" y="4" rx="2"/></svg>
-          <p>Nenhuma série encontrada.</p>
-        </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16"/><path d="M4 14h16"/><rect width="16" height="16" x="4" y="4" rx="2"/></svg>
+            <p>Nenhuma série encontrada.</p>
+          </div>
 
           <div v-else class="grid grid-cols-6 gap-4">
             <ContentCard
@@ -401,6 +380,8 @@ function extractYear(name?: string): string | null {
               :is-portrait="true"
               :show-title="true"
               @play="playSeries(series as SeriesEntry)"
+              @mouseenter="onHoverSeries(series)"
+              @focus="onHoverSeries(series)"
             />
           </div>
 
@@ -414,7 +395,6 @@ function extractYear(name?: string): string | null {
               Todas as {{ filteredSeries.length.toLocaleString('pt-BR') }} séries exibidas
             </div>
           </div>
-        </div>
         </div><!-- /gridZone -->
       </div>
     </div>
