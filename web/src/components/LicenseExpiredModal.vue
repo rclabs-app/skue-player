@@ -4,6 +4,7 @@ import QrcodeVue from 'qrcode.vue'
 import { usePlaylistStore } from '../stores/playlist'
 import { useTvRemote } from '../composables/useTvRemote'
 import { getApiUrl } from '../utils/api'
+import { getPortalUrl } from '../utils/portal'
 
 const emit = defineEmits<{
   (e: 'refresh'): void
@@ -21,8 +22,10 @@ const checkoutError = ref('')
 
 // URL do portal de ativação para escanear no celular
 const portalCheckoutUrl = computed(() => {
-  const base = window.location.origin
-  return `${base}/portal?mac=${encodeURIComponent(mac.value)}&action=activate`
+  const url = new URL(getPortalUrl())
+  url.searchParams.set('mac', mac.value)
+  url.searchParams.set('action', 'activate')
+  return url.toString()
 })
 
 async function handleStartCheckout(plan: 'yearly') {
