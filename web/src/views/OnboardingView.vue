@@ -136,7 +136,7 @@ onUnmounted(() => {
       
       <!-- Brand & Header -->
       <div class="mb-5 flex flex-col items-center">
-        <img src="/skue-logo.svg" alt="Skue - See More" class="h-16 w-auto mb-2 filter drop-shadow-[0_4px_16px_rgba(0,240,255,0.25)]" />
+        <img src="/skue-logo.svg" alt="Skue - See More" class="h-14 w-auto mb-2" />
         <p class="text-xs text-gray-400">Configure sua lista para começar a assistir</p>
       </div>
       
