@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Device;
-use App\Models\DevicePlaylist;
+use App\Services\DevicePlaylistService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -67,141 +67,38 @@ class PortalController extends Controller
         return response()->json($playlists);
     }
 
-    /**
-     * POST /api/v1/portal/playlists
-     * Add a new playlist to the device.
-     */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, DevicePlaylistService $playlists): JsonResponse
     {
         $device = $this->resolveDevice($request);
-        if (!$device) {
-            return response()->json(['error' => 'Não autorizado.'], 401);
-        }
+        if (!$device) return response()->json(['error' => 'Não autorizado.'], 401);
 
-        $rules = [
-            'name' => 'required|string|max:100',
-            'type' => 'required|in:m3u,xtream',
-            'url' => 'required|string|max:2048',
-            'is_active' => 'boolean',
-        ];
-
-        if ($request->input('type') === 'xtream') {
-            $rules['username'] = 'required|string|max:255';
-            $rules['password'] = 'required|string|max:255';
-        }
-
-        $request->validate($rules);
-
-        // Check if this is the first playlist
-        $isFirst = $device->playlists()->count() === 0;
-
-        $playlist = $device->playlists()->create([
-            'name' => $request->input('name'),
-            'type' => $request->input('type'),
-            'url' => $request->input('url'),
-            'username' => $request->input('type') === 'xtream' ? $request->input('username') : null,
-            'password' => $request->input('type') === 'xtream' ? $request->input('password') : null,
-            'is_active' => $request->input('is_active', true),
-            'is_main' => $isFirst,
-        ]);
-
-        return response()->json($playlist, 201);
+        return response()->json($playlists->save($device, $request->all()), 201);
     }
 
-    /**
-     * PUT /api/v1/portal/playlists/{id}
-     * Update an existing playlist.
-     */
-    public function update(Request $request, int $id): JsonResponse
+    public function update(Request $request, int $id, DevicePlaylistService $playlists): JsonResponse
     {
         $device = $this->resolveDevice($request);
-        if (!$device) {
-            return response()->json(['error' => 'Não autorizado.'], 401);
-        }
+        if (!$device) return response()->json(['error' => 'Não autorizado.'], 401);
 
-        $playlist = $device->playlists()->find($id);
-        if (!$playlist) {
-            return response()->json(['error' => 'Playlist não encontrada.'], 404);
-        }
-
-        $rules = [
-            'name' => 'required|string|max:100',
-            'type' => 'required|in:m3u,xtream',
-            'url' => 'required|string|max:2048',
-            'is_active' => 'boolean',
-        ];
-
-        if ($request->input('type') === 'xtream') {
-            $rules['username'] = 'required|string|max:255';
-            $rules['password'] = 'required|string|max:255';
-        }
-
-        $request->validate($rules);
-
-        $playlist->update([
-            'name' => $request->input('name'),
-            'type' => $request->input('type'),
-            'url' => $request->input('url'),
-            'username' => $request->input('type') === 'xtream' ? $request->input('username') : null,
-            'password' => $request->input('type') === 'xtream' ? $request->input('password') : null,
-            'is_active' => $request->input('is_active', true),
-        ]);
-
-        return response()->json($playlist);
+        return response()->json($playlists->save($device, $request->all(), $id));
     }
 
-    /**
-     * DELETE /api/v1/portal/playlists/{id}
-     * Delete a playlist.
-     */
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(Request $request, int $id, DevicePlaylistService $playlists): JsonResponse
     {
         $device = $this->resolveDevice($request);
-        if (!$device) {
-            return response()->json(['error' => 'Não autorizado.'], 401);
-        }
-
-        $playlist = $device->playlists()->find($id);
-        if (!$playlist) {
-            return response()->json(['error' => 'Playlist não encontrada.'], 404);
-        }
-
-        $playlist->delete();
-
-        // If the deleted playlist was the main one, and there are other playlists, set the oldest one as main
-        if ($playlist->is_main) {
-            $oldestPlaylist = $device->playlists()->orderBy('created_at', 'asc')->first();
-            if ($oldestPlaylist) {
-                $oldestPlaylist->update(['is_main' => true]);
-            }
-        }
+        if (!$device) return response()->json(['error' => 'Não autorizado.'], 401);
+        $playlists->delete($device, $id);
 
         return response()->json(['status' => 'deleted']);
     }
 
-    /**
-     * PATCH /api/v1/portal/playlists/{id}/set-main
-     * Define esta playlist como principal para o dispositivo.
-     */
-    public function setMain(Request $request, int $id): JsonResponse
+    public function setMain(Request $request, int $id, DevicePlaylistService $playlists): JsonResponse
     {
         $device = $this->resolveDevice($request);
-        if (!$device) {
-            return response()->json(['error' => 'Não autorizado.'], 401);
-        }
+        if (!$device) return response()->json(['error' => 'Não autorizado.'], 401);
+        $playlists->setMain($device, $id);
 
-        $playlist = $device->playlists()->find($id);
-        if (!$playlist) {
-            return response()->json(['error' => 'Playlist não encontrada.'], 404);
-        }
-
-        // Remove is_main de todas as playlists do device
-        $device->playlists()->update(['is_main' => false]);
-
-        // Marca a nova como principal
-        $playlist->update(['is_main' => true]);
-
-        return response()->json(['status' => 'ok', 'main_playlist_id' => $playlist->id]);
+        return response()->json(['status' => 'ok', 'main_playlist_id' => $id]);
     }
 
     /**
