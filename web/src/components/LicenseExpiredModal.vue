@@ -70,72 +70,76 @@ onRemoteKey('OK', () => {
 <template>
   <div 
     v-if="!license.is_licensed" 
-    class="fixed inset-0 z-[9999] bg-[#090d12]/95 backdrop-blur-xl flex items-center justify-center p-6 text-white"
+    class="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 text-white"
     data-tv-modal
   >
-    <div class="max-w-xl w-full bg-[#131c26] border border-red-500/30 rounded-2xl p-8 shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
-      <!-- Glow effect -->
-      <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="max-w-lg w-full bg-[#14161a] border border-white/10 rounded-2xl p-7 md:p-8 shadow-2xl flex flex-col">
+      <!-- Header -->
+      <div class="flex items-start gap-4 mb-6">
+        <div class="w-11 h-11 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center shrink-0 text-gray-300">
+          <svg v-if="isBlocked" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400">
+            <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
 
-      <!-- Icon -->
-      <div class="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4 text-red-400">
-        <svg v-if="isBlocked" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-        </svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
+        <div class="text-left">
+          <h2 class="text-xl font-semibold text-white tracking-tight">
+            {{ isBlocked ? 'Aparelho Suspenso' : 'Período de Testes Encerrado' }}
+          </h2>
+          <p class="text-gray-400 text-xs leading-relaxed mt-1">
+            {{ isBlocked 
+              ? 'Este dispositivo foi suspenso pelo administrador. Entre em contato com o suporte para mais informações.' 
+              : 'Seu período de avaliação gratuita de 7 dias terminou. Ative a licença anual para continuar utilizando o aplicativo neste aparelho.' 
+            }}
+          </p>
+        </div>
       </div>
 
-      <!-- Title & Message -->
-      <h2 class="text-2xl font-bold mb-1">
-        {{ isBlocked ? 'Aparelho Suspenso' : 'Período de Testes Expirado' }}
-      </h2>
-      <p class="text-gray-400 text-xs max-w-md leading-relaxed mb-5">
-        {{ isBlocked 
-          ? 'Este dispositivo foi suspenso pelo administrador. Entre em contato para mais informações.' 
-          : 'Seu período de degustação encerrou. Escolha um plano abaixo para ativar seu aparelho com Cartão de Crédito:' 
-        }}
-      </p>
-
-      <!-- Plan options (se não estiver bloqueado) -->
-      <div v-if="!isBlocked" class="w-full mb-5">
-        <!-- Plano Anual -->
+      <!-- Plan option (se não estiver bloqueado) -->
+      <div v-if="!isBlocked" class="w-full mb-4">
         <button
           @click="handleStartCheckout('yearly')"
           :disabled="isProcessingCheckout"
-          class="w-full bg-black/40 hover:bg-black/60 border border-sky-500/40 hover:border-sky-400 rounded-xl p-4 transition-all group flex items-center justify-between shadow-lg shadow-sky-500/10"
+          class="w-full bg-white/[0.03] hover:bg-white/[0.06] focus:bg-white/[0.08] border border-white/15 hover:border-white/25 focus:border-white/40 rounded-xl p-4 transition-all group flex items-center justify-between text-left"
         >
-          <div class="text-left">
-            <span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider block mb-0.5">Plano Recomendado</span>
-            <div class="text-base font-bold text-white group-hover:text-sky-300">Licença Anual (1 Ano de Acesso)</div>
-            <div class="text-xs text-gray-400">Ativação imediata para este dispositivo</div>
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-sm font-semibold text-white">Licença Anual</span>
+              <span class="text-[10px] font-medium text-gray-300 bg-white/[0.08] px-2 py-0.5 rounded">12 meses</span>
+            </div>
+            <div class="text-xs text-gray-400">Acesso completo liberado imediatamente para este dispositivo</div>
           </div>
-          <div class="text-right">
-            <div class="text-2xl font-extrabold text-white">R$ 19,90</div>
-            <div class="mt-1 text-[11px] text-sky-400 font-semibold flex items-center justify-end gap-1">
-              <span>Pagar c/ Cartão</span>
+          <div class="text-right shrink-0 pl-4">
+            <div class="text-xl font-bold text-white tracking-tight">R$ 19,90</div>
+            <div class="mt-0.5 text-[11px] text-gray-300 group-hover:text-white font-medium flex items-center justify-end gap-1">
+              <span>{{ isProcessingCheckout ? 'Aguarde...' : 'Continuar' }}</span>
               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
             </div>
           </div>
         </button>
       </div>
 
-      <div v-if="checkoutError" class="text-red-400 text-xs mb-4">
+      <div v-if="checkoutError" class="text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 text-xs mb-4">
         {{ checkoutError }}
       </div>
 
-      <!-- QR Code para escanear com a câmera da TV -->
-      <div class="bg-black/30 border border-gray-800 rounded-xl p-3 mb-5 flex items-center gap-4 w-full text-left">
+      <!-- QR Code para escanear com a câmera na TV -->
+      <div class="bg-white/[0.02] border border-white/[0.08] rounded-xl p-3.5 mb-5 flex items-center gap-4 w-full text-left">
         <div class="bg-white p-2 rounded-lg shrink-0">
-          <qrcode-vue :value="portalCheckoutUrl" :size="75" level="M" render-as="svg" />
+          <qrcode-vue :value="portalCheckoutUrl" :size="72" level="M" render-as="svg" />
         </div>
         <div class="flex-1 min-w-0">
-          <span class="text-[10px] uppercase font-bold text-gray-500 tracking-wider block">Ativar pelo Celular</span>
-          <p class="text-xs text-gray-300 leading-tight mb-1">
-            Aponte a câmera do celular para abrir o checkout seguro.
+          <span class="text-[11px] font-semibold text-gray-200 block mb-0.5">Ativar pelo celular</span>
+          <p class="text-xs text-gray-400 leading-relaxed mb-2">
+            Escaneie o QR Code com a câmera do smartphone para concluir o pagamento.
           </p>
-          <span class="font-mono text-xs font-bold text-sky-400 select-all block truncate">MAC: {{ mac }}</span>
+          <div class="inline-flex items-center gap-1.5 bg-white/[0.05] border border-white/[0.08] px-2.5 py-1 rounded text-[11px] font-mono text-gray-300">
+            <span class="text-gray-500">MAC</span>
+            <span class="text-white font-semibold select-all">{{ mac }}</span>
+          </div>
         </div>
       </div>
 
@@ -143,12 +147,12 @@ onRemoteKey('OK', () => {
       <div class="flex gap-3 w-full">
         <button
           @click="handleRefresh"
-          class="flex-1 py-3 px-4 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold text-xs transition-all flex items-center justify-center gap-2"
+          class="w-full py-2.5 px-4 rounded-xl bg-white/[0.07] hover:bg-white/[0.12] focus:bg-white text-gray-200 focus:text-black border border-white/10 font-medium text-xs transition-all flex items-center justify-center gap-2"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
           </svg>
-          Já paguei / Verificar Licença
+          Já paguei · Verificar licença
         </button>
       </div>
     </div>
