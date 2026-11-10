@@ -14,7 +14,7 @@ class DeviceActivationTest extends TestCase
 
     // ── Handshake ────────────────────────────────────────────────────────────
 
-    public function test_handshake_creates_new_device(): void
+    public function test_handshake_prepares_key_without_registering_device(): void
     {
         $response = $this->postJson('/api/v1/devices/handshake', [
             'mac' => 'AA:BB:CC:DD:EE:FF',
@@ -25,7 +25,9 @@ class DeviceActivationTest extends TestCase
             ->assertJsonStructure(['mac', 'device_key', 'key_expires_at', 'playlists_count', 'device_token'])
             ->assertJsonPath('mac', 'AA:BB:CC:DD:EE:FF');
 
-        $this->assertDatabaseHas('devices', [
+        $response->assertJsonPath('registration_pending', true)->assertJsonPath('device_token', null);
+        $this->assertDatabaseCount('devices', 0);
+        $this->assertDatabaseHas('pending_device_registrations', [
             'mac' => 'AA:BB:CC:DD:EE:FF',
             'name' => 'TV do Quarto',
         ]);
