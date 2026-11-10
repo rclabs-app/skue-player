@@ -28,6 +28,9 @@ Route::prefix('portal')->group(function () {
     Route::post('/logout', [PortalController::class, 'logout'])->name('portal.logout');
     Route::get('/dashboard', [PortalController::class, 'dashboard'])->name('portal.dashboard');
     Route::post('/playlists', [PortalController::class, 'storePlaylist'])->name('portal.playlists.store');
+    Route::get('/playlists/{id}/edit', [PortalController::class, 'editPlaylist'])->name('portal.playlists.edit');
+    Route::put('/playlists/{id}', [PortalController::class, 'updatePlaylist'])->name('portal.playlists.update');
+    Route::patch('/playlists/{id}/set-main', [PortalController::class, 'setMainPlaylist'])->name('portal.playlists.set-main');
     Route::delete('/playlists/{id}', [PortalController::class, 'destroyPlaylist'])->name('portal.playlists.destroy');
 
     // Telas de Retorno do Stripe Checkout
