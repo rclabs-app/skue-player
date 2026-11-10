@@ -4,7 +4,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 import { usePlaylistStore } from './stores/playlist'
 import { useTvRemote } from './composables/useTvRemote'
 import TermsModal from './components/TermsModal.vue'
-import LicenseExpiredModal from './components/LicenseExpiredModal.vue'
+// import LicenseExpiredModal from './components/LicenseExpiredModal.vue' // Temporariamente pausado para testes
 
 const store = usePlaylistStore()
 const route = useRoute()
@@ -107,18 +107,11 @@ onUnmounted(() => {
       <!-- Top Logo / Brandmark -->
       <div class="mb-8 flex items-center justify-center w-full px-2">
         <router-link to="/" class="group flex flex-col items-center justify-center transition-transform hover:scale-105 active:scale-95 focus:outline-none" title="Skue Player">
-          <div class="relative flex items-center justify-center">
-            <!-- Ambient Glow -->
-            <div class="absolute -inset-1 bg-gradient-to-r from-sky-500 to-indigo-600 rounded-2xl blur-md opacity-40 group-hover:opacity-80 transition duration-500"></div>
-            <!-- Wordmark Badge -->
-            <div class="relative w-12 h-12 rounded-xl bg-gradient-to-b from-[#16202c] to-[#0b1016] border border-sky-500/30 flex items-center justify-center shadow-xl">
-              <span class="font-extrabold text-sm tracking-wider bg-gradient-to-r from-cyan-400 via-sky-300 to-blue-500 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(14,165,233,0.5)]">
-                SKUE
-              </span>
-            </div>
+          <div class="w-11 h-11 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 flex items-center justify-center transition-colors">
+            <span class="font-bold text-xs tracking-widest text-white">
+              SKUE
+            </span>
           </div>
-          <!-- Subtitle Wave Pip -->
-          <div class="w-4 h-0.5 mt-1.5 rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 shadow-[0_0_6px_rgba(56,189,248,0.8)]"></div>
         </router-link>
       </div>
       
@@ -211,16 +204,17 @@ onUnmounted(() => {
     </main>
     
     <!-- Global Loading Overlay -->
-    <div v-if="store.isProcessing" class="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-[60]">
-      <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary mb-6 shadow-[0_0_15px_rgba(37,99,235,0.5)]"></div>
-      <div class="text-2xl font-bold tracking-wide text-white">{{ store.processingProgress }}</div>
+    <div v-if="store.isProcessing" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[60]">
+      <div class="animate-spin rounded-full h-12 w-12 border-2 border-white/15 border-t-white mb-5"></div>
+      <div class="text-base font-medium tracking-wide text-gray-200">{{ store.processingProgress }}</div>
     </div>
 
     <!-- Mandatory Legal Terms / Disclaimer Modal -->
     <TermsModal />
 
-    <!-- License Enforcement Modal (Trial Expirado / Bloqueado) -->
+    <!-- License Enforcement Modal (Trial Expirado / Bloqueado) - temporariamente pausado para testes
     <LicenseExpiredModal />
+    -->
   </div>
 </template>
 
