@@ -46,8 +46,8 @@ async function submitPairing() {
     <div class="w-full max-w-md bg-surface border border-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
       
       <div class="text-center mb-8">
-        <img src="/skue-logo.svg" alt="Skue" class="h-12 w-auto mx-auto mb-4 filter drop-shadow-[0_4px_12px_rgba(0,240,255,0.2)]" />
-        <h1 class="text-xl font-bold text-white mb-1">Pareamento do Dispositivo</h1>
+        <img src="/skue-logo.svg" alt="Skue" class="h-12 w-auto mx-auto mb-4" />
+        <h1 class="text-xl font-semibold text-white mb-1">Pareamento do Dispositivo</h1>
         <p class="text-gray-400 text-sm">Insira o código exibido na sua TV</p>
       </div>
 
