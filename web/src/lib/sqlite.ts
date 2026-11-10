@@ -182,6 +182,24 @@ export class SQLiteDatabaseService {
 
   // ─── Playlist ───────────────────────────────────────────────────────────
 
+  /** Clear content after an explicit administrative revocation, preserving device identity. */
+  async clearDeviceContent(): Promise<void> {
+    if (!this.db) await this.init()
+    this.db!.run('BEGIN TRANSACTION')
+    try {
+      for (const table of ['playlist', 'series_index', 'history', 'favorites', 'epg', 'tmdb_cache']) {
+        this.db!.run(`DELETE FROM ${table}`)
+      }
+      this.db!.run("DELETE FROM config WHERE key IN ('playlist_loaded', 'playlist_url', 'playlist_hash', 'epg_url')")
+      this.db!.run("INSERT OR REPLACE INTO config (key, value) VALUES ('device_removed', 'true')")
+      this.db!.run('COMMIT')
+    } catch (error) {
+      this.db!.run('ROLLBACK')
+      throw error
+    }
+    await this.persist()
+  }
+
   async clearPlaylist(): Promise<void> {
     if (!this.db) await this.init()
     this.db!.run('DELETE FROM playlist')
