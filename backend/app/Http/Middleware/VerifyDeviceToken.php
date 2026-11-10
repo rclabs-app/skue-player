@@ -45,7 +45,13 @@ class VerifyDeviceToken
 
             // Find the device to verify it still exists in the database
             $device = Device::find($deviceId);
-            if (!$device || strtoupper(trim($device->mac)) !== strtoupper(trim($mac))) {
+            if (!$device) {
+                return response()->json([
+                    'code' => 'DEVICE_REMOVED',
+                    'error' => 'Este dispositivo foi removido pelo administrador.',
+                ], 410);
+            }
+            if (strtoupper(trim($device->mac)) !== strtoupper(trim($mac))) {
                 return response()->json(['error' => 'Dispositivo não autorizado.'], 401);
             }
 
