@@ -86,21 +86,21 @@ async function acceptTerms() {
       data-tv-modal
     >
       <div
-        class="bg-[#0e1620] border border-white/15 rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] max-w-2xl w-full p-6 md:p-8 flex flex-col max-h-[90vh] overflow-hidden text-gray-200"
+        class="bg-[#14161a] border border-white/10 rounded-2xl shadow-2xl max-w-2xl w-full p-6 md:p-8 flex flex-col max-h-[90vh] overflow-hidden text-gray-200"
       >
         <!-- Header -->
         <div class="flex items-center gap-4 mb-4 pb-4 border-b border-white/10 shrink-0">
-          <img src="/skue-logo.svg" alt="Skue" class="h-10 w-auto" />
+          <img src="/skue-logo.svg" alt="Skue" class="h-9 w-auto" />
           <div>
-            <h2 class="text-lg md:text-xl font-bold text-white tracking-tight">Termos de Uso & Declaração de Neutralidade</h2>
+            <h2 class="text-lg font-semibold text-white tracking-tight">Termos de Uso & Declaração de Neutralidade</h2>
             <p class="text-xs text-gray-400">Leia com atenção antes de utilizar o aplicativo</p>
           </div>
         </div>
 
         <!-- Scrollable Legal Text -->
         <div class="flex-1 overflow-y-auto space-y-3.5 pr-2 text-xs md:text-sm text-gray-300 leading-relaxed custom-scrollbar">
-          <div class="p-3 rounded-xl bg-blue-500/10 border border-blue-400/20 text-blue-200 text-xs">
-            <strong>Arquitetura Local-First & Bring Your Own Content:</strong>
+          <div class="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 text-gray-300 text-xs">
+            <strong class="text-white">Arquitetura Local-First & Bring Your Own Content:</strong>
             O Skue é um reprodutor de mídia neutro e agnóstico, desenvolvido exclusivamente para organização e execução técnica de fluxos de vídeo fornecidos diretamente pelo próprio usuário.
           </div>
 
@@ -134,9 +134,9 @@ async function acceptTerms() {
             :disabled="isAccepting"
             @click="acceptTerms"
             @keydown.enter.prevent="acceptTerms"
-            class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary hover:bg-blue-600 focus:bg-blue-500 focus:ring-4 focus:ring-blue-400/50 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-500/20 outline-none flex items-center justify-center gap-2"
+            class="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-white hover:bg-gray-200 focus:bg-primary focus:text-white text-black font-semibold text-xs transition-all outline-none flex items-center justify-center gap-2"
           >
-            <span v-if="isAccepting" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+            <span v-if="isAccepting" class="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></span>
             <span>Concordar e Continuar</span>
           </button>
         </div>
