@@ -13,6 +13,10 @@ const { onRemoteKey } = useTvRemote()
 
 const isMobileMenuOpen = ref(false)
 
+watch(() => store.deviceRemoved, (removed) => {
+  if (removed && route.path !== '/onboarding') void router.replace('/onboarding')
+})
+
 // Close mobile menu on route change
 watch(() => route.path, () => {
   isMobileMenuOpen.value = false
@@ -200,7 +204,7 @@ onUnmounted(() => {
 
     <!-- Main content -->
     <main class="flex-1 relative overflow-hidden">
-      <RouterView />
+      <RouterView v-if="!store.deviceRemoved || route.path === '/onboarding'" />
     </main>
     
     <!-- Global Loading Overlay -->
