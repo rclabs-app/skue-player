@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Device;
+use App\Services\DevicePlaylistService;
+use App\Services\DeviceRegistrationService;
 use Illuminate\Support\Facades\Session;
 
 class PortalController extends Controller
@@ -24,7 +26,7 @@ class PortalController extends Controller
     /**
      * Handle the portal login request.
      */
-    public function login(Request $request)
+    public function login(Request $request, DeviceRegistrationService $registrations)
     {
         // Normalize MAC by removing any non-alphanumeric chars
         $rawMac = preg_replace('/[^0-9A-Za-z]/', '', $request->mac);
@@ -47,10 +49,12 @@ class PortalController extends Controller
             'device_key.required' => 'A Chave do Dispositivo é obrigatória.',
         ]);
 
-        $device = Device::where('mac', strtoupper($request->mac))->first();
+        $mac = strtoupper($request->mac);
+        $key = strtoupper(trim($request->device_key));
+        $device = $registrations->confirm($mac, $key);
 
         if (!$device) {
-            return back()->withErrors(['mac' => 'Dispositivo não encontrado. Verifique o MAC e tente novamente.'])->withInput();
+            return back()->withErrors(['mac' => 'MAC ou chave inválidos ou expirados. Confira os dados exibidos no aplicativo.'])->withInput();
         }
 
         if (strtoupper($device->device_key) !== strtoupper($request->device_key)) {
@@ -62,6 +66,7 @@ class PortalController extends Controller
         }
 
         // Login successful
+        $request->session()->regenerate();
         Session::put('portal_device_id', $device->id);
 
         return redirect()->route('portal.dashboard')->with('success', 'Dispositivo autenticado com sucesso!');
@@ -95,54 +100,59 @@ class PortalController extends Controller
         return view('portal.dashboard', compact('device'));
     }
 
-    /**
-     * Store a new playlist for the authenticated device.
-     */
-    public function storePlaylist(Request $request)
+    public function storePlaylist(Request $request, DevicePlaylistService $playlists)
     {
-        if (!Session::has('portal_device_id')) {
-            return redirect()->route('portal.login');
+        $device = $this->sessionDevice();
+        if (!$device) return redirect()->route('portal.login');
+
+        // Accept host from older forms while using the same URL contract as the API.
+        $input = $request->all();
+        if (($input['type'] ?? null) === 'xtream' && empty($input['url'])) {
+            $input['url'] = $input['host'] ?? null;
         }
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|in:m3u,xtream',
-            'url' => 'required_if:type,m3u|nullable|url',
-            'host' => 'required_if:type,xtream|nullable|url',
-            'username' => 'required_if:type,xtream|nullable|string',
-            'password' => 'required_if:type,xtream|nullable|string',
-        ]);
-
-        $device = Device::find(Session::get('portal_device_id'));
-
-        $url = $request->type === 'm3u' ? $request->url : $request->host;
-
-        $device->playlists()->create([
-            'name' => $request->name,
-            'type' => $request->type,
-            'url' => $url,
-            'username' => $request->username,
-            'password' => $request->password,
-            'is_active' => true,
-        ]);
+        $playlists->save($device, $input);
 
         return redirect()->route('portal.dashboard')->with('success', 'Playlist adicionada com sucesso!');
     }
 
-    /**
-     * Delete a playlist from the authenticated device.
-     */
-    public function destroyPlaylist($id)
+    public function editPlaylist(int $id)
     {
-        if (!Session::has('portal_device_id')) {
-            return redirect()->route('portal.login');
-        }
+        $device = $this->sessionDevice();
+        if (!$device) return redirect()->route('portal.login');
+        $playlist = $device->playlists()->findOrFail($id);
 
-        $device = Device::find(Session::get('portal_device_id'));
-        
-        $playlist = $device->playlists()->where('id', $id)->firstOrFail();
-        $playlist->delete();
+        return view('portal.edit', compact('playlist'));
+    }
+
+    public function updatePlaylist(Request $request, int $id, DevicePlaylistService $playlists)
+    {
+        $device = $this->sessionDevice();
+        if (!$device) return redirect()->route('portal.login');
+        $playlists->save($device, $request->all(), $id);
+
+        return redirect()->route('portal.dashboard')->with('success', 'Playlist atualizada com sucesso!');
+    }
+
+    public function setMainPlaylist(int $id, DevicePlaylistService $playlists)
+    {
+        $device = $this->sessionDevice();
+        if (!$device) return redirect()->route('portal.login');
+        $playlists->setMain($device, $id);
+
+        return redirect()->route('portal.dashboard')->with('success', 'Lista principal atualizada!');
+    }
+
+    public function destroyPlaylist(int $id, DevicePlaylistService $playlists)
+    {
+        $device = $this->sessionDevice();
+        if (!$device) return redirect()->route('portal.login');
+        $playlists->delete($device, $id);
 
         return redirect()->route('portal.dashboard')->with('success', 'Playlist removida com sucesso!');
+    }
+
+    private function sessionDevice(): ?Device
+    {
+        return Device::find(Session::get('portal_device_id'));
     }
 }
