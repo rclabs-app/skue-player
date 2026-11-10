@@ -1,29 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="20 12 205 78" fill="none">
   <defs>
-    <!-- Cyan to Purple Wave Gradient -->
+    <!-- Subtle Accent Gradient -->
     <linearGradient id="skue-web-logo-wave-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#00F0FF"/>
-      <stop offset="35%" stop-color="#0EA5E9"/>
-      <stop offset="70%" stop-color="#2563EB"/>
-      <stop offset="100%" stop-color="#8B5CF6"/>
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#2563EB"/>
     </linearGradient>
 
-    <!-- Metallic Highlight for E top right -->
+    <!-- Subtle Highlight for E top right -->
     <linearGradient id="skue-web-logo-e-shine" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#BAE6FD"/>
-      <stop offset="50%" stop-color="#38BDF8"/>
-      <stop offset="100%" stop-color="#00F0FF"/>
+      <stop offset="0%" stop-color="#E2E8F0"/>
+      <stop offset="100%" stop-color="#94A3B8"/>
     </linearGradient>
-
-    <filter id="skue-web-logo-wave-glow" x="-20%" y="-50%" width="140%" height="200%">
-      <feGaussianBlur stdDeviation="2.5" result="blur1" />
-      <feGaussianBlur stdDeviation="0.8" result="blur2" />
-      <feMerge>
-        <feMergeNode in="blur1" />
-        <feMergeNode in="blur2" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
   </defs>
 
   <!-- Letters S, K, U, E -->
@@ -32,16 +19,16 @@
     <path d="M 72.720703,21.259766 H 84 v 15.966796 l 16.25977,-15.966796 h 13.0957 L 92.291016,41.972656 115.52344,65 h -14.1211 L 84,47.773437 V 65 H 72.720703 Z" />
     <path d="m 122.16016,21.259766 h 11.27929 v 26.220703 q 0,5.419922 1.75782,7.763672 1.7871,2.314453 5.80078,2.314453 4.04297,0 5.80078,-2.314453 1.78711,-2.34375 1.78711,-7.763672 V 21.259766 h 11.27929 v 26.220703 q 0,9.287109 -4.6582,13.828125 -4.6582,4.541015 -14.20898,4.541015 -9.52149,0 -14.17969,-4.541015 -4.6582,-4.541016 -4.6582,-13.828125 z" />
     <path d="m 174.88086,21.259766 h 30.43945 v 8.52539 h -19.16015 v 8.144531 h 18.01757 v 8.525391 h -18.01757 v 10.019531 h 19.80468 V 65 h -31.08398 z" />
-    <!-- E top right glossy metallic sheen -->
+    <!-- E top right subtle highlight -->
     <rect x="193" y="21.26" width="12" height="8.5" rx="0.5" fill="url(#skue-web-logo-e-shine)" />
   </g>
 
-  <!-- Flow Wave -->
+  <!-- Flow Wave (clean, without blur glow) -->
   <path d="M 32 68 C 65 67, 95 73, 120 74 C 150 75, 175 70, 195 68 C 205 67, 212 68, 216 71 C 210 73.5, 195 72, 175 73.5 C 145 76, 120 77.5, 95 75.5 C 65 73, 45 69.5, 32 68 Z" 
-        fill="url(#skue-web-logo-wave-grad)" filter="url(#skue-web-logo-wave-glow)" />
+        fill="url(#skue-web-logo-wave-grad)" />
 
   <!-- SEE MORE -->
   <text x="124" y="88" text-anchor="middle" 
         font-family="DejaVu Sans, 'Instrument Sans', sans-serif" 
-        font-size="8.5" font-weight="600" letter-spacing="9" fill="#94A3B8" opacity="0.95">SEE MORE</text>
+        font-size="8.5" font-weight="600" letter-spacing="9" fill="#94A3B8" opacity="0.85">SEE MORE</text>
 </svg>
