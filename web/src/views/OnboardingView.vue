@@ -131,85 +131,142 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center justify-center min-h-screen bg-[#0a0a0c] text-white p-4">
-    <div class="bg-surface p-6 sm:p-8 rounded-2xl shadow-2xl max-w-md w-full my-auto border border-gray-800 text-center">
+  <div class="h-full w-full overflow-y-auto bg-[#0a0a0c] text-white flex items-center justify-center p-3 sm:p-5 lg:p-8">
+    <div class="bg-[#14161a] border border-white/10 rounded-2xl shadow-2xl w-full max-w-4xl my-auto p-4 sm:p-5 lg:p-8">
       
-      <!-- Brand & Header -->
-      <div class="mb-5 flex flex-col items-center">
-        <img src="/skue-logo.svg" alt="Skue - See More" class="h-14 w-auto mb-2" />
-        <p class="text-xs text-gray-400">Configure sua lista para começar a assistir</p>
-      </div>
-      
-      <div v-if="error" class="bg-red-900/50 border border-red-700 text-red-200 px-3 py-2 rounded mb-4 text-xs">
-        {{ error }}
-      </div>
-
-      <!-- Activation Info -->
-      <div class="space-y-5">
-        <p class="text-xs text-gray-300 bg-gray-800/50 p-3 rounded-lg border border-gray-700/50 leading-relaxed">
-          Acesse <strong class="text-white text-sm">skue.tv/portal</strong> ou escaneie o QR Code para adicionar suas listas IPTV:
-        </p>
+      <div class="grid grid-cols-1 landscape:grid-cols-12 sm:grid-cols-12 gap-4 sm:gap-5 lg:gap-8 items-stretch">
         
-        <div class="flex justify-center">
-          <div class="bg-white p-3 rounded-xl shadow-lg inline-block">
-             <qrcode-vue :value="portalUrl" :size="140" level="M" render-as="svg" />
+        <!-- Coluna Esquerda: Marca, Instruções, Status e Ações -->
+        <div class="landscape:col-span-5 sm:col-span-5 flex flex-col justify-between text-center landscape:text-left sm:text-left">
+          <div>
+            <!-- Brand & Header -->
+            <div class="flex flex-col landscape:items-start sm:items-start items-center mb-3 lg:mb-5">
+              <img src="/skue-logo.svg" alt="Skue - See More" class="h-9 sm:h-10 lg:h-12 w-auto mb-1.5 lg:mb-2" />
+              <p class="text-xs lg:text-sm text-gray-400">Configure sua lista para começar a assistir</p>
+            </div>
+
+            <!-- Alerta de Erro -->
+            <div
+              v-if="error"
+              class="bg-red-950/60 border border-red-800/70 text-red-200 px-3 py-2 rounded-lg mb-3 lg:mb-4 text-xs leading-snug"
+            >
+              {{ error }}
+            </div>
+
+            <!-- Instruções Passo a Passo -->
+            <div class="space-y-2 lg:space-y-2.5 text-xs lg:text-sm text-gray-300 bg-white/[0.03] p-3 lg:p-4 rounded-xl border border-white/[0.07] leading-relaxed text-left">
+              <div class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-primary/20 text-primary font-semibold text-[11px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <p>
+                  Acesse <strong class="text-white">skue.tv/portal</strong> ou escaneie o QR Code ao lado.
+                </p>
+              </div>
+              <div class="flex items-start gap-2.5">
+                <span class="w-5 h-5 rounded-full bg-primary/20 text-primary font-semibold text-[11px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <p>
+                  Informe o <strong class="text-white">MAC</strong> e a <strong class="text-white">Chave de Ativação</strong> para enviar suas listas IPTV.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rodapé da Coluna Esquerda: Ações e Status -->
+          <div class="mt-3 lg:mt-5 pt-3 lg:pt-4 border-t border-white/[0.07] space-y-2.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                @click="requestActivation"
+                class="flex-1 bg-white/[0.06] hover:bg-white/[0.12] focus:bg-white focus:text-black text-gray-200 font-medium py-2 lg:py-2.5 px-3.5 rounded-xl border border-white/10 transition-all flex justify-center items-center gap-2 text-xs"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                Recarregar Conexão
+              </button>
+
+              <button
+                v-if="store.isLoaded"
+                @click="router.push('/')"
+                class="bg-white/[0.03] hover:bg-white/[0.08] focus:bg-white focus:text-black text-gray-300 font-medium py-2 lg:py-2.5 px-3.5 rounded-xl border border-white/10 transition-all flex justify-center items-center gap-1.5 text-xs"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                Início
+              </button>
+            </div>
+
+            <div>
+              <p v-if="isWaiting" class="text-[11px] text-gray-400 flex items-center justify-center landscape:justify-start sm:justify-start gap-2">
+                <span class="relative flex h-2 w-2 shrink-0">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Aguardando configuração remota...
+              </p>
+              <p v-else class="text-[11px] text-red-400/90 flex items-center justify-center landscape:justify-start sm:justify-start gap-2">
+                <span class="inline-flex rounded-full h-2 w-2 bg-red-500/80 shrink-0"></span>
+                Desconectado do serviço de ativação.
+              </p>
+            </div>
           </div>
         </div>
 
-        <div class="space-y-4 bg-background rounded-xl p-5 border border-gray-700 shadow-inner">
-          <!-- MAC Address -->
-          <div>
-            <span class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold block mb-1">Endereço MAC da TV</span>
-            <div class="text-xl font-mono font-bold text-primary tracking-wider">
-              {{ deviceMac || 'Carregando...' }}
+        <!-- Coluna Direita: QR Code + Credenciais do Dispositivo -->
+        <div class="landscape:col-span-7 sm:col-span-7 flex">
+          <div class="w-full bg-background rounded-xl p-3.5 sm:p-4 lg:p-6 border border-white/[0.08] shadow-inner flex flex-col landscape:flex-row sm:flex-row items-center justify-center gap-4 sm:gap-5 lg:gap-6">
+            
+            <!-- QR Code -->
+            <div class="flex flex-col items-center shrink-0">
+              <div class="bg-white p-2.5 lg:p-3 rounded-xl shadow-lg inline-flex items-center justify-center">
+                <qrcode-vue
+                  :value="portalUrl"
+                  :size="140"
+                  level="M"
+                  render-as="svg"
+                  class="w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36"
+                />
+              </div>
+              <span class="text-[10px] text-gray-500 uppercase tracking-wider font-medium mt-2">
+                Escaneie no celular
+              </span>
             </div>
-          </div>
-          
-          <div class="border-t border-gray-800 my-2"></div>
 
-          <!-- Activation Key -->
-          <div>
-            <span class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold block mb-1">Chave de Ativação (Key)</span>
-            <div v-if="activationKey" class="text-3xl font-mono font-extrabold text-white tracking-[0.15em] drop-shadow-md">
-              {{ activationKey }}
+            <!-- Divisor Vertical (Paisagem) / Horizontal (Retrato) -->
+            <div class="hidden landscape:block sm:block w-px self-stretch bg-gray-800/80 my-1"></div>
+            <div class="block landscape:hidden sm:hidden h-px w-full bg-gray-800/80"></div>
+
+            <!-- Dados do Dispositivo (MAC + Key) -->
+            <div class="flex-1 min-w-0 w-full flex flex-col justify-center space-y-3 lg:space-y-4 text-center landscape:text-left sm:text-left">
+              <!-- MAC Address -->
+              <div>
+                <span class="text-[10px] lg:text-[11px] text-gray-500 uppercase tracking-widest font-semibold block mb-1">
+                  Endereço MAC da TV
+                </span>
+                <div class="text-base sm:text-lg lg:text-xl font-mono font-bold text-primary tracking-wider break-all">
+                  {{ deviceMac || 'Carregando...' }}
+                </div>
+              </div>
+
+              <div class="border-t border-gray-800/80"></div>
+
+              <!-- Activation Key -->
+              <div>
+                <span class="text-[10px] lg:text-[11px] text-gray-500 uppercase tracking-widest font-semibold block mb-1">
+                  Chave de Ativação (Key)
+                </span>
+                <div
+                  v-if="activationKey"
+                  class="text-2xl sm:text-2xl lg:text-3xl font-mono font-extrabold text-white tracking-[0.15em]"
+                >
+                  {{ activationKey }}
+                </div>
+                <div v-else class="flex justify-center landscape:justify-start sm:justify-start items-center py-1.5">
+                  <div class="animate-spin rounded-full h-5 w-5 lg:h-6 lg:w-6 border-2 border-white/15 border-t-primary"></div>
+                </div>
+              </div>
             </div>
-            <div v-else class="flex justify-center items-center py-2">
-              <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
-            </div>
+
           </div>
         </div>
-      </div>
-      
-      <div class="mt-5">
-        <button 
-          @click="requestActivation" 
-          class="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2.5 px-4 rounded-lg transition-colors flex justify-center items-center gap-2 text-xs"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          Recarregar Conexão
-        </button>
+
       </div>
 
-      <div class="mt-4">
-        <p v-if="isWaiting" class="text-[11px] text-gray-500 flex items-center justify-center gap-2">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          Aguardando configuração remota...
-        </p>
-        <p v-else class="text-[11px] text-red-500/80 flex items-center justify-center gap-2">
-          Desconectado do serviço de ativação.
-        </p>
-      </div>
-      
-      <div v-if="store.isLoaded" class="mt-6 pt-4 border-t border-gray-800/50">
-        <button @click="router.push('/')" class="text-[12px] text-gray-400 hover:text-white transition-colors flex items-center justify-center gap-2 mx-auto">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          Voltar para a página inicial
-        </button>
-      </div>
-      
     </div>
   </div>
 </template>
