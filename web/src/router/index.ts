@@ -56,16 +56,6 @@ const router = createRouter({
       path: '/details/:id',
       name: 'details',
       component: () => import('../views/DetailsView.vue')
-    },
-    {
-      path: '/portal',
-      name: 'portal-login',
-      component: () => import('../views/PortalLoginView.vue')
-    },
-    {
-      path: '/portal/dashboard',
-      name: 'portal-dashboard',
-      component: () => import('../views/PortalDashboardView.vue')
     }
   ]
 })
@@ -82,7 +72,7 @@ router.beforeEach(async (to) => {
   }
 
   // Allow access to public routes
-  const publicRoutes = ['onboarding', 'settings', 'pair', 'portal-login', 'portal-dashboard']
+  const publicRoutes = ['onboarding', 'settings', 'pair']
   if (publicRoutes.includes(to.name as string)) {
     return true
   }
