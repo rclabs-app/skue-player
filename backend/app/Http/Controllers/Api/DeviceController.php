@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Device;
+use App\Services\DevicePlaylistService;
+use App\Services\DeviceRegistrationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -15,35 +17,55 @@ class DeviceController extends Controller
      * POST /api/v1/devices/handshake
      * Performs handshake with TV/App to generate or retrieve the pairing key.
      */
-    public function handshake(Request $request): JsonResponse
+    public function handshake(Request $request, DeviceRegistrationService $registrations): JsonResponse
     {
         $request->validate([
             'mac' => 'required|string|max:50',
             'name' => 'nullable|string|max:100',
             'device_model' => 'nullable|string|max:100',
             'app_version' => 'nullable|string|max:50',
+            'registration_key' => 'nullable|string|size:6',
         ]);
 
         $mac = strtoupper(trim($request->input('mac')));
 
-        // Find or create device
+        // Only portal confirmation creates a device; handshake prepares a pending key.
         $device = Device::where('mac', $mac)->first();
 
+        $resetRequired = !$device && Device::wasRemoved($mac);
+        if ($token = $request->bearerToken()) {
+            try {
+                $identity = explode('|', Crypt::decryptString($token));
+                if (count($identity) !== 2 || strtoupper(trim($identity[1])) !== $mac) {
+                    return response()->json(['error' => 'Token inválido.'], 401);
+                }
+                // A different registration ID means the old local content must be reset.
+                $resetRequired = $resetRequired || !$device || (string) $device->id !== $identity[0];
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Token inválido.'], 401);
+            }
+        }
+
         if (!$device) {
-            $device = Device::create([
-                'mac' => $mac,
-                'device_key' => Device::generateUniqueKey(),
-                'key_expires_at' => now()->addYears(100),
-                'name' => $request->input('name', 'Smart TV'),
-                'status' => 'trial',
-                'trial_ends_at' => Carbon::now()->addDays(7),
+            $pending = $registrations->prepare($mac, [
+                'name' => $request->input('name'),
                 'device_model' => $request->input('device_model'),
                 'app_version' => $request->input('app_version'),
                 'ip_address' => $request->ip(),
-                'last_seen_at' => Carbon::now(),
+            ]);
+            $samePendingKey = strtoupper((string) $request->input('registration_key')) === $pending->device_key;
+
+            return response()->json([
+                'registration_pending' => true,
+                'reset_required' => $resetRequired && !$samePendingKey,
+                'mac' => $mac,
+                'device_key' => $pending->device_key,
+                'key_expires_at' => $pending->expires_at->toIso8601String(),
+                'playlists_count' => 0,
+                'device_token' => null,
             ]);
         } else {
-            // Keep device key permanent for each device
+            // Keep the key stable within this registration
             if (!$device->device_key) {
                 $device->refreshKey();
             } else if ($device->key_expires_at && $device->key_expires_at->isPast()) {
@@ -77,6 +99,8 @@ class DeviceController extends Controller
         }
 
         return response()->json([
+            'registration_pending' => false,
+            'reset_required' => $resetRequired,
             'mac' => $device->mac,
             'device_key' => $device->device_key,
             'key_expires_at' => $device->key_expires_at->toIso8601String(),
@@ -124,5 +148,11 @@ class DeviceController extends Controller
             ],
             'playlists' => $playlists,
         ]);
+    }
+    public function setMainPlaylist(Request $request, string $mac, int $id, DevicePlaylistService $playlists): JsonResponse
+    {
+        $playlists->setMain($request->attributes->get('device'), $id);
+
+        return response()->json(['status' => 'ok', 'main_playlist_id' => $id]);
     }
 }
