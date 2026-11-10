@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\DeviceResource\Pages\ListDevices;
+use App\Filament\Resources\DeviceResource\Pages\EditDevice;
 use App\Models\Device;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -57,18 +58,45 @@ class DeviceRemovalTest extends TestCase
         $this->assertDatabaseCount('devices', 1);
     }
 
-    public function test_filament_bulk_delete_preserves_removal_markers_for_all_selected_devices(): void
+    public function test_filament_list_has_no_individual_or_bulk_delete(): void
     {
         $this->withoutVite();
         $this->actingAs(User::factory()->create());
-        $first = $this->device();
-        $second = $this->device('SK:11:22:33:44:55');
+        $device = $this->device();
         Livewire::test(ListDevices::class)
-            ->callTableBulkAction('delete', [$first, $second])
-            ->assertHasNoTableBulkActionErrors();
-        $this->assertDatabaseCount('devices', 0);
-        $this->assertTrue(Device::wasRemoved($first->mac));
-        $this->assertTrue(Device::wasRemoved($second->mac));
+            ->assertTableActionDoesNotExist('delete')
+            ->assertTableBulkActionDoesNotExist('delete');
+        $this->assertModelExists($device);
+    }
+
+    public function test_filament_delete_requires_exact_mac_and_cancel_preserves_content(): void
+    {
+        $this->withoutVite();
+        $this->actingAs(User::factory()->create());
+        $device = $this->device();
+        $device->update(['name' => 'TV da sala']);
+        $list = $device->playlists()->create(['name' => 'Test', 'type' => 'm3u', 'url' => 'https://example.com/list']);
+        $page = Livewire::test(EditDevice::class, ['record' => $device->getRouteKey()]);
+        $page->mountAction('delete')
+            ->assertSee('TV da sala')
+            ->assertSee($device->mac)
+            ->assertSee('Listas vinculadas: 1')
+            ->assertSee('O app perderá a configuração ao sincronizar')
+            ->unmountAction();
+        $this->assertModelExists($device);
+        $this->assertModelExists($list);
+        $page->callAction('delete', data: ['confirmation_mac' => ''])
+            ->assertHasActionErrors(['confirmation_mac' => 'required']);
+        $page->callAction('delete', data: ['confirmation_mac' => 'SK:00:00:00:00:00'])
+            ->assertHasActionErrors(['confirmation_mac' => 'in']);
+        $this->assertModelExists($device);
+        $this->assertModelExists($list);
+        $this->assertFalse(Device::wasRemoved($device->mac));
+        $page->callAction('delete', data: ['confirmation_mac' => $device->mac])
+            ->assertHasNoActionErrors();
+        $this->assertModelMissing($device);
+        $this->assertModelMissing($list);
+        $this->assertTrue(Device::wasRemoved($device->mac));
     }
 
     public function test_unrelated_new_installations_only_prepare_registration(): void
