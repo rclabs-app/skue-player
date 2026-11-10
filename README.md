@@ -120,7 +120,7 @@ docker compose up -d
 Acesse os serviços:
 * **Frontend Web:** [http://localhost:5173](http://localhost:5173)
 * **Backend API:** [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
-* **Portal de Playlists:** [http://localhost:5173/portal](http://localhost:5173/portal)
+* **Portal de Playlists:** [http://localhost:8000/portal](http://localhost:8000/portal)
 
 ---
 
@@ -143,6 +143,38 @@ cd web
 npm install
 npm run dev
 ```
+
+---
+
+### Portal de gerenciamento (Laravel)
+
+O portal do usuário é servido exclusivamente pelo Laravel em `/portal`. O Vue
+fica responsável pelo player; suas antigas telas de login e painel do portal
+foram removidas. No portal é possível cadastrar, editar, ativar/desativar, excluir
+e definir a lista principal. Uma lista desativada não pode ser principal; ao
+remover ou desativar a principal, outra lista ativa é escolhida, se existir.
+
+Para servir os estilos do portal, gere os assets do backend:
+
+```bash
+cd backend
+npm install
+npm run build
+```
+
+Durante o desenvolvimento, acesse `http://localhost:8000/portal`, ou substitua
+`localhost` pelo IP do computador para acessar de outro dispositivo. A porta 5173
+serve somente o player; não há encaminhamento do portal por ela. A API do aplicativo
+continua disponível e compartilha as regras de listas no backend.
+
+No APK, configure `VITE_PORTAL_URL` com a URL completa do portal Laravel. Essa
+variável é usada pelo QR Code e pelos links de configurações. Sem configuração,
+o app nativo usa `https://skue.tv/portal`, que depende da publicação e do domínio
+estarem operacionais. No player web em desenvolvimento, o destino padrão é o
+mesmo host na porta 8000; em produção, é `/portal` na origem pública atual.
+Se o portal público estiver em outro host, configure `VITE_PORTAL_URL`.
+Uma alteração no aplicativo exige novo build/APK; uma alteração apenas no Blade
+é entregue pelo Laravel.
 
 ---
 
@@ -179,6 +211,23 @@ cd android
 ./gradlew assembleDebug
 ```
 *O APK gerado ficará disponível em `web/android/app/build/outputs/apk/debug/`.*
+
+Para testar o APK com o backend do computador na mesma rede, mantenha o backend
+em execução na porta 8000, acessível pela rede local. No build, informe
+o IP do computador (substitua `192.168.0.27` pelo endereço atual):
+
+```bash
+cd web
+VITE_API_BASE_URL=http://192.168.0.27:8000 VITE_PORTAL_URL=http://192.168.0.27:8000/portal npm run build
+npx cap sync android
+cd android
+./gradlew assembleDebug
+```
+
+Essas variáveis configuram somente esse build, sem editar o ambiente de produção.
+O celular precisa alcançar o computador pela rede local; o QR Code abrirá o portal
+nesse computador. Após mudar o IP ou o destino da API, gere e instale o APK novamente.
+
 
 ---
 
