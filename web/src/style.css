@@ -45,11 +45,10 @@
  */
 .tv-nav-icon:focus,
 .tv-nav-icon:focus-visible {
-  outline: 2px solid rgba(59, 130, 246, 0.9);
+  outline: 2px solid rgba(255, 255, 255, 0.85);
   outline-offset: 2px;
-  box-shadow:
-    0 0 0 4px rgba(59, 130, 246, 0.15),
-    0 0 12px rgba(59, 130, 246, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
   border-radius: 9999px;
 }
 
