@@ -2,6 +2,10 @@
 import { ref, computed, onMounted, onUnmounted, watch, type CSSProperties } from 'vue'
 import Hls from 'hls.js'
 import mpegts from 'mpegts.js'
+import { monitorLivePlayback } from '../lib/livePlaybackMonitor'
+import { createMpegtsConfig } from '../lib/mpegtsConfig'
+import { createLiveTsLoader } from '../lib/liveTsLoader'
+import { getLiveHlsAlternative, probeLiveHlsManifest } from '../lib/liveStreamUrl'
 import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { useHistoryStore } from '../stores/history'
@@ -27,6 +31,16 @@ let tsPlayer: mpegts.Player | null = null
 const historyStore = useHistoryStore()
 let lastUpdateTime = 0
 let isDestroying = false
+let playbackGeneration = 0
+let cleanupMpegtsListeners: (() => void) | null = null
+const playbackRequested = ref(true)
+let liveHlsAttempted = false
+let pendingLiveReconnect: string | null = null
+let liveBufferConsumed = false
+let liveReconnectAttempts = 0
+let liveReconnectTimes: number[] = []
+let liveReconnectTimer: ReturnType<typeof setTimeout> | null = null
+let switchingLiveSource = false
 
 // TV UI State
 const isPlaying = ref(false)
@@ -156,6 +170,7 @@ function handleWaiting() {
 }
 
 function handlePlaying() {
+  switchingLiveSource = false
   if (bufferingTimeout) clearTimeout(bufferingTimeout)
   isBuffering.value = false
   isPlaying.value = true
@@ -258,6 +273,25 @@ function wakeControls() {
   }, 3500)
 }
 
+async function requestVideoPlay(video: HTMLVideoElement) {
+  const generation = playbackGeneration
+  try {
+    await video.play()
+  } catch (error) {
+    if (isDestroying || generation !== playbackGeneration || videoRef.value !== video) return
+    // A pause or a source replacement may interrupt a pending play request.
+    const name = error && typeof error === 'object' && 'name' in error ? error.name : ''
+    if (name === 'AbortError') return
+    isPlaying.value = false
+    isBuffering.value = false
+    if (name === 'NotAllowedError') {
+      showControls.value = true
+      return
+    }
+    showError('Erro de Reprodução', 'Não foi possível iniciar o vídeo. Tente novamente.')
+  }
+}
+
 function togglePlay() {
   if (isNativePlatform.value) {
     try {
@@ -278,8 +312,14 @@ function togglePlay() {
 
   if (!videoRef.value) return
   if (videoRef.value.paused) {
-    videoRef.value.play()
+    playbackRequested.value = true
+    if (pendingLiveReconnect && (videoRef.value.ended || liveBufferConsumed)) {
+      reconnectLiveStream(pendingLiveReconnect)
+    } else {
+      void requestVideoPlay(videoRef.value)
+    }
   } else {
+    playbackRequested.value = false
     videoRef.value.pause()
   }
   wakeControls()
@@ -582,7 +622,10 @@ function playNativeWithFallback(url: string, onFail: () => void) {
 
 function playWithHls(url: string, fallbackUrl: string | null = null, onErrorCallback?: () => void) {
   const video = videoRef.value!
-  if (hls) { hls.destroy(); hls = null }
+  void stopPlayback()
+  isDestroying = false
+  hasError.value = false
+  isBuffering.value = true
 
   hls = new Hls({
     debug: false,
@@ -591,21 +634,23 @@ function playWithHls(url: string, fallbackUrl: string | null = null, onErrorCall
     maxMaxBufferLength: 60,
     startPosition: resumeTime.value > 0 ? resumeTime.value : -1
   })
-  hls.loadSource(url)
-  hls.attachMedia(video)
-
-  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+  const instance = hls
+  const generation = playbackGeneration
+  const isCurrent = () => !isDestroying && hls === instance && playbackGeneration === generation
+  instance.on(Hls.Events.MANIFEST_PARSED, () => {
+    if (!isCurrent()) return
+    switchingLiveSource = false
     tryApplyResume()
-    video.play().catch(e => console.error('HLS play prevented', e))
+    if (playbackRequested.value) void requestVideoPlay(video)
   })
 
-  hls.on(Hls.Events.LEVEL_LOADED, () => {
-    tryApplyResume()
+  instance.on(Hls.Events.LEVEL_LOADED, () => {
+    if (isCurrent()) tryApplyResume()
   })
 
-  hls.on(Hls.Events.ERROR, (_event, data) => {
-    if (!data.fatal) return
-    hls?.destroy()
+  instance.on(Hls.Events.ERROR, (_event, data) => {
+    if (!data.fatal || !isCurrent()) return
+    instance.destroy()
     hls = null
 
     if (onErrorCallback) {
@@ -623,31 +668,73 @@ function playWithHls(url: string, fallbackUrl: string | null = null, onErrorCall
     }
     showError('Erro de Reprodução HLS', 'Não foi possível carregar o vídeo via HLS.')
   })
+  instance.loadSource(url)
+  instance.attachMedia(video)
+}
+
+function reconnectLiveStream(url: string) {
+  if (isDestroying || hasError.value || liveReconnectTimer || !playbackRequested.value) return
+  // A few seconds of playback must not renew retries indefinitely.
+  const now = Date.now()
+  liveReconnectTimes = liveReconnectTimes.filter(time => now - time < 60000)
+  if (liveReconnectTimes.length >= 3) {
+    switchingLiveSource = false
+    showError('Conexão instável', 'O canal encerrou a conexão várias vezes em menos de um minuto. A reconexão automática foi interrompida para evitar um ciclo de carregamento.')
+    return
+  }
+  liveReconnectTimes.push(now)
+  liveReconnectAttempts = liveReconnectTimes.length
+  const generation = playbackGeneration
+  switchingLiveSource = true
+  isBuffering.value = true
+  console.info('[Skue Live] Reconnecting after HTTP end', { attempt: liveReconnectAttempts })
+  liveReconnectTimer = setTimeout(() => {
+    liveReconnectTimer = null
+    if (isDestroying || generation !== playbackGeneration || !playbackRequested.value) return
+    pendingLiveReconnect = null
+    void stopPlayback()
+    isDestroying = false
+    playWithMpegts(url, true)
+    switchingLiveSource = false
+  }, 250 * liveReconnectAttempts)
 }
 
 function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () => void, hasAudioStream: boolean = true) {
   const video = videoRef.value!
   showDebug(`[MPEGTS] Iniciando (isLive=${isLiveStream}, audio=${hasAudioStream}): ${url.slice(-50)}`)
 
+  cleanupMpegtsListeners?.()
+  cleanupMpegtsListeners = null
   if (tsPlayer) { tsPlayer.destroy(); tsPlayer = null }
 
+  const recoverLiveHttp = props.isLive && isLiveStream && !/^wss?:/i.test(url)
+  const liveLoader = recoverLiveHttp ? createLiveTsLoader({
+    isPaused: () => !playbackRequested.value,
+    bufferedAhead: () => {
+      for (let i = 0; i < video.buffered.length; i++) {
+        if (video.buffered.start(i) <= video.currentTime && video.currentTime <= video.buffered.end(i)) {
+          return video.buffered.end(i) - video.currentTime
+        }
+      }
+      return 0
+    },
+    onRecovery: diagnostic => console.info('[Skue Live] HTTP recovery', diagnostic),
+  }) : undefined
   tsPlayer = mpegts.createPlayer({
     type: 'mpegts',
     isLive: isLiveStream,
     url,
     hasAudio: hasAudioStream,
-  }, {
-    enableWorker: true,
-    enableStashBuffer: !isLiveStream,
-    stashInitialSize: isLiveStream ? 128 : 1024,
-  })
+  }, createMpegtsConfig(isLiveStream, liveLoader))
 
+  const player = tsPlayer
   let mpegtsErrorFired = false
 
   const handleMpegtsFailure = (msg: string) => {
-    if (mpegtsErrorFired) return
+    if (mpegtsErrorFired || isDestroying || tsPlayer !== player) return
     mpegtsErrorFired = true
-    video.removeEventListener('error', onVideoError)
+    cleanupMpegtsListeners?.()
+    cleanupMpegtsListeners = null
     if (tsPlayer) {
       tsPlayer.destroy()
       tsPlayer = null
@@ -656,7 +743,9 @@ function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () 
     if (onError) {
       onError()
     } else {
-      showError('Erro de Reprodução', msg)
+      showError('Erro de Reprodução', recoverLiveHttp
+        ? 'Não foi possível recuperar a transmissão. Tente novamente ou selecione outro canal.'
+        : msg)
     }
   }
 
@@ -665,29 +754,78 @@ function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () 
     handleMpegtsFailure(`HTML5 error code=${err?.code}`)
   }
 
+  let playTimer: ReturnType<typeof setTimeout> | null = null
+  let endTimer: ReturnType<typeof setTimeout> | null = null
+  let hlsProbe: AbortController | null = null
+  const stopMonitor = isLiveStream ? monitorLivePlayback(video, {
+    getNetworkSpeed: () => {
+      const info = player.statisticsInfo
+      return 'speed' in info ? info.speed : undefined
+    },
+    report: snapshot => console.warn('[Skue Live] Playback stalled', snapshot),
+  }) : () => {}
+  cleanupMpegtsListeners = () => {
+    stopMonitor()
+    video.removeEventListener('error', onVideoError)
+    video.removeEventListener('loadedmetadata', tryApplyResume)
+    video.removeEventListener('canplay', tryApplyResume)
+    if (playTimer) clearTimeout(playTimer)
+    if (endTimer) clearTimeout(endTimer)
+    hlsProbe?.abort()
+  }
   video.addEventListener('error', onVideoError, { once: true })
-  video.addEventListener('loadedmetadata', () => tryApplyResume(), { once: true })
-  video.addEventListener('canplay', () => tryApplyResume(), { once: true })
-  tsPlayer.attachMediaElement(video)
-  tsPlayer.load()
-
-  setTimeout(() => {
-    if (!tsPlayer) return
-    const result = tsPlayer.play()
-    if (result instanceof Promise) {
-      result.catch(e => {
-        console.warn('MPEGTS play() interrupted:', e.message)
-      })
-    }
-  }, 100)
-
-  tsPlayer.on(mpegts.Events.ERROR, (errorType, errorDetail) => {
+  video.addEventListener('loadedmetadata', tryApplyResume, { once: true })
+  video.addEventListener('canplay', tryApplyResume, { once: true })
+  player.on(mpegts.Events.ERROR, (errorType, errorDetail) => {
     handleMpegtsFailure(`type=${errorType} detail=${errorDetail}`)
   })
+  player.on(mpegts.Events.LOADING_COMPLETE, () => {
+    if (isLiveStream && !isDestroying && tsPlayer === player) {
+      console.warn('[Skue Live] Input ended: the live HTTP response was closed.')
+      if (!props.isLive) return
+      pendingLiveReconnect = url
+      const hlsUrl = getLiveHlsAlternative(url)
+      if (!liveHlsAttempted && hlsUrl && Hls.isSupported()) {
+        liveHlsAttempted = true
+        switchingLiveSource = true
+        endTimer = setTimeout(async () => {
+          if (isDestroying || tsPlayer !== player) return
+          hlsProbe = new AbortController()
+          const result = await probeLiveHlsManifest(hlsUrl, hlsProbe.signal)
+          if (isDestroying || tsPlayer !== player || hlsProbe.signal.aborted) return
+          if (!result.supported) {
+            switchingLiveSource = false
+            console.warn('[Skue Live] HLS candidate rejected; keeping original TS', { status: result.status ?? null })
+            if (liveBufferConsumed || video.ended) reconnectLiveStream(url)
+            return
+          }
+          console.info('[Skue Live] Switching finite TS response to HLS')
+          playWithHls(hlsUrl, null, () => {
+            switchingLiveSource = false
+            console.warn('[Skue Live] HLS alternative unavailable; returning to original TS source')
+            playWithMpegts(url, true)
+          })
+        }, 0)
+      }
+    }
+  })
+  if (isLiveStream) console.info(recoverLiveHttp ? '[Skue Live] Continuous HTTP MPEG-TS pipeline active' : '[Skue Live] Standard MPEG-TS pipeline active')
+  player.attachMediaElement(video)
+  player.load()
+
+  playTimer = setTimeout(() => {
+    if (isDestroying || tsPlayer !== player) return
+    if (playbackRequested.value) void requestVideoPlay(video)
+  }, 100)
 }
 
 function initPlayer() {
   if (!props.url) return
+  playbackRequested.value = true
+  liveHlsAttempted = false
+  liveReconnectAttempts = 0
+  liveReconnectTimes = []
+  switchingLiveSource = false
   hasError.value = false
   stopPlayback()
   isDestroying = false
@@ -785,6 +923,7 @@ function initPlayer() {
 function handleNativeError(e: Event) {
   const video = e.target as HTMLVideoElement
   if (!video.error) return
+  if (isDestroying) return
   const code = video.error.code
   if (code === 4) {
     showError('Formato Não Suportado', `Este dispositivo não consegue decodificar este conteúdo.\nCódigo: MEDIA_ERR_SRC_NOT_SUPPORTED`)
@@ -826,37 +965,29 @@ function handleTimeUpdate(e: Event) {
 async function stopPlayback() {
   if (isDestroying) return
   isDestroying = true
+  playbackGeneration++
+  pendingLiveReconnect = null
+  liveBufferConsumed = false
+  if (liveReconnectTimer) clearTimeout(liveReconnectTimer)
+  liveReconnectTimer = null
 
-  // Save final progress for all platforms (browser & Android native)
-  if (props.id && !props.isLive && currentTime.value >= 5) {
-    try {
-      await historyStore.updateProgress(
-        props.id,
-        currentTime.value,
-        duration.value || 0
-      )
-    } catch (e) {
-      console.error('Error saving progress on stopPlayback', e)
-    }
-  }
+  // Snapshot progress, but release the old source synchronously before any await.
+  const progress = props.id && !props.isLive && currentTime.value >= 5
+    ? { id: props.id, time: currentTime.value, duration: duration.value || 0 }
+    : null
 
+  cleanupMpegtsListeners?.()
+  cleanupMpegtsListeners = null
   if (nativePollInterval) {
     clearInterval(nativePollInterval)
     nativePollInterval = null
   }
-
   if (isNativePlatform.value) {
     try {
       ;(window as any).NativePlayer.stopNativeVideo()
     } catch (e) {
       console.error('Error stopping NativePlayer', e)
     }
-  }
-
-  if (videoRef.value) {
-    videoRef.value.pause()
-    videoRef.value.removeAttribute('src')
-    videoRef.value.load()
   }
   if (hls) {
     hls.destroy()
@@ -866,11 +997,44 @@ async function stopPlayback() {
     tsPlayer.destroy()
     tsPlayer = null
   }
+  if (videoRef.value) {
+    videoRef.value.pause()
+    videoRef.value.removeAttribute('src')
+    videoRef.value.load()
+  }
+  if (bufferingTimeout) clearTimeout(bufferingTimeout)
+  isPlaying.value = false
+
+  if (progress) {
+    try {
+      await historyStore.updateProgress(progress.id, progress.time, progress.duration)
+    } catch (e) {
+      console.error('Error saving progress on stopPlayback', e)
+    }
+  }
 }
 
 async function handleClose() {
   await stopPlayback()
   emit('close')
+}
+
+function handlePlaybackEnded() {
+  if (isDestroying) return
+  if (props.isLive) {
+    if (!isNativePlatform.value) {
+      liveBufferConsumed = true
+      if (switchingLiveSource) return
+      if (pendingLiveReconnect) {
+        reconnectLiveStream(pendingLiveReconnect)
+        return
+      }
+    }
+    console.warn('[Skue Live] Media ended unexpectedly')
+    showError('Transmissão interrompida', 'O sinal deste canal foi encerrado. Tente conectar novamente.')
+    return
+  }
+  if (isNativePlatform.value) void handleClose()
 }
 
 function onBeforeUnload() {
@@ -934,7 +1098,7 @@ onMounted(() => {
     showError('Erro no Player Nativo', `O hardware da TV reportou um erro ao decodificar este conteúdo (Erro ${what}, ${extra}).`)
   }
   ;(window as any).onNativePlayerEnded = () => {
-    handleClose()
+    if (isNativePlatform.value) handlePlaybackEnded()
   }
 
   checkResumeTime()
@@ -1001,43 +1165,42 @@ onUnmounted(() => {
         ref="videoRef"
         class="absolute inset-0 w-full h-full object-contain"
         :style="videoTransformStyle"
-        autoplay
+        :autoplay="playbackRequested"
         :poster="!isLive ? poster : undefined"
         @timeupdate="handleTimeUpdate"
         @loadedmetadata="handleLoadedMetadata"
         @canplay="handleCanPlay"
         @seeked="handleSeeked"
-        @play="handlePlaying(); wakeControls()"
+        @play="isPlaying = true; wakeControls()"
         @pause="isPlaying = false; wakeControls()"
         @waiting="handleWaiting"
         @playing="handlePlaying"
+        @ended="handlePlaybackEnded"
         @click="togglePlay"
         @error="handleNativeError"
       ></video>
       <!-- CLEAN PRELOAD / BUFFERING SCREEN -->
       <div v-if="isBuffering && !hasError && seekingTarget === null" class="absolute inset-0 z-30 flex items-center justify-center pointer-events-none transition-opacity duration-300">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary shadow-[0_0_15px_rgba(37,99,235,0.5)]"></div>
+        <div class="animate-spin rounded-full h-12 w-12 border-2 border-white/20 border-t-white"></div>
       </div>
       
-      <!-- ERROR OVERLAY (Apple Liquid Glass Modal) -->
-      <div v-if="hasError" class="absolute inset-0 z-40 bg-black/85 backdrop-blur-2xl flex flex-col items-center justify-center p-6 pointer-events-auto">
-        <div class="bg-white/10 backdrop-blur-3xl border border-white/20 rounded-3xl p-8 md:p-10 max-w-lg w-full flex flex-col items-center shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] text-center relative overflow-hidden">
-          <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/15 via-white/5 to-transparent pointer-events-none"></div>
-          
-          <div class="w-16 h-16 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(239,68,68,0.3)]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <!-- ERROR OVERLAY -->
+      <div v-if="hasError" class="absolute inset-0 z-40 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 pointer-events-auto">
+        <div class="bg-[#14161a] border border-white/10 rounded-2xl p-8 max-w-md w-full flex flex-col items-center shadow-2xl text-center">
+          <div class="w-12 h-12 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center mb-4 text-gray-300">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
           </div>
 
-          <h2 class="text-2xl md:text-3xl font-extrabold text-white mb-3 tracking-tight">{{ errorTitle }}</h2>
-          <p class="text-white/70 text-sm md:text-base leading-relaxed mb-8 font-normal">{{ errorDescription }}</p>
+          <h2 class="text-xl font-semibold text-white mb-2 tracking-tight">{{ errorTitle }}</h2>
+          <p class="text-gray-400 text-xs md:text-sm leading-relaxed mb-6">{{ errorDescription }}</p>
           
-          <div class="flex flex-wrap justify-center gap-4 w-full">
-            <button @click="handleClose" class="px-6 py-3.5 bg-white/10 hover:bg-white/20 focus:bg-white/30 text-white font-semibold rounded-2xl border border-white/20 backdrop-blur-md outline-none focus:outline-none shadow-md">
+          <div class="flex flex-wrap justify-center gap-3 w-full">
+            <button @click="handleClose" class="flex-1 px-5 py-2.5 bg-white/[0.07] hover:bg-white/[0.12] focus:bg-white/20 text-gray-200 font-medium text-xs rounded-xl border border-white/10 outline-none">
               Voltar
             </button>
             
-            <button @click="retryPlay" class="px-6 py-3.5 bg-gradient-to-r from-blue-500/90 to-indigo-600/90 hover:from-blue-400 hover:to-indigo-500 text-white font-bold rounded-2xl border border-blue-300/40 backdrop-blur-md flex items-center gap-2.5 outline-none focus:outline-none shadow-[0_0_25px_rgba(59,130,246,0.4)]">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <button @click="retryPlay" class="flex-1 px-5 py-2.5 bg-white hover:bg-gray-200 text-black font-semibold text-xs rounded-xl flex items-center justify-center gap-2 outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
               Tentar Novamente
             </button>
           </div>
@@ -1129,7 +1292,7 @@ onUnmounted(() => {
                 @click="seekTo"
                 class="flex-1 h-1.5 bg-white/20 hover:h-2 focus:h-2 outline-none focus:outline-none focus:bg-white/40 focus:ring-2 focus:ring-white/50 focus:scale-[1.01] rounded-full cursor-pointer relative overflow-hidden shadow-inner" 
               >
-                <div class="absolute left-0 h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" :style="{ width: duration ? ((seekingTarget !== null ? seekingTarget : currentTime) / duration) * 100 + '%' : '0%' }"></div>
+                <div class="absolute left-0 h-full bg-white rounded-full" :style="{ width: duration ? ((seekingTarget !== null ? seekingTarget : currentTime) / duration) * 100 + '%' : '0%' }"></div>
               </div>
 
               <span class="text-white/80 text-[11px] font-mono font-semibold min-w-[38px]">{{ formatTime(duration) }}</span>
