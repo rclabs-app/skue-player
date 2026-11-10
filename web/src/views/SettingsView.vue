@@ -8,7 +8,9 @@ import { db } from '../lib/database'
 import { getDeviceMac } from '../utils/device'
 import { buildPlaylistUrl } from '../utils/playlist'
 import TermsModal from '../components/TermsModal.vue'
+import { getPortalUrl } from '../utils/portal'
 
+const portalUrl = computed(getPortalUrl)
 const router = useRouter()
 const store = usePlaylistStore()
 const historyStore = useHistoryStore()
@@ -320,7 +322,7 @@ function clearAllData() {
             <div class="border-t border-gray-800/80 pt-3">
               <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-2 font-semibold">Listas no Portal</p>
               <div v-if="devicePlaylists.length === 0" class="text-gray-500 text-xs italic">
-                Nenhuma lista configurada no portal remoto. Cadastre em <strong class="text-gray-300">skue.tv/portal</strong> usando seu MAC.
+                Nenhuma lista configurada no portal remoto. Cadastre em <a :href="portalUrl" target="_blank" rel="noopener noreferrer" class="text-gray-300 underline">{{ portalUrl.replace(/^https?:\/\//, '') }}</a> usando seu MAC.
               </div>
               <div v-else class="space-y-2 max-h-48 overflow-y-auto pr-1">
                 <div 
