@@ -7,9 +7,31 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class Device extends Model
 {
+    protected static function booted(): void
+    {
+        static::deleting(function (Device $device) {
+            PendingDeviceRegistration::where('mac', strtoupper(trim($device->mac)))->delete();
+            DB::table('removed_devices')->updateOrInsert(
+                ['identifier_hash' => self::identifierHash($device->mac)],
+                ['removed_at' => now()],
+            );
+        });
+    }
+
+    public static function wasRemoved(string $mac): bool
+    {
+        return DB::table('removed_devices')->where('identifier_hash', self::identifierHash($mac))->exists();
+    }
+
+    private static function identifierHash(string $mac): string
+    {
+        return hash('sha256', strtoupper(trim($mac)));
+    }
+
     protected $fillable = [
         'customer_id',
         'mac',
