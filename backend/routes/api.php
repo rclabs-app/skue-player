@@ -26,6 +26,7 @@ Route::prefix('v1')->group(function () {
     // Device Activation (MAC Address & Chave de pareamento)
     Route::prefix('devices')->middleware('throttle:120,1')->group(function () {
         Route::post('/handshake',      [DeviceController::class, 'handshake']);
+        Route::patch('/{mac}/playlists/{id}/set-main', [DeviceController::class, 'setMainPlaylist'])->middleware('device.auth');
         Route::get('/{mac}/config',    [DeviceController::class, 'config'])->middleware('device.auth');
     });
 
