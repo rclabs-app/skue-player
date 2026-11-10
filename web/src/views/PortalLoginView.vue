@@ -52,14 +52,11 @@ async function handleLogin() {
 
 <template>
   <div class="flex items-center justify-center min-h-[90vh] px-4">
-    <div class="bg-surface border border-gray-800 p-8 rounded-2xl shadow-2xl max-w-md w-full relative overflow-hidden">
-      <!-- Glow effect decoration -->
-      <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-      
+    <div class="bg-[#14161a] border border-white/10 p-8 rounded-2xl shadow-2xl max-w-md w-full relative overflow-hidden">
       <div class="text-center mb-8 relative z-10">
-        <img src="/skue-logo.svg" alt="Skue" class="h-14 w-auto mx-auto mb-4 filter drop-shadow-[0_4px_16px_rgba(0,240,255,0.25)]" />
-        <h1 class="text-2xl font-bold text-white tracking-tight">Portal do Dispositivo</h1>
-        <p class="text-gray-400 mt-1 text-sm">Gerencie remotamente as playlists de sua TV</p>
+        <img src="/skue-logo.svg" alt="Skue" class="h-12 w-auto mx-auto mb-4" />
+        <h1 class="text-xl font-semibold text-white tracking-tight">Portal do Dispositivo</h1>
+        <p class="text-gray-400 mt-1 text-xs">Gerencie remotamente as playlists de sua TV</p>
       </div>
 
       <div v-if="error" class="bg-red-500/10 border border-red-500/20 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm flex items-start gap-2">
