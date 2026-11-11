@@ -34,6 +34,8 @@ Os pedidos de redução de neon e pausa da assinatura no app definem o estado de
 
 ## Continuidade
 
+- Em 10/11 22:50, Live TV passa a usar Vistos recentemente: canais registrados no início da reprodução, sem posição de retomada, ordenados pela última visita e persistidos localmente. Filmes/séries mantêm Continuar Assistindo. 94 testes e build aprovados; validação real pendente. Registro: sessions/2026-11-10-2249-codex-live-recentes.md.
+
 - Em 10/11 21:58, usuário definiu: banner mantém último filme/série/live apontado mesmo fora dos cartões. Removida liberação mouseleave/blur de Filmes/Séries; troca de categoria continua atualizando destaque. 92 testes e build aprovados; validação visual real pendente. Registro: sessions/2026-11-10-2157-codex-hero-persistente.md.
 
 - Em 10/11 21:12, corrigido Continuar Assistindo: importação preserva dados de uso/configuração, migra IDs antigos e usa IDs independentes da ordem; histórico de séries considera episódio mais recente antes da conclusão. Corrigida consulta SQLite que interpretava current_time como horário atual. 84 testes e build aprovados, incluindo worker/SQLite real e retomada simulada. Sem validação visual/TV ou novo APK. Exportação integral por tick permanece risco não medido. Registro: sessions/2026-11-10-2103-codex-corrigir-historico.md.
