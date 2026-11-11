@@ -90,7 +90,7 @@ onRemoteKey('PAGE_DOWN',    () => cycleGroup(1))
 
 function cycleGroup(delta: number) {
   const allKeys = [
-    { key: 'ALL' }, { key: 'FAVORITES' }, { key: 'CONTINUE' },
+    { key: 'ALL' }, { key: 'FAVORITES' }, { key: 'RECENT' },
     ...groups.value.map(g => ({ key: g.name }))
   ]
   const idx = allKeys.findIndex(g => g.key === activeGroup.value)
@@ -133,9 +133,8 @@ async function fetchItems(reset = false) {
       const allLive = await db.getPlaylistItems('live', 10000, 0)
       const favs = allLive.filter(m => favoritesStore.isFavorite(m.id))
       items = favs.slice(offset, offset + limit)
-    } else if (activeGroup.value === 'CONTINUE') {
-      const history = historyStore.activelyWatching
-        .filter(item => item.metadata.type === 'live')
+    } else if (activeGroup.value === 'RECENT') {
+      const history = historyStore.recentlyWatchedLive
         .map(item => item.metadata)
       items = history.slice(offset, offset + limit)
     } else {
@@ -213,6 +212,7 @@ watch(focusedChannel, async (newVal, _old, onCleanup) => {
 
 function closePlayer() {
   activeChannel.value = null
+  if (activeGroup.value === 'RECENT') void fetchItems(true)
   focusedChannel.value = visibleItems.value[0] || null
 }
 
@@ -276,8 +276,8 @@ function getProgress(prog: EPGProgram) {
           <span>Favoritos</span>
           <span class="text-xs text-gray-600 tabular-nums"></span>
         </button>
-        <button @click="selectGroup('CONTINUE')" @keydown.enter.prevent="selectGroup('CONTINUE')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'CONTINUE' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
-          <span>Continuar Assistindo</span>
+        <button @click="selectGroup('RECENT')" @keydown.enter.prevent="selectGroup('RECENT')" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === 'RECENT' ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
+          <span>Vistos recentemente</span>
           <span class="text-xs text-gray-600 tabular-nums"></span>
         </button>
         <button v-for="g in groups" :key="g.name" @click="selectGroup(g.name)" @keydown.enter.prevent="selectGroup(g.name)" :data-tv-active="activeGroup === g.name" :class="['tv-category-btn w-full flex items-center justify-between px-5 py-2.5 text-sm text-left transition-all border-l-2', activeGroup === g.name ? 'bg-primary/10 border-primary text-white font-semibold' : 'border-transparent text-gray-400 hover:bg-gray-800/40 hover:text-gray-200']">
