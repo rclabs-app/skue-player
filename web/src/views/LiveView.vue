@@ -59,7 +59,11 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => observer?.disconnect())
+onUnmounted(() => {
+  observer?.disconnect()
+  clearTimeout(searchTimeout)
+  fetchVersion++
+})
 
 const groups = ref<{name: string, count: number}[]>([])
 
@@ -99,9 +103,13 @@ const visibleItems = ref<PlaylistItem[]>([])
 const hasMore = ref(true)
 let page = 1
 let isLoading = false
+let fetchVersion = 0
 
 async function fetchItems(reset = false) {
   if (reset) {
+    fetchVersion++
+    isLoading = false
+    focusedChannel.value = null
     page = 1
     visibleItems.value = []
     hasMore.value = true
@@ -109,6 +117,7 @@ async function fetchItems(reset = false) {
   
   if (!hasMore.value || isLoading) return
   isLoading = true
+  const version = fetchVersion
   
   try {
     const limit = 80
@@ -133,6 +142,7 @@ async function fetchItems(reset = false) {
       items = await db.getItemsByCategoryAndType(activeGroup.value, 'live', limit, offset)
     }
     
+    if (version !== fetchVersion) return
     if (items.length < limit) {
       hasMore.value = false
     }
@@ -145,7 +155,7 @@ async function fetchItems(reset = false) {
     
     page++
   } finally {
-    isLoading = false
+    if (version === fetchVersion) isLoading = false
   }
 }
 
@@ -187,16 +197,24 @@ function playChannel(channel: PlaylistItem) {
   activeChannel.value = channel
 }
 
-watch(focusedChannel, async (newVal) => {
-  if (newVal) {
-    isEpgLoading.value = true
-    currentProgram.value = await EPGService.getCurrentProgram(newVal.id, newVal.name, newVal.group, newVal.epgId)
-    isEpgLoading.value = false
-  } else {
-    currentProgram.value = null
-    isEpgLoading.value = false
+watch(focusedChannel, async (newVal, _old, onCleanup) => {
+  let cancelled = false
+  onCleanup(() => { cancelled = true })
+  currentProgram.value = null
+  isEpgLoading.value = !!newVal
+  if (!newVal) return
+  try {
+    const program = await EPGService.getCurrentProgram(newVal.id, newVal.name, newVal.group, newVal.epgId)
+    if (!cancelled) currentProgram.value = program
+  } finally {
+    if (!cancelled) isEpgLoading.value = false
   }
 })
+
+function closePlayer() {
+  activeChannel.value = null
+  focusedChannel.value = visibleItems.value[0] || null
+}
 
 watch(visibleItems, (items) => {
   if (items.length > 0 && !focusedChannel.value) {
@@ -363,7 +381,7 @@ function getProgress(prog: EPGProgram) {
       :title="activeChannel.name"
       :poster="activeChannel.logo"
       :is-live="true"
-      @close="activeChannel = null"
+      @close="closePlayer"
       @error="errorMsg = $event"
     />
   </div>
