@@ -11,6 +11,7 @@ vi.mock('../workers/m3u-parser.worker?worker', () => ({ default: class {
   postMessage = vi.fn()
 } }))
 vi.mock('../lib/database', () => ({ db: {
+  getPlaylistUserData: vi.fn(async () => ({})),
   getConfig: vi.fn(async (key: string) => mock.config.get(key)),
   saveConfig: vi.fn(async (key: string, value: unknown) => { mock.config.set(key, value) }),
   clearDeviceContent: vi.fn(async () => {
