@@ -138,6 +138,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     const history = useHistoryStore()
     history.historyItems = []
     history.continueWatchingItems = []
+    history.recentlyWatchedLive = []
     history.isLoaded = false
     const favorites = useFavoritesStore()
     favorites.favoriteIds = []
