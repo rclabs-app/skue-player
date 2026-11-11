@@ -19,6 +19,8 @@
 import initSqlJs from 'sql.js'
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url'
 import { SCHEMA } from '../lib/sqlite'
+import { contentId } from '../lib/contentIdentity'
+import { restorePlaylistUserData } from '../lib/playlistUserData'
 
 // How many rows to INSERT per COMMIT — keeps peak memory low
 const CHUNK_SIZE = 2000
@@ -124,13 +126,6 @@ function cleanDisplayName(name: string): string {
     .trim()
 }
 
-function generateId(url: string, name: string, idx: number): string {
-  const str = url + name
-  let h = 0
-  for (let i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h = h & h }
-  return Math.abs(h).toString(36) + '-' + idx
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 let db: any;
@@ -204,7 +199,8 @@ function processLines(text: string) {
     } else if (hasCurrentItem) {
       const url  = line
       const type = determineType(url, currentGroup, currentName, currentEpgId)
-      const id   = generateId(url, currentName, itemIdx++)
+      const id   = contentId(url, currentName)
+      itemIdx++
 
       let serieKey: string | null = null
       if (type === 'series') {
@@ -256,6 +252,7 @@ self.onmessage = async (e: MessageEvent) => {
       const SQL = await initSqlJs({ locateFile: () => wasmUrl })
       db  = new SQL.Database()
       db.run(SCHEMA)
+      restorePlaylistUserData(db, msg.userData || {})
       db.run('DELETE FROM playlist')
       db.run('DELETE FROM series_index')
 
