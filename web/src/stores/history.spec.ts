@@ -123,3 +123,45 @@ describe('HistoryStore - Continuar Assistindo', () => {
     expect(store.continueWatchingItems[0].id).toBe('ep-2')
   })
 })
+
+
+describe('history reload regression', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    ;(db as any)._reset()
+    ;(db as any)._setPlaylist([
+      { id: 'ep1', name: 'Show S01E01', type: 'series', serieKey: 'show' },
+      { id: 'ep2', name: 'Show S01E02', type: 'series', serieKey: 'show' }
+    ])
+  })
+  it('does not resurrect an older episode after the latest is completed', async () => {
+    const store = useHistoryStore()
+    vi.spyOn(Date, 'now').mockReturnValueOnce(100).mockReturnValueOnce(200)
+    await store.updateProgress('ep1', 300, 1000)
+    await store.updateProgress('ep2', 960, 1000)
+    expect(store.activelyWatching).toHaveLength(0)
+    await store.loadHistory()
+    expect(store.activelyWatching).toHaveLength(0)
+    expect(store.getProgress('ep1')?.currentTime).toBe(300)
+    vi.restoreAllMocks()
+  })
+  it('keeps the most recent episode after reload', async () => {
+    const store = useHistoryStore()
+    vi.spyOn(Date, 'now').mockReturnValueOnce(100).mockReturnValueOnce(200)
+    await store.updateProgress('ep1', 300, 1000)
+    await store.updateProgress('ep2', 150, 1000)
+    await store.loadHistory()
+    expect(store.activelyWatching.map(i => i.id)).toEqual(['ep2'])
+    vi.restoreAllMocks()
+  })
+  it('ignores initial ticks and hides missing catalog items without deleting progress', async () => {
+    const store = useHistoryStore()
+    await store.updateProgress('ep1', 300, 1000)
+    await store.updateProgress('ep2', 2, 1000)
+    expect(store.activelyWatching.map(i => i.id)).toEqual(['ep1'])
+    await store.updateProgress('missing', 100, 1000)
+    await store.loadHistory()
+    expect(store.activelyWatching.map(i => i.id)).toEqual(['ep1'])
+    expect(store.getProgress('missing')?.currentTime).toBe(100)
+  })
+})
