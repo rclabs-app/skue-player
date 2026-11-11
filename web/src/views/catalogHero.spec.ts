@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import ContentCard from '../components/ContentCard.vue'
 import Movies from './MoviesView.vue'
 import Series from './SeriesView.vue'
 import Live from './LiveView.vue'
@@ -95,5 +96,23 @@ describe('catalog hero follows the active list', () => {
     w.findComponent({ name: 'VideoPlayer' }).vm.$emit('close')
     await flushPromises()
     expect((w.vm as unknown as { focusedChannel: { id: string } }).focusedChannel.id).toBe('a')
+  })
+  it('renders square channel cards in LiveView while preserving portrait/video defaults', async () => {
+    const w = await open(Live)
+    const liveCard = w.findComponent({ name: 'ContentCard' })
+    expect(liveCard.props('isSquare')).toBe(true)
+    expect(liveCard.props('isPortrait')).toBe(false)
+
+    const squareWrapper = mount(ContentCard, {
+      props: {
+        item: { id: 'ch1', name: 'Canal 1', logo: 'https://example.com/logo.png', type: 'live' },
+        isPortrait: false,
+        isSquare: true,
+        showTitle: true,
+      },
+    })
+    wrappers.push(squareWrapper)
+    expect(squareWrapper.find('.aspect-square').exists()).toBe(true)
+    expect(squareWrapper.find('img').attributes('src')).toContain('w=360&h=360')
   })
 })
