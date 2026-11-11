@@ -30,6 +30,8 @@ const heroMetaCache = ref<Record<string, TMDBMetadata>>({})
 let hoverMetaTimeout: any = null
 
 watch(currentHero, async (newVal) => {
+  clearTimeout(hoverMetaTimeout)
+  tmdbHeroMetadata.value = null
   if (!newVal) {
     tmdbHeroMetadata.value = null
     return
@@ -152,7 +154,6 @@ onMounted(async () => {
   
   // Load initial data
   groups.value = await db.getCategoriesWithCount('movie')
-  heroItems.value = await db.getPlaylistItems('movie', 5, 0)
   totalMovies.value = await db.getPlaylistItemCount('movie')
   
   const allFavorites = await db.getFavorites()
@@ -179,6 +180,8 @@ onMounted(async () => {
 onUnmounted(() => {
   observer.value?.disconnect()
   stopHeroTimer()
+  clearTimeout(hoverMetaTimeout)
+  clearTimeout(searchTimeout)
 })
 
 const groups = ref<{name: string, count: number}[]>([])
@@ -188,9 +191,16 @@ const visibleItems = ref<PlaylistItem[]>([])
 const hasMore = ref(true)
 let page = 1
 let isLoading = false
+let fetchVersion = 0
 
 async function fetchItems(reset = false) {
   if (reset) {
+    fetchVersion++
+    isLoading = false
+    hoveredItem.value = null
+    heroIndex.value = 0
+    heroItems.value = []
+    stopHeroTimer()
     page = 1
     visibleItems.value = []
     hasMore.value = true
@@ -198,6 +208,7 @@ async function fetchItems(reset = false) {
   
   if (!hasMore.value || isLoading) return
   isLoading = true
+  const version = fetchVersion
   
   try {
     const limit = 60
@@ -225,14 +236,19 @@ async function fetchItems(reset = false) {
       items = await db.getItemsByCategoryAndType(activeGroup.value, 'movie', limit, offset)
     }
     
+    if (version !== fetchVersion) return
     if (items.length < limit) {
       hasMore.value = false
     }
     
     visibleItems.value.push(...items)
+    if (reset) {
+      heroItems.value = items.slice(0, 5)
+      startHeroTimer()
+    }
     page++
   } finally {
-    isLoading = false
+    if (version === fetchVersion) isLoading = false
   }
 }
 
