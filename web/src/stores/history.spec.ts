@@ -165,3 +165,26 @@ describe('history reload regression', () => {
     expect(store.getProgress('missing')?.currentTime).toBe(100)
   })
 })
+
+
+describe('recent live channels', () => {
+  it('persists visits without resume position, orders and deduplicates channels', async () => {
+    setActivePinia(createPinia())
+    ;(db as any)._reset()
+    ;(db as any)._setPlaylist([
+      { id: 'live1', name: 'Channel 1', type: 'live' },
+      { id: 'live2', name: 'Channel 2', type: 'live' }
+    ])
+    const store = useHistoryStore()
+    const clock = vi.spyOn(Date, 'now').mockReturnValueOnce(100).mockReturnValueOnce(200).mockReturnValueOnce(300)
+    try {
+      await store.recordLiveView('live1')
+      await store.recordLiveView('live2')
+      await store.recordLiveView('live1')
+      await store.loadHistory()
+      expect(store.recentlyWatchedLive.map(i => i.id)).toEqual(['live1', 'live2'])
+      expect(store.getProgress('live1')?.currentTime).toBe(0)
+      expect(store.activelyWatching).toEqual([])
+    } finally { clock.mockRestore() }
+  })
+})
