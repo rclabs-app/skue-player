@@ -12,7 +12,7 @@ const data = vi.hoisted(() => ({
 }))
 vi.mock('../stores/playlist', () => ({ usePlaylistStore: () => ({ isLoaded: true, uniqueSeries: data.items }) }))
 vi.mock('../stores/favorites', () => ({ useFavoritesStore: () => ({ loadFavorites: async () => {}, isFavorite: () => false }) }))
-vi.mock('../stores/history', () => ({ useHistoryStore: () => ({ loadHistory: async () => {}, activelyWatching: [] }) }))
+vi.mock('../stores/history', () => ({ useHistoryStore: () => ({ loadHistory: async () => {}, activelyWatching: [], recentlyWatchedLive: [] }) }))
 vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('../composables/useSpatialNav', () => ({ useSpatialNav: () => ({ registerZone() {}, setZoneRule() {}, activate() {}, focusZone() {} }) }))
 vi.mock('../composables/useTvRemote', () => ({ useTvRemote: () => ({ onRemoteKey() {} }) }))
