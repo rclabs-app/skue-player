@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   }>,
   savedProgress: null as null | { currentTime: number; duration: number },
   updateProgress: vi.fn(),
+  recordLiveView: vi.fn(),
   native: false,
   hlsSupported: false,
   probeHls: vi.fn(),
@@ -23,7 +24,7 @@ const state = vi.hoisted(() => ({
 }))
 
 vi.mock('../stores/history', () => ({
-  useHistoryStore: () => ({ getProgress: () => state.savedProgress, updateProgress: state.updateProgress }),
+  useHistoryStore: () => ({ getProgress: () => state.savedProgress, updateProgress: state.updateProgress, recordLiveView: state.recordLiveView }),
 }))
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => state.native } }))
 vi.mock('../lib/liveStreamUrl', async importOriginal => {
@@ -89,6 +90,7 @@ describe('VideoPlayer playback lifecycle', () => {
     state.hlsSupported = false
     state.probeHls.mockReset().mockResolvedValue({ supported: true, status: 200 })
     state.hlsInstances.length = 0
+    state.recordLiveView.mockReset().mockResolvedValue(undefined)
     state.updateProgress.mockReset().mockResolvedValue(undefined)
     play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
@@ -110,6 +112,15 @@ describe('VideoPlayer playback lifecycle', () => {
     video.element.currentTime = 310
     await video.trigger('timeupdate')
     expect(state.updateProgress).toHaveBeenCalledWith('test', 310, 1000)
+  })
+
+  it('records live only when playback starts, once per opened channel', async () => {
+    open(true)
+    expect(state.recordLiveView).not.toHaveBeenCalled()
+    await wrapper!.find('video').trigger('playing')
+    await wrapper!.find('video').trigger('playing')
+    expect(state.recordLiveView).toHaveBeenCalledExactlyOnceWith('test')
+    expect(state.updateProgress).not.toHaveBeenCalled()
   })
 
   afterEach(() => {
