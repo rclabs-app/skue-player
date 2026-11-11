@@ -19,9 +19,7 @@ const favoritesStore = useFavoritesStore()
 const historyStore = useHistoryStore()
 const router = useRouter()
 
-const heroItems = computed(() => {
-  return store.uniqueSeries.slice(0, 5) as SeriesEntry[]
-})
+const heroItems = ref<SeriesEntry[]>([])
 const heroIndex = ref(0)
 const hoveredItem = ref<SeriesEntry | null>(null)
 const currentHero = computed(() => hoveredItem.value || heroItems.value[heroIndex.value] || null)
@@ -32,6 +30,8 @@ const heroMetaCache = ref<Record<string, TMDBMetadata>>({})
 let hoverMetaTimeout: any = null
 
 watch(currentHero, async (newVal) => {
+  clearTimeout(hoverMetaTimeout)
+  tmdbHeroMetadata.value = null
   if (!newVal) {
     tmdbHeroMetadata.value = null
     return
@@ -165,6 +165,7 @@ onMounted(async () => {
 onUnmounted(() => {
   observer.value?.disconnect()
   stopHeroTimer()
+  clearTimeout(hoverMetaTimeout)
 })
 
 const groups = computed(() => {
@@ -212,6 +213,13 @@ const filteredSeries = computed(() => {
   }
   return list
 })
+
+watch(filteredSeries, (items) => {
+  hoveredItem.value = null
+  heroIndex.value = 0
+  heroItems.value = items.slice(0, 5)
+  startHeroTimer()
+}, { immediate: true })
 
 // Progressive rendering — 60 at a time
 const { visibleItems, hasMore, loadMore } = usePagedList(filteredSeries, 60)
