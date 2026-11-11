@@ -17,7 +17,7 @@ export const useHistoryStore = defineStore('history', () => {
     return true
   }
 
-  async function resolveMetadata(id: string): Promise<PlaylistItem> {
+  async function resolveMetadata(id: string): Promise<PlaylistItem | null> {
     const pItem = await db.getPlaylistItemById(id)
     if (pItem) {
       if (pItem.type === 'series' && pItem.serieKey && !pItem.logo) {
@@ -29,26 +29,7 @@ export const useHistoryStore = defineStore('history', () => {
       return pItem
     }
 
-    const sItem = await db.getSeriesById(id)
-    if (sItem) {
-      return {
-        id: sItem.id,
-        name: sItem.displayName,
-        url: '',
-        group: sItem.group || 'Séries',
-        logo: sItem.logo,
-        type: 'series',
-        serieKey: sItem.serieKey
-      }
-    }
-
-    return {
-      id,
-      name: 'Item ' + id.slice(0, 8),
-      url: '',
-      group: 'Outros',
-      type: 'movie'
-    }
+    return null
   }
 
   async function loadHistory() {
@@ -60,9 +41,8 @@ export const useHistoryStore = defineStore('history', () => {
       const enriched = [] as Array<HistoryItem & { metadata: PlaylistItem }>
       for (const hist of items) {
         const meta = await resolveMetadata(hist.id)
-        const candidate = { ...hist, metadata: meta }
-        if (isActiveHistoryItem(candidate)) {
-          enriched.push(candidate)
+        if (meta && meta.type !== 'live' && hist.currentTime >= 5) {
+          enriched.push({ ...hist, metadata: meta })
         }
       }
 
@@ -74,7 +54,7 @@ export const useHistoryStore = defineStore('history', () => {
           : e.id
         if (!seen.has(dedupeKey)) {
           seen.add(dedupeKey)
-          uniqueEnriched.push(e)
+          if (isActiveHistoryItem(e)) uniqueEnriched.push(e)
         }
       }
 
@@ -90,8 +70,7 @@ export const useHistoryStore = defineStore('history', () => {
     const safeDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0
 
     // Prevent premature / zero-second updates from clearing saved progress
-    const existing = historyItems.value.find(i => i.id === id)
-    if (safeCurrentTime < 5 && existing && existing.currentTime >= 5) {
+    if (safeCurrentTime < 5) {
       return
     }
 
@@ -111,7 +90,9 @@ export const useHistoryStore = defineStore('history', () => {
 
     historyItems.value.sort((a, b) => b.watchedAt - a.watchedAt)
 
+    await db.saveHistoryItem(item)
     const meta = await resolveMetadata(item.id)
+    if (!meta || meta.type === 'live') return
 
     const dedupeKey = meta.type === 'series' && meta.serieKey
       ? `series:${meta.serieKey}`
@@ -139,7 +120,6 @@ export const useHistoryStore = defineStore('history', () => {
 
     continueWatchingItems.value = continueWatchingItems.value.filter(it => isActiveHistoryItem(it))
 
-    await db.saveHistoryItem(item)
   }
 
   function getProgress(id: string): HistoryItem | undefined {
