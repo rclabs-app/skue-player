@@ -30,6 +30,7 @@ let hls: Hls | null = null
 let tsPlayer: mpegts.Player | null = null
 const historyStore = useHistoryStore()
 let lastUpdateTime = 0
+let liveViewRecorded = false
 let isDestroying = false
 let playbackGeneration = 0
 let cleanupMpegtsListeners: (() => void) | null = null
@@ -169,7 +170,16 @@ function handleWaiting() {
   }, 500)
 }
 
+function recordLiveView() {
+  if (!props.isLive || !props.id || liveViewRecorded || isDestroying) return
+  liveViewRecorded = true
+  void historyStore.recordLiveView(props.id).catch(() => {
+    liveViewRecorded = false
+  })
+}
+
 function handlePlaying() {
+  recordLiveView()
   switchingLiveSource = false
   if (bufferingTimeout) clearTimeout(bufferingTimeout)
   isBuffering.value = false
@@ -1087,6 +1097,7 @@ onMounted(() => {
     wakeControls()
   }
   ;(window as any).onNativePlayerRenderingStart = () => {
+    recordLiveView()
     isBuffering.value = false
     isPlaying.value = true
     wakeControls()
@@ -1128,6 +1139,7 @@ onMounted(() => {
 let backListener: any = null
 
 watch(() => [props.url, props.id], () => {
+  liveViewRecorded = false
   checkResumeTime()
   initPlayer()
 })
