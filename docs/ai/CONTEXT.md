@@ -34,6 +34,8 @@ Os pedidos de redução de neon e pausa da assinatura no app definem o estado de
 
 ## Continuidade
 
+- Em 11/11 00:02, aumentada a altura dos itens da grade de canais em `/live` (`LiveView.vue`): cartões passam de `aspect-video` (16:9) para `aspect-square` (1:1, ~78% mais altos na mesma largura de 6 colunas), preservando `object-contain` e solicitando altura `360` no otimizador de imagens (`ContentCard.vue`). Alteração iniciada às 23:08 preservada e complementada com teste automatizado em `catalogHero.spec.ts`. 95 testes aprovados (1 diagnóstico opcional pulado) e build aprovado. Registro: `sessions/2026-11-10-2348-antigravity-altura-live.md`.
+
 - Em 10/11 22:50, Live TV passa a usar Vistos recentemente: canais registrados no início da reprodução, sem posição de retomada, ordenados pela última visita e persistidos localmente. Filmes/séries mantêm Continuar Assistindo. 94 testes e build aprovados; validação real pendente. Registro: sessions/2026-11-10-2249-codex-live-recentes.md.
 
 - Em 10/11 21:58, usuário definiu: banner mantém último filme/série/live apontado mesmo fora dos cartões. Removida liberação mouseleave/blur de Filmes/Séries; troca de categoria continua atualizando destaque. 92 testes e build aprovados; validação visual real pendente. Registro: sessions/2026-11-10-2157-codex-hero-persistente.md.
