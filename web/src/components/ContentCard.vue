@@ -4,6 +4,7 @@ import type { PlaylistItem } from '../types/m3u'
 defineProps<{
   item: PlaylistItem | { id: string; name?: string; displayName?: string; logo?: string; group?: string; type?: string }
   isPortrait?: boolean
+  isSquare?: boolean
   progress?: number
   showTitle?: boolean
 }>()
@@ -16,7 +17,7 @@ function getDisplayName(item: any) {
   return item.displayName || item.name || ''
 }
 
-function getOptimizedLogo(url?: string, isPortrait?: boolean): string | undefined {
+function getOptimizedLogo(url?: string, isPortrait?: boolean, isSquare?: boolean): string | undefined {
   if (!url) return undefined;
   
   if (url.startsWith('data:') || url.startsWith('file://') || url.startsWith('/')) {
@@ -31,7 +32,7 @@ function getOptimizedLogo(url?: string, isPortrait?: boolean): string | undefine
   }
   
   const w = isPortrait ? 240 : 360;
-  const h = isPortrait ? 360 : 202;
+  const h = isPortrait || isSquare ? 360 : 202;
   
   // fit=contain garante que a capa inteira apareça sem cortes
   return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=${w}&h=${h}&output=webp&q=75&fit=contain`;
@@ -51,12 +52,12 @@ function getOptimizedLogo(url?: string, isPortrait?: boolean): string | undefine
     <div 
       :class="[
         'relative overflow-hidden bg-gray-900/90 rounded-md transition-all duration-200 flex items-center justify-center border border-gray-800/60 group-hover:border-primary/50 group-focus:border-primary',
-        isPortrait ? 'aspect-[2/3] w-full' : 'aspect-video w-full'
+        isPortrait ? 'aspect-[2/3] w-full' : isSquare ? 'aspect-square w-full' : 'aspect-video w-full'
       ]"
     >
       <img
         v-if="item.logo"
-        :src="getOptimizedLogo(item.logo, isPortrait)"
+        :src="getOptimizedLogo(item.logo, isPortrait, isSquare)"
         loading="lazy"
         decoding="async"
         :class="[
