@@ -1,3 +1,4 @@
+import { contentId } from './contentIdentity'
 import type { PlaylistItem, SeriesEntry } from '../types/m3u'
 
 export interface ParsedPlaylist {
@@ -26,7 +27,6 @@ export function parseM3U(content: string): ParsedPlaylist {
 
   let currentItem: Partial<PlaylistItem> | null = null
   let pos = 0
-  let itemCount = 0
   const len = content.length
 
   while (pos < len) {
@@ -51,7 +51,7 @@ export function parseM3U(content: string): ParsedPlaylist {
     } else if (currentItem) {
       currentItem.url = line
       currentItem.type = determineType(currentItem as PlaylistItem)
-      currentItem.id = generateId(line, currentItem.name || '') + '-' + (itemCount++)
+      currentItem.id = contentId(line, currentItem.name || '')
 
       if (currentItem.type === 'series') {
         // Compute the normalized key for this series
@@ -191,14 +191,4 @@ function cleanNameInline(name: string): string {
     .replace(/\s*\(\d{4}\)\s*$/i, '')
     .replace(/\s+\d{4}$/i, '')
     .trim()
-}
-
-function generateId(url: string, name: string): string {
-  const str = url + name
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i)
-    hash = hash & hash
-  }
-  return Math.abs(hash).toString(36)
 }
