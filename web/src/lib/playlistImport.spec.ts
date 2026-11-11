@@ -1,0 +1,68 @@
+import { describe, it, expect, vi } from 'vitest'
+import { resolve } from 'node:path'
+import initSqlJs from 'sql.js'
+import { SCHEMA, SQLiteDatabaseService } from './sqlite'
+import { capturePlaylistUserData, restorePlaylistUserData } from './playlistUserData'
+import { contentId } from './contentIdentity'
+import { parseM3U } from './m3u-parser'
+vi.mock('./sqlite-persistence', () => ({ saveDatabase: vi.fn(), loadDatabase: vi.fn(), deleteDatabase: vi.fn() }))
+vi.mock('sql.js', async importOriginal => {
+  const actual = await importOriginal<typeof import('sql.js')>()
+  return { default: () => actual.default({ locateFile: () => resolve(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm') }) }
+})
+const movie = '#EXTINF:-1 group-title="Filmes",Movie\nhttps://example.com/movie/1.mp4\n'
+const other = '#EXTINF:-1 group-title="Filmes",Other\nhttps://example.com/movie/2.mp4\n'
+describe('playlist import continuity', () => {
+  it('keeps IDs stable on reorder and separates sources', () => {
+    const before = parseM3U('#EXTM3U\n' + movie + other)
+    const after = parseM3U('#EXTM3U\n' + other + movie)
+    expect(before.items[0].id).toBe(after.items[1].id)
+    expect(contentId('https://other.example/movie/1.mp4', 'Movie')).not.toBe(before.items[0].id)
+  })
+  it('worker migrates usage and settings through real SQL export and reload', async () => {
+    const SQL = await initSqlJs()
+    const old = new SQL.Database()
+    old.run(SCHEMA)
+    old.run("INSERT INTO playlist (id,name,url,type) VALUES ('legacy-42','Movie','https://example.com/movie/1.mp4','movie')")
+    old.run("INSERT INTO history VALUES ('legacy-42',300,1000,123)")
+    old.run("INSERT INTO favorites VALUES ('legacy-42')")
+    old.run("INSERT INTO config VALUES ('theme','dark')")
+    old.run("INSERT INTO tmdb_cache VALUES ('legacy-42','Overview',NULL,123)")
+    const userData = capturePlaylistUserData(old)
+    old.close()
+    let saved: Uint8Array | undefined
+    const postMessage = vi.fn()
+    const scope = {
+      postMessage,
+      onmessage: null as unknown as (e: { data: unknown }) => Promise<void>,
+      navigator: { storage: { getDirectory: async () => ({ getFileHandle: async () => ({ createWritable: async () => ({
+        write: async (data: Uint8Array) => { saved = data.slice() }, close: async () => {},
+      }) }) }) } },
+    }
+    vi.stubGlobal('self', scope)
+    try {
+      await import('../workers/m3u-parser.worker')
+      await scope.onmessage({ data: { type: 'init', userData } })
+      await scope.onmessage({ data: { type: 'chunk', data: new TextEncoder().encode('#EXTM3U\n' + other + movie) } })
+      await scope.onmessage({ data: { type: 'end' } })
+      expect(postMessage.mock.calls.some(([m]) => m.type === 'error')).toBe(false)
+      expect(saved).toBeDefined()
+      const restored = new SQL.Database(saved!)
+      const service = new SQLiteDatabaseService()
+      await service.importDatabase(saved!)
+      expect((await service.getHistoryItems())[0].currentTime).toBe(300)
+      expect((await service.getHistoryItem(contentId('https://example.com/movie/1.mp4', 'Movie')))?.currentTime).toBe(300)
+      const id = contentId('https://example.com/movie/1.mp4', 'Movie')
+      expect(restored.exec('SELECT h.id,h.current_time FROM history h JOIN playlist p ON p.id=h.id')[0].values).toEqual([[id,300]])
+      expect(restored.exec('SELECT id FROM favorites')[0].values).toEqual([[id]])
+      expect(restored.exec('SELECT id FROM tmdb_cache')[0].values).toEqual([[id]])
+      expect(restored.exec("SELECT value FROM config WHERE key='theme'")[0].values).toEqual([['dark']])
+      const next = new SQL.Database()
+      next.run(SCHEMA)
+      restorePlaylistUserData(next, capturePlaylistUserData(restored))
+      expect(next.exec('SELECT h.current_time FROM history h')[0].values).toEqual([[300]])
+      next.close()
+      restored.close()
+    } finally { vi.unstubAllGlobals() }
+  })
+})
