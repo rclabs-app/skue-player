@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
     url: string
     config: import('mpegts.js').default.Config
   }>,
+  savedProgress: null as null | { currentTime: number; duration: number },
   updateProgress: vi.fn(),
   native: false,
   hlsSupported: false,
@@ -22,7 +23,7 @@ const state = vi.hoisted(() => ({
 }))
 
 vi.mock('../stores/history', () => ({
-  useHistoryStore: () => ({ getProgress: () => null, updateProgress: state.updateProgress }),
+  useHistoryStore: () => ({ getProgress: () => state.savedProgress, updateProgress: state.updateProgress }),
 }))
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => state.native } }))
 vi.mock('../lib/liveStreamUrl', async importOriginal => {
@@ -83,6 +84,7 @@ describe('VideoPlayer playback lifecycle', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     state.players.length = 0
+    state.savedProgress = null
     state.native = false
     state.hlsSupported = false
     state.probeHls.mockReset().mockResolvedValue({ supported: true, status: 200 })
@@ -92,6 +94,22 @@ describe('VideoPlayer playback lifecycle', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
     vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => {})
     vi.spyOn(console, 'debug').mockImplementation(() => {})
+  })
+
+  it('resumes saved VOD progress without overwriting it with initial ticks', async () => {
+    state.savedProgress = { currentTime: 300, duration: 1000 }
+    open(false, '/movie/test.webm')
+    const video = wrapper!.find('video')
+    Object.defineProperty(video.element, 'duration', { configurable: true, value: 1000 })
+    Object.defineProperty(video.element, 'readyState', { configurable: true, value: 1 })
+    video.element.currentTime = 1
+    await video.trigger('timeupdate')
+    expect(state.updateProgress).not.toHaveBeenCalled()
+    expect(video.element.currentTime).toBe(300)
+    await video.trigger('seeked')
+    video.element.currentTime = 310
+    await video.trigger('timeupdate')
+    expect(state.updateProgress).toHaveBeenCalledWith('test', 310, 1000)
   })
 
   afterEach(() => {
