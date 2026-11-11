@@ -6,6 +6,7 @@ import type { PlaylistItem } from '../types/m3u'
 export const useHistoryStore = defineStore('history', () => {
   const historyItems = ref<HistoryItem[]>([])
   const isLoaded = ref(false)
+  const recentlyWatchedLive = ref<(HistoryItem & { metadata: PlaylistItem })[]>([])
 
   function isActiveHistoryItem(item: Pick<HistoryItem, 'currentTime' | 'duration'>): boolean {
     if (!item || !Number.isFinite(item.currentTime)) return false
@@ -38,9 +39,11 @@ export const useHistoryStore = defineStore('history', () => {
       items.sort((a, b) => b.watchedAt - a.watchedAt)
       historyItems.value = items
 
+      const recentLive: (HistoryItem & { metadata: PlaylistItem })[] = []
       const enriched = [] as Array<HistoryItem & { metadata: PlaylistItem }>
       for (const hist of items) {
         const meta = await resolveMetadata(hist.id)
+        if (meta?.type === 'live') recentLive.push({ ...hist, metadata: meta })
         if (meta && meta.type !== 'live' && hist.currentTime >= 5) {
           enriched.push({ ...hist, metadata: meta })
         }
@@ -58,11 +61,21 @@ export const useHistoryStore = defineStore('history', () => {
         }
       }
 
+      recentlyWatchedLive.value = recentLive
       continueWatchingItems.value = uniqueEnriched
       isLoaded.value = true
     } catch (e) {
       console.error('Failed to load history:', e)
     }
+  }
+
+  async function recordLiveView(id: string) {
+    const metadata = await resolveMetadata(id)
+    if (!metadata || metadata.type !== 'live') return
+    const item: HistoryItem = { id, currentTime: 0, duration: 0, watchedAt: Date.now() }
+    await db.saveHistoryItem(item)
+    historyItems.value = [item, ...historyItems.value.filter(h => h.id !== id)]
+    recentlyWatchedLive.value = [{ ...item, metadata }, ...recentlyWatchedLive.value.filter(h => h.id !== id)]
   }
 
   async function updateProgress(id: string, currentTime: number, duration: number) {
@@ -142,6 +155,8 @@ export const useHistoryStore = defineStore('history', () => {
 
   return {
     historyItems,
+    recentlyWatchedLive,
+    recordLiveView,
     isLoaded,
     loadHistory,
     updateProgress,
