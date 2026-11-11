@@ -378,6 +378,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
     }
 
     try {
+      const userData = await db.getPlaylistUserData()
+      if (deviceRemoved.value) throw new Error(removedMessage)
       await new Promise<void>((resolve, reject) => {
         const worker = new M3uWorker()
         const reader = response.body!.getReader()
@@ -436,6 +438,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
                 return
               }
               await loadFromDb()
+              await useHistoryStore().loadHistory()
               if (parsedEpgUrl && !deviceRemoved.value) {
                 syncEpg(parsedEpgUrl).catch(err => console.error('Auto-sync EPG error:', err))
               }
@@ -474,7 +477,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
         }
 
         // 1. Init worker
-        worker.postMessage({ type: 'init' })
+        worker.postMessage({ type: 'init', userData })
       })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Unknown error'
