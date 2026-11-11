@@ -1,3 +1,4 @@
+import { capturePlaylistUserData } from './playlistUserData'
 /**
  * SQLite-backed DatabaseService
  *
@@ -155,6 +156,11 @@ export class SQLiteDatabaseService {
       this.db = new SQL.Database()
       this.db.run(SCHEMA)
     }
+  }
+
+  async getPlaylistUserData() {
+    await this.init()
+    return capturePlaylistUserData(this.db!)
   }
 
   /** Export the current database state to an array (for worker offloading) */
@@ -611,7 +617,7 @@ export class SQLiteDatabaseService {
 
   async getHistoryItems(): Promise<HistoryItem[]> {
     if (!this.db) await this.init()
-    const rows = this.db!.exec('SELECT id, current_time, duration, watched_at FROM history ORDER BY watched_at DESC')
+    const rows = this.db!.exec('SELECT id, "current_time", duration, watched_at FROM history ORDER BY watched_at DESC')
     if (rows.length === 0) return []
     return rows[0].values.map((row: any[]) => ({
       id: row[0] as string,
@@ -623,7 +629,7 @@ export class SQLiteDatabaseService {
 
   async getHistoryItem(id: string): Promise<HistoryItem | null> {
     if (!this.db) await this.init()
-    const rows = this.db!.exec('SELECT id, current_time, duration, watched_at FROM history WHERE id = ?', [id])
+    const rows = this.db!.exec('SELECT id, "current_time", duration, watched_at FROM history WHERE id = ?', [id])
     if (rows.length === 0 || rows[0].values.length === 0) return null
     const row = rows[0].values[0]
     return {
