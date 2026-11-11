@@ -353,6 +353,7 @@ function getProgress(prog: EPGProgram) {
             :key="channel.id"
             :item="channel"
             :is-portrait="false"
+            :is-square="true"
             :show-title="true"
             @play="playChannel"
             @mouseenter="focusedChannel = channel"
