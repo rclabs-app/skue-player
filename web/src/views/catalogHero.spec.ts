@@ -4,6 +4,7 @@ import ContentCard from '../components/ContentCard.vue'
 import Movies from './MoviesView.vue'
 import Series from './SeriesView.vue'
 import Live from './LiveView.vue'
+import Home from './HomeView.vue'
 const data = vi.hoisted(() => ({
   items: [
     { id: 'a', name: 'Alpha', displayName: 'Alpha', group: 'Action', type: 'movie', url: '/a', serieKey: 'a' },
@@ -18,12 +19,14 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('../composables/useSpatialNav', () => ({ useSpatialNav: () => ({ registerZone() {}, setZoneRule() {}, activate() {}, focusZone() {} }) }))
 vi.mock('../composables/useTvRemote', () => ({ useTvRemote: () => ({ onRemoteKey() {} }) }))
 vi.mock('../services/tmdb.service', () => ({ TMDBService: { getMetadata: async () => ({ overview: '', backdrop_url: null }) } }))
-vi.mock('../services/epg.service', () => ({ EPGService: { getCurrentProgram: async () => null } }))
 vi.mock('../lib/database', () => ({ db: {
   getCategoriesWithCount: async () => [{ name: 'Drama', count: 1 }, { name: 'Action', count: 1 }],
   getPlaylistItems: async () => data.items,
   getPlaylistItemCount: async () => 2,
   getFavorites: async () => [],
+  getRecentItems: async () => data.items.map(item => ({ ...item, logo: 'https://example.invalid/poster.png' })),
+  getRecentSeries: async () => [],
+  getTopCategories: async () => [],
   getItemsByCategoryAndType: (...args: unknown[]) => data.category(...args),
   searchItemsByType: async () => [],
 } }))
@@ -40,7 +43,7 @@ afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllGlobals()
 })
-async function open(component: typeof Movies | typeof Series | typeof Live) {
+async function open(component: typeof Movies | typeof Series | typeof Live | typeof Home) {
   const w = mount(component, { global: { stubs: { ContentCard: true, VideoPlayer: true } } })
   wrappers.push(w)
   await flushPromises()
@@ -53,6 +56,13 @@ async function category(w: ReturnType<typeof mount>, label: string) {
   await flushPromises()
 }
 describe('catalog hero follows the active list', () => {
+  it('renders the home hero and retains playback actions without a program guide', async () => {
+    const w = await open(Home)
+    expect(w.find('#hero-banner').text()).toContain('Alpha')
+    expect(w.find('#hero-banner').text()).toContain('Selecione para assistir agora.')
+    expect(w.find('#btn-ver-mais').exists()).toBe(true)
+    expect(w.text()).not.toContain('Programação indisponível')
+  })
   it.each([['movies', Movies], ['series', Series], ['live', Live]] as const)('%s changes hero after hover and category switch, and clears empty lists', async (_name, component) => {
     const w = await open(component)
     await w.findAllComponents({ name: 'ContentCard' })[0].trigger('mouseenter')
