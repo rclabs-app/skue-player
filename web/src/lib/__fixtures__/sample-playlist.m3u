@@ -1,0 +1,9 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="" tvg-name="Canal Exemplo Um" tvg-logo="https://example.invalid/logo.png" group-title="TV Exemplo",Canal Exemplo Um
+https://example.invalid/live/channel-one.m3u8
+#EXTINF:-1 tvg-id="" tvg-name="Canal Exemplo Dois" tvg-logo="" group-title="TV Exemplo",Canal Exemplo Dois
+https://example.invalid/live/channel-two.m3u8
+#EXTINF:-1 tvg-id="" tvg-name="Filme Exemplo" tvg-logo="" group-title="VOD Filmes",Filme Exemplo
+https://example.invalid/movie/sample.mp4
+#EXTINF:-1 tvg-id="" tvg-name="Serie Exemplo S01E01" tvg-logo="" group-title="Series VOD",Serie Exemplo S01E01
+https://example.invalid/series/sample-s01e01.mp4
