@@ -15,7 +15,7 @@
                     Sua nova central<br>de mídia.
                 </h1>
                 <p class="text-lg text-gray-600 dark:text-gray-400 mb-8 leading-relaxed font-light transition-colors duration-300">
-                    O Skue é um reprodutor rápido, organizado e livre de anúncios para Smart TVs, Android e Web. Eleve sua experiência de visualização sem complicações.
+                    Organize e reproduza suas próprias listas de mídia com o Skue. O aplicativo para Android TV e o player web estão em testes; as versões para Tizen e WebOS estão planejadas.
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-4 mb-8">
@@ -30,7 +30,7 @@
                 <div class="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-500/10 border-l-4 border-red-500 rounded-r-md transition-colors duration-300">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
                     <p class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                        O Skue <strong class="text-gray-900 dark:text-white">não fornece conteúdo</strong>. Você deve ter sua própria lista.
+                        O Skue <strong class="text-gray-900 dark:text-white">não fornece canais, filmes, séries ou listas</strong>. Utilize fontes próprias que você tenha autorização para reproduzir.
                     </p>
                 </div>
             </div>
@@ -89,18 +89,18 @@
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-20 items-center mb-24">
             <div>
-                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-6 transition-colors duration-300">Desempenho sob o capô.</h2>
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-6 transition-colors duration-300">Sua mídia, do seu jeito.</h2>
                 <p class="text-gray-600 dark:text-gray-400 text-lg mb-6 leading-relaxed transition-colors duration-300">
-                    Esqueça aplicativos lentos que demoram para processar sua lista. Construímos o Skue com um motor local moderno, garantindo que a navegação seja fluída independente do tamanho do catálogo.
+                    O Skue reúne recursos de organização e reprodução no seu dispositivo. O funcionamento depende do aparelho, da conexão e das fontes que você adicionar.
                 </p>
                 <ul class="space-y-4">
                     <li class="flex items-start gap-3">
                         <div class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2.5"></div>
-                        <p class="text-gray-700 dark:text-gray-300 transition-colors duration-300">Organização automática por categorias (VOD, Séries, Ao Vivo).</p>
+                        <p class="text-gray-700 dark:text-gray-300 transition-colors duration-300">Organize sua mídia e encontre o que deseja reproduzir.</p>
                     </li>
                     <li class="flex items-start gap-3">
                         <div class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2.5"></div>
-                        <p class="text-gray-700 dark:text-gray-300 transition-colors duration-300">Guia de programação EPG sincronizado em tempo real.</p>
+                        <p class="text-gray-700 dark:text-gray-300 transition-colors duration-300">Acesse seus favoritos com facilidade.</p>
                     </li>
                     <li class="flex items-start gap-3">
                         <div class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2.5"></div>
@@ -117,7 +117,7 @@
                     <div class="w-full bg-blue-500/20 h-[75%] rounded-t-sm relative"><div class="absolute top-0 w-full h-1 bg-blue-400"></div></div>
                     <div class="w-full bg-blue-500/10 h-[50%] rounded-t-sm relative"><div class="absolute top-0 w-full h-1 bg-blue-500"></div></div>
                 </div>
-                <p class="text-center text-xs text-gray-500 dark:text-gray-600 mt-6 uppercase tracking-widest font-semibold transition-colors duration-300">Renderização Ultra-Rápida</p>
+                <p class="text-center text-xs text-gray-500 dark:text-gray-600 mt-6 uppercase tracking-widest font-semibold transition-colors duration-300">Organização no seu dispositivo</p>
             </div>
         </div>
 
@@ -128,9 +128,28 @@
 <section id="download" class="py-20 bg-white dark:bg-[#111216] border-t border-gray-200 dark:border-white/5 transition-colors duration-300">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4 transition-colors duration-300">Instale no seu Android TV ou Google TV.</h2>
-            <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto transition-colors duration-300">Compatível com Smart TVs TCL, Sony, Philips, Mi TV Stick, Fire TV e Chromecast com Google TV.</p>
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4 transition-colors duration-300">Experimente no seu Android TV ou Google TV.</h2>
+            <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto transition-colors duration-300">O APK está disponível para testes. A compatibilidade deve ser conferida no seu aparelho antes de adotar o aplicativo.</p>
         </div>
+
+        <ul aria-label="Disponibilidade por plataforma" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto mb-8">
+            <li class="p-4 rounded-lg border border-gray-200 dark:border-white/10">
+                <h3 class="font-semibold text-gray-900 dark:text-white">Android TV / Google TV</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Em testes · APK disponível abaixo</p>
+            </li>
+            <li class="p-4 rounded-lg border border-gray-200 dark:border-white/10">
+                <h3 class="font-semibold text-gray-900 dark:text-white">Web</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Player em testes</p>
+            </li>
+            <li class="p-4 rounded-lg border border-gray-200 dark:border-white/10">
+                <h3 class="font-semibold text-gray-900 dark:text-white">Tizen (Samsung)</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Planejado · Sem versão disponível</p>
+            </li>
+            <li class="p-4 rounded-lg border border-gray-200 dark:border-white/10">
+                <h3 class="font-semibold text-gray-900 dark:text-white">WebOS (LG)</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Planejado · Sem versão disponível</p>
+            </li>
+        </ul>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <!-- Card 1: Download Direto APK -->
@@ -140,7 +159,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                     </div>
                     <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Instalação Direta (.APK)</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">Baixe o pacote oficial atualizado e instale via pendrive ou gerenciador de arquivos na sua TV.</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">Baixe o APK de testes e instale via pendrive ou gerenciador de arquivos em um aparelho Android compatível.</p>
                 </div>
                 <div>
                     <a href="/downloads/skue-tv.apk" class="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-sm transition-colors text-sm shadow-md shadow-blue-600/20">
@@ -174,11 +193,12 @@
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div class="text-center mb-16">
-            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4 transition-colors duration-300">Escolha seu acesso.</h2>
-            <p class="text-gray-600 dark:text-gray-400 transition-colors duration-300">7 dias grátis em qualquer dispositivo. Sem compromisso inicial.</p>
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4 transition-colors duration-300">Escolha sua licença.</h2>
+            <p class="text-gray-600 dark:text-gray-400 transition-colors duration-300">Avalie os recursos do software por 7 dias com sua própria lista.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-3">A licença é de uso do software. Canais, filmes, séries e listas não estão incluídos.</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Free / Trial License -->
             <div class="bg-emerald-500 dark:bg-emerald-600 p-8 border border-emerald-400 dark:border-emerald-500 flex flex-col transition-colors duration-300 shadow-sm rounded-sm">
                 <h3 class="text-xl text-white font-medium mb-1 transition-colors duration-300">Teste Grátis</h3>
@@ -209,7 +229,7 @@
                     <div class="h-[1px] w-full bg-gray-200 dark:bg-white/5 mb-6 transition-colors duration-300"></div>
                     <ul class="space-y-4 mb-8">
                         <li class="flex text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300"><span class="mr-3 text-blue-500 dark:text-gray-500">✓</span> 1 Dispositivo Ativo</li>
-                        <li class="flex text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300"><span class="mr-3 text-blue-500 dark:text-gray-500">✓</span> Atualizações Inclusas</li>
+                        <li class="flex text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300"><span class="mr-3 text-blue-500 dark:text-gray-500">✓</span> Atualizações durante a vigência</li>
                     </ul>
                 </div>
                 <a href="/portal" class="block w-full py-3 text-center bg-gray-100 hover:bg-gray-200 text-gray-900 dark:bg-white/10 dark:hover:bg-white/15 dark:text-white font-medium transition-colors rounded-sm">
@@ -217,26 +237,6 @@
                 </a>
             </div>
 
-            <!-- Lifetime License -->
-            <div class="bg-blue-600 p-8 flex flex-col relative shadow-lg shadow-blue-600/20 rounded-sm">
-                <div class="absolute top-0 right-0 bg-blue-800 dark:bg-[#0c0d10] text-blue-100 dark:text-gray-300 text-[10px] font-bold px-3 py-1 uppercase tracking-wider transition-colors duration-300 rounded-bl-sm">Único Pagamento</div>
-                <h3 class="text-xl text-white font-medium mb-1">Vitalícia</h3>
-                <p class="text-sm text-blue-200 mb-6">Acesso para sempre.</p>
-                <div class="text-4xl font-bold text-white mb-8">
-                    € 9,99
-                </div>
-                <div class="flex-1">
-                    <div class="h-[1px] w-full bg-blue-500 mb-6"></div>
-                    <ul class="space-y-4 mb-8">
-                        <li class="flex text-sm text-blue-50"><span class="mr-3 text-blue-300">✓</span> 1 Dispositivo Ativo</li>
-                        <li class="flex text-sm text-blue-50"><span class="mr-3 text-blue-300">✓</span> Atualizações Inclusas</li>
-                        <li class="flex text-sm text-blue-50"><span class="mr-3 text-blue-300">✓</span> Sem cobranças recorrentes</li>
-                    </ul>
-                </div>
-                <a href="/portal" class="block w-full py-3 text-center bg-white text-blue-900 font-bold hover:bg-gray-100 transition-colors rounded-sm">
-                    Adquirir Vitalícia
-                </a>
-            </div>
         </div>
 
     </div>
