@@ -48,11 +48,6 @@ const router = createRouter({
       component: () => import('../views/OnboardingView.vue')
     },
     {
-      path: '/guide',
-      name: 'guide',
-      redirect: '/live'
-    },
-    {
       path: '/details/:id',
       name: 'details',
       component: () => import('../views/DetailsView.vue')
