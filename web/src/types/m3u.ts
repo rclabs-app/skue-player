@@ -4,7 +4,7 @@ export interface PlaylistItem {
   url: string
   group: string
   logo?: string
-  epgId?: string
+  tvgId?: string
   type: 'live' | 'movie' | 'series'
   /** Normalized series title used to group episodes. Only set for type=series. */
   serieKey?: string
