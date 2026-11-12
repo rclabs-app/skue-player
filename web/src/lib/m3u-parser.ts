@@ -4,7 +4,6 @@ import type { PlaylistItem, SeriesEntry } from '../types/m3u'
 export interface ParsedPlaylist {
   items: PlaylistItem[]
   seriesIndex: SeriesEntry[]
-  epgUrl?: string
 }
 
 /**
@@ -23,7 +22,6 @@ export interface ParsedPlaylist {
 export function parseM3U(content: string): ParsedPlaylist {
   const items: PlaylistItem[] = []
   const seriesMap = new Map<string, SeriesEntry>()
-  let epgUrl: string | undefined
 
   let currentItem: Partial<PlaylistItem> | null = null
   let pos = 0
@@ -40,10 +38,7 @@ export function parseM3U(content: string): ParsedPlaylist {
 
     if (!line) continue
 
-    if (line.startsWith('#EXTM3U')) {
-      const epgMatch = line.match(/x-tvg-url="([^"]+)"/i) || line.match(/url-tvg="([^"]+)"/i)
-      if (epgMatch) epgUrl = epgMatch[1]
-    } else if (line.startsWith('#EXTINF:')) {
+    if (line.startsWith('#EXTINF:')) {
       currentItem = parseExtInf(line)
     } else if (line[0] === '#') {
       // Skip other directives
@@ -81,7 +76,7 @@ export function parseM3U(content: string): ParsedPlaylist {
     }
   }
 
-  return { items, seriesIndex: Array.from(seriesMap.values()), epgUrl }
+  return { items, seriesIndex: Array.from(seriesMap.values()) }
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -98,7 +93,7 @@ function parseExtInf(line: string): Partial<PlaylistItem> {
     const value = match[2]
     if (key === 'group-title') item.group = value
     else if (key === 'tvg-logo') item.logo = value
-    else if (key === 'tvg-id') item.epgId = value
+    else if (key === 'tvg-id') item.tvgId = value
   }
 
   const commaIndex = line.lastIndexOf(',')
@@ -121,8 +116,8 @@ function determineType(item: Partial<PlaylistItem>): 'live' | 'movie' | 'series'
     if (lowerUrl.endsWith('.ts') || lowerUrl.endsWith('.m3u8')) return 'live'
   }
 
-  // If it has an EPG ID, it is a Live TV channel (VODs don't have EPGs)
-  if (item.epgId && item.epgId.trim() !== '') {
+  // A nonempty tvg-id is also used to recognize live channels.
+  if (item.tvgId && item.tvgId.trim() !== '') {
     return 'live'
   }
 
