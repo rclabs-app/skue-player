@@ -5,7 +5,6 @@ import { db } from '../lib/database'
 
 const mock = vi.hoisted(() => ({ config: new Map<string, unknown>(), terminate: vi.fn() }))
 vi.mock('../utils/device', () => ({ getDeviceMac: vi.fn(async () => 'SK:AA:BB:CC:DD:EE'), getDeviceName: () => 'Test' }))
-vi.mock('../services/epg.service', () => ({ EPGService: { syncEPG: vi.fn() } }))
 vi.mock('../workers/m3u-parser.worker?worker', () => ({ default: class {
   terminate = mock.terminate
   postMessage = vi.fn()
@@ -15,7 +14,7 @@ vi.mock('../lib/database', () => ({ db: {
   getConfig: vi.fn(async (key: string) => mock.config.get(key)),
   saveConfig: vi.fn(async (key: string, value: unknown) => { mock.config.set(key, value) }),
   clearDeviceContent: vi.fn(async () => {
-    for (const key of ['playlist_loaded', 'playlist_url', 'epg_url']) mock.config.delete(key)
+    for (const key of ['playlist_loaded', 'playlist_url']) mock.config.delete(key)
     mock.config.set('device_removed', true)
   }),
   getSeriesIndex: vi.fn(async () => []), getPlaylistItems: vi.fn(async () => []), saveSeriesIndex: vi.fn(),
