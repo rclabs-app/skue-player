@@ -8,7 +8,6 @@ import { useHistoryStore } from '../stores/history'
 import type { PlaylistItem } from '../types/m3u'
 import VideoPlayer from '../components/VideoPlayer.vue'
 import ContentCard from '../components/ContentCard.vue'
-import { EPGService, type EPGProgram } from '../services/epg.service'
 
 import { db } from '../lib/database'
 import { useSpatialNav } from '../composables/useSpatialNav'
@@ -22,14 +21,12 @@ const router = useRouter()
 const activeGroup = ref<string>('ALL')
 const activeChannel = ref<PlaylistItem | null>(null)
 const focusedChannel = ref<PlaylistItem | null>(null)
-const currentProgram = ref<EPGProgram | null>(null)
 const errorMsg = ref('')
 const searchQuery = ref('')
 const sentinel = ref<HTMLElement | null>(null)
 const scrollArea = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
 const isPageLoading = ref(true)
-const isEpgLoading = ref(false)
 
 onMounted(async () => {
   if (!store.isLoaded) {
@@ -196,19 +193,6 @@ function playChannel(channel: PlaylistItem) {
   activeChannel.value = channel
 }
 
-watch(focusedChannel, async (newVal, _old, onCleanup) => {
-  let cancelled = false
-  onCleanup(() => { cancelled = true })
-  currentProgram.value = null
-  isEpgLoading.value = !!newVal
-  if (!newVal) return
-  try {
-    const program = await EPGService.getCurrentProgram(newVal.id, newVal.name, newVal.group, newVal.epgId)
-    if (!cancelled) currentProgram.value = program
-  } finally {
-    if (!cancelled) isEpgLoading.value = false
-  }
-})
 
 function closePlayer() {
   activeChannel.value = null
@@ -222,17 +206,6 @@ watch(visibleItems, (items) => {
   }
 }, { immediate: true })
 
-function formatTime(d: Date) {
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-}
-
-function getProgress(prog: EPGProgram) {
-  const now = new Date().getTime()
-  const start = prog.startTime.getTime()
-  const end = prog.endTime.getTime()
-  const percent = ((now - start) / (end - start)) * 100
-  return Math.min(Math.max(percent, 0), 100)
-}
 </script>
 
 <template>
@@ -294,7 +267,7 @@ function getProgress(prog: EPGProgram) {
         <button @click="errorMsg = ''" class="ml-4 hover:text-white">✕</button>
       </div>
 
-      <!-- EPG BANNER (Now Playing) -->
+      <!-- Selected channel -->
       <div v-if="focusedChannel" class="mx-6 mt-5 p-6 min-h-[220px] bg-gray-900/90 border border-gray-800 rounded-2xl flex items-center gap-7 shrink-0 shadow-2xl relative overflow-hidden">
         <!-- Background Blur of Channel Logo -->
         <div class="absolute inset-0 opacity-15 blur-3xl z-0 pointer-events-none">
@@ -309,34 +282,7 @@ function getProgress(prog: EPGProgram) {
         <div class="flex-1 flex flex-col justify-center relative z-10">
           <h3 class="text-white font-bold text-3xl mb-1.5 drop-shadow-md tracking-tight">{{ focusedChannel.name }}</h3>
           
-          <template v-if="currentProgram">
-            <div class="text-primary font-semibold text-lg drop-shadow mb-1">{{ currentProgram.title }}</div>
-            <div class="flex items-center gap-3 text-sm text-gray-400 mb-2 font-medium">
-              <span class="bg-black/40 px-2 py-0.5 rounded text-gray-300 border border-gray-700/50">{{ formatTime(currentProgram.startTime) }} - {{ formatTime(currentProgram.endTime) }}</span>
-              <span class="text-xs uppercase tracking-wider text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded">Agora</span>
-            </div>
-            <p class="text-gray-400 text-sm line-clamp-2 leading-relaxed max-w-4xl">{{ currentProgram.description }}</p>
-            
-            <div class="mt-4 flex items-center gap-3 w-full max-w-2xl">
-              <span class="text-xs text-gray-500 font-medium w-10">{{ formatTime(currentProgram.startTime) }}</span>
-              <div class="flex-1 bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                <div class="bg-primary h-full rounded-full transition-all duration-1000" :style="{ width: getProgress(currentProgram) + '%' }"></div>
-              </div>
-              <span class="text-xs text-gray-500 font-medium w-10">{{ formatTime(currentProgram.endTime) }}</span>
-            </div>
-          </template>
-          <template v-else-if="isEpgLoading">
-            <div class="flex items-center gap-2 text-gray-500 text-sm h-full">
-              <div class="w-4 h-4 border-2 border-gray-600 border-t-primary rounded-full animate-spin"></div>
-              Carregando guia...
-            </div>
-          </template>
-          <template v-else>
-            <div class="flex items-center gap-2 text-gray-400 text-sm font-medium mt-1">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Programação indisponível no momento.
-            </div>
-          </template>
+          <p class="text-gray-400 text-sm mt-1">{{ focusedChannel.group }}</p>
         </div>
       </div>
 
