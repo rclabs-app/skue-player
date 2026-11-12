@@ -12,7 +12,15 @@ vi.mock('sql.js', async importOriginal => {
 })
 const movie = '#EXTINF:-1 group-title="Filmes",Movie\nhttps://example.com/movie/1.mp4\n'
 const other = '#EXTINF:-1 group-title="Filmes",Other\nhttps://example.com/movie/2.mp4\n'
+const channel = '#EXTINF:-1 tvg-id="channel-1" group-title="Filmes",Synthetic channel\nhttps://example.invalid/watch/1\n'
 describe('playlist import continuity', () => {
+  it('ignores guide headers while retaining tvg-id classification and stable content identity', () => {
+    const parsed = parseM3U('#EXTM3U x-tvg-url="https://example.invalid/old.xml"\n' + channel + movie)
+    expect(parsed).not.toHaveProperty('epgUrl')
+    expect(parsed.items[0]).toMatchObject({ type: 'live', tvgId: 'channel-1' })
+    expect(parsed.items[1].type).toBe('movie')
+    expect(parsed.items[0].id).toBe(parseM3U('#EXTM3U\n' + channel).items[0].id)
+  })
   it('keeps IDs stable on reorder and separates sources', () => {
     const before = parseM3U('#EXTM3U\n' + movie + other)
     const after = parseM3U('#EXTM3U\n' + other + movie)
@@ -27,8 +35,12 @@ describe('playlist import continuity', () => {
     old.run("INSERT INTO history VALUES ('legacy-42',300,1000,123)")
     old.run("INSERT INTO favorites VALUES ('legacy-42')")
     old.run("INSERT INTO config VALUES ('theme','dark')")
+    old.run("INSERT INTO config VALUES ('epg_url','https://example.invalid/old.xml')")
     old.run("INSERT INTO tmdb_cache VALUES ('legacy-42','Overview',NULL,123)")
     const userData = capturePlaylistUserData(old)
+    expect(userData.config?.some(row => row[0] === 'epg_url')).toBe(false)
+    // Simulate an older client sending the obsolete setting to the new worker.
+    userData.config!.push(['epg_url', 'https://example.invalid/old.xml'])
     old.close()
     let saved: Uint8Array | undefined
     const postMessage = vi.fn()
@@ -43,11 +55,14 @@ describe('playlist import continuity', () => {
     try {
       await import('../workers/m3u-parser.worker')
       await scope.onmessage({ data: { type: 'init', userData } })
-      await scope.onmessage({ data: { type: 'chunk', data: new TextEncoder().encode('#EXTM3U\n' + other + movie) } })
+      await scope.onmessage({ data: { type: 'chunk', data: new TextEncoder().encode('#EXTM3U url-tvg="https://example.invalid/old.xml"\n' + other + movie + channel) } })
       await scope.onmessage({ data: { type: 'end' } })
       expect(postMessage.mock.calls.some(([m]) => m.type === 'error')).toBe(false)
       expect(saved).toBeDefined()
       const restored = new SQL.Database(saved!)
+      expect(postMessage.mock.calls.find(([m]) => m.type === 'done')?.[0]).not.toHaveProperty('epgUrl')
+      expect(restored.exec("SELECT value FROM config WHERE key='epg_url'")).toEqual([])
+      expect(restored.exec("SELECT tvg_id,type FROM playlist WHERE name='Synthetic channel'")[0].values).toEqual([['channel-1','live']])
       const service = new SQLiteDatabaseService()
       await service.importDatabase(saved!)
       expect((await service.getHistoryItems())[0].currentTime).toBe(300)
