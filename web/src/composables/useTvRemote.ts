@@ -31,7 +31,7 @@ export type RemoteKey =
   | 'NUM_5' | 'NUM_6' | 'NUM_7' | 'NUM_8' | 'NUM_9'
   | 'CHANNEL_UP' | 'CHANNEL_DOWN'
   | 'VOLUME_UP' | 'VOLUME_DOWN' | 'MUTE'
-  | 'INFO' | 'MENU' | 'GUIDE' | 'EXIT'
+  | 'INFO' | 'MENU' | 'EXIT'
   | 'PAGE_UP' | 'PAGE_DOWN'
 
 // ─── Platform keyCode maps ────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ const KEY_MAP: Record<string, RemoteKey> = {
   AudioVolumeDown: 'VOLUME_DOWN',
   AudioVolumeMute: 'MUTE',
 
-  // Info / Guide
+  // Info
   Info: 'INFO',
 
   // Number keys
