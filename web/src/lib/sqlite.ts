@@ -19,7 +19,6 @@ import initSqlJs, { type Database } from 'sql.js'
 import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url'
 import { saveDatabase, loadDatabase, deleteDatabase } from './sqlite-persistence'
 import type { PlaylistItem, SeriesEntry } from '../types/m3u'
-import type { EPGProgram } from '../types/epg'
 
 export interface HistoryItem {
   id: string
@@ -44,7 +43,7 @@ CREATE TABLE IF NOT EXISTS playlist (
   url TEXT NOT NULL,
   group_title TEXT DEFAULT 'Uncategorized',
   logo TEXT,
-  epg_id TEXT,
+  tvg_id TEXT,
   type TEXT CHECK(type IN ('live','movie','series','unknown')),
   serie_key TEXT
 );
@@ -73,18 +72,6 @@ CREATE TABLE IF NOT EXISTS history (
 
 CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT);
 
-CREATE TABLE IF NOT EXISTS epg (
-  id TEXT PRIMARY KEY,
-  channel_id TEXT,
-  title TEXT,
-  description TEXT,
-  start_time INTEGER,
-  end_time INTEGER,
-  category TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_epg_channel ON epg(channel_id);
-CREATE INDEX IF NOT EXISTS idx_epg_start ON epg(start_time);
-
 CREATE TABLE IF NOT EXISTS tmdb_cache (
   id TEXT PRIMARY KEY,
   overview TEXT,
@@ -94,6 +81,28 @@ CREATE TABLE IF NOT EXISTS tmdb_cache (
 `
 
 // ─── Service ────────────────────────────────────────────────────────────────
+
+/** Upgrade old guide storage without resetting the media catalog or user data. */
+export function initializeMediaSchema(database: Database): boolean {
+  database.run(SCHEMA)
+  const columns = database.exec('PRAGMA table_info(playlist)')[0]?.values || []
+  const oldIdentifier = columns.some(row => row[1] === 'epg_id')
+  const oldGuide = !!database.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='epg'")[0]?.values.length
+  const oldConfig = !!database.exec("SELECT key FROM config WHERE key='epg_url'")[0]?.values.length
+  if (!oldIdentifier && !oldGuide && !oldConfig) return false
+
+  database.run('BEGIN TRANSACTION')
+  try {
+    if (oldIdentifier) database.run('ALTER TABLE playlist RENAME COLUMN epg_id TO tvg_id')
+    database.run('DROP TABLE IF EXISTS epg')
+    database.run("DELETE FROM config WHERE key='epg_url'")
+    database.run('COMMIT')
+  } catch (error) {
+    database.run('ROLLBACK')
+    throw error
+  }
+  return true
+}
 
 export class SQLiteDatabaseService {
   private db: Database | null = null
@@ -114,10 +123,10 @@ export class SQLiteDatabaseService {
         if (saved) {
           this.db = new SQL.Database(saved)
           // Run schema in case of new tables (IF NOT EXISTS = safe)
-          this.db.run(SCHEMA)
+          if (initializeMediaSchema(this.db)) await this.persist()
         } else {
           this.db = new SQL.Database()
-          this.db.run(SCHEMA)
+          initializeMediaSchema(this.db)
         }
       } finally {
         this.initPromise = null
@@ -136,7 +145,7 @@ export class SQLiteDatabaseService {
     if (this.db) this.db.close()
     this.db = new SQL.Database(data)
     // Ensure schema is up to date
-    this.db.run(SCHEMA)
+    initializeMediaSchema(this.db)
     await this.persist()
   }
 
@@ -151,10 +160,10 @@ export class SQLiteDatabaseService {
     if (this.db) this.db.close()
     if (saved) {
       this.db = new SQL.Database(saved)
-      this.db.run(SCHEMA)
+      if (initializeMediaSchema(this.db)) await this.persist()
     } else {
       this.db = new SQL.Database()
-      this.db.run(SCHEMA)
+      initializeMediaSchema(this.db)
     }
   }
 
@@ -193,10 +202,10 @@ export class SQLiteDatabaseService {
     if (!this.db) await this.init()
     this.db!.run('BEGIN TRANSACTION')
     try {
-      for (const table of ['playlist', 'series_index', 'history', 'favorites', 'epg', 'tmdb_cache']) {
+      for (const table of ['playlist', 'series_index', 'history', 'favorites', 'tmdb_cache']) {
         this.db!.run(`DELETE FROM ${table}`)
       }
-      this.db!.run("DELETE FROM config WHERE key IN ('playlist_loaded', 'playlist_url', 'playlist_hash', 'epg_url')")
+      this.db!.run("DELETE FROM config WHERE key IN ('playlist_loaded', 'playlist_url', 'playlist_hash')")
       this.db!.run("INSERT OR REPLACE INTO config (key, value) VALUES ('device_removed', 'true')")
       this.db!.run('COMMIT')
     } catch (error) {
@@ -220,14 +229,14 @@ export class SQLiteDatabaseService {
     if (!this.db) await this.init()
 
     const stmt = this.db!.prepare(
-      'INSERT OR REPLACE INTO playlist (id, name, url, group_title, logo, epg_id, type, serie_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT OR REPLACE INTO playlist (id, name, url, group_title, logo, tvg_id, type, serie_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     )
 
     this.db!.run('BEGIN TRANSACTION')
     try {
       for (let i = 0; i < items.length; i++) {
         const item = items[i]
-        stmt.run([item.id, item.name, item.url, item.group, item.logo ?? null, item.epgId ?? null, item.type, item.serieKey ?? null])
+        stmt.run([item.id, item.name, item.url, item.group, item.logo ?? null, item.tvgId ?? null, item.type, item.serieKey ?? null])
         if (onProgress && (i + 1) % 5000 === 0) {
           onProgress(i + 1, items.length)
         }
@@ -250,7 +259,7 @@ export class SQLiteDatabaseService {
   ): Promise<PlaylistItem[]> {
     if (!this.db) await this.init()
 
-    let sql = 'SELECT id, name, url, group_title, logo, epg_id, type, serie_key FROM playlist'
+    let sql = 'SELECT id, name, url, group_title, logo, tvg_id, type, serie_key FROM playlist'
     const params: any[] = []
 
     if (type) {
@@ -306,7 +315,7 @@ export class SQLiteDatabaseService {
   async getItemsByCategory(group: string, limit = 0, offset = 0): Promise<PlaylistItem[]> {
     if (!this.db) await this.init()
 
-    let sql = 'SELECT id, name, url, group_title, logo, epg_id, type, serie_key FROM playlist WHERE group_title = ?'
+    let sql = 'SELECT id, name, url, group_title, logo, tvg_id, type, serie_key FROM playlist WHERE group_title = ?'
     const params: any[] = [group]
 
     if (limit > 0) {
@@ -325,7 +334,7 @@ export class SQLiteDatabaseService {
   ): Promise<PlaylistItem[]> {
     if (!this.db) await this.init()
 
-    let sql = 'SELECT id, name, url, group_title, logo, epg_id, type, serie_key FROM playlist WHERE group_title = ? AND type = ?'
+    let sql = 'SELECT id, name, url, group_title, logo, tvg_id, type, serie_key FROM playlist WHERE group_title = ? AND type = ?'
     const params: any[] = [group, type]
 
     if (limit > 0) {
@@ -339,7 +348,7 @@ export class SQLiteDatabaseService {
   async searchItems(query: string, maxResults = 100): Promise<PlaylistItem[]> {
     if (!this.db) await this.init()
 
-    const sql = 'SELECT id, name, url, group_title, logo, epg_id, type, serie_key FROM playlist WHERE name LIKE ? LIMIT ?'
+    const sql = 'SELECT id, name, url, group_title, logo, tvg_id, type, serie_key FROM playlist WHERE name LIKE ? LIMIT ?'
     return this.queryPlaylistItems(sql, [`%${query}%`, maxResults])
   }
 
@@ -350,7 +359,7 @@ export class SQLiteDatabaseService {
   ): Promise<PlaylistItem[]> {
     if (!this.db) await this.init()
 
-    const sql = 'SELECT id, name, url, group_title, logo, epg_id, type, serie_key FROM playlist WHERE name LIKE ? AND type = ? LIMIT ?'
+    const sql = 'SELECT id, name, url, group_title, logo, tvg_id, type, serie_key FROM playlist WHERE name LIKE ? AND type = ? LIMIT ?'
     return this.queryPlaylistItems(sql, [`%${query}%`, type, maxResults])
   }
 
@@ -358,7 +367,7 @@ export class SQLiteDatabaseService {
     if (!this.db) await this.init()
 
     const items = this.queryPlaylistItems(
-      'SELECT id, name, url, group_title, logo, epg_id, type, serie_key FROM playlist WHERE id = ?',
+      'SELECT id, name, url, group_title, logo, tvg_id, type, serie_key FROM playlist WHERE id = ?',
       [id]
     )
     return items.length > 0 ? items[0] : null
@@ -368,7 +377,7 @@ export class SQLiteDatabaseService {
     if (!this.db) await this.init()
 
     return this.queryPlaylistItems(
-      'SELECT id, name, url, group_title, logo, epg_id, type, serie_key FROM playlist WHERE type = ? ORDER BY rowid DESC LIMIT ?',
+      'SELECT id, name, url, group_title, logo, tvg_id, type, serie_key FROM playlist WHERE type = ? ORDER BY rowid DESC LIMIT ?',
       [type, limit]
     )
   }
@@ -527,7 +536,7 @@ export class SQLiteDatabaseService {
     if (!this.db) await this.init()
 
     return this.queryPlaylistItems(
-      'SELECT id, name, url, group_title, logo, epg_id, type, serie_key FROM playlist WHERE serie_key = ?',
+      'SELECT id, name, url, group_title, logo, tvg_id, type, serie_key FROM playlist WHERE serie_key = ?',
       [serieKey]
     )
   }
@@ -667,78 +676,6 @@ export class SQLiteDatabaseService {
     return rows[0].values.map((row: any[]) => row[0] as string)
   }
 
-  // ─── EPG ────────────────────────────────────────────────────────────────
-
-  async saveEpgPrograms(programs: EPGProgram[]): Promise<void> {
-    if (!this.db) await this.init()
-
-    const stmt = this.db!.prepare(
-      'INSERT OR REPLACE INTO epg (id, channel_id, title, description, start_time, end_time, category) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    )
-
-    this.db!.run('BEGIN TRANSACTION')
-    try {
-      for (const p of programs) {
-        const startMs = p.startTime instanceof Date ? p.startTime.getTime() : new Date(p.startTime).getTime()
-        const endMs = p.endTime instanceof Date ? p.endTime.getTime() : new Date(p.endTime).getTime()
-        stmt.run([p.id, p.channelId, p.title, p.description ?? null, startMs, endMs, p.category ?? null])
-      }
-      this.db!.run('COMMIT')
-    } catch (e) {
-      this.db!.run('ROLLBACK')
-      throw e
-    } finally {
-      stmt.free()
-    }
-    this.schedulePersist()
-  }
-
-  async getEpgPrograms(channelId: string): Promise<EPGProgram[]> {
-    if (!this.db) await this.init()
-
-    const rows = this.db!.exec(
-      'SELECT id, channel_id, title, description, start_time, end_time, category FROM epg WHERE channel_id = ? ORDER BY start_time ASC',
-      [channelId]
-    )
-    if (rows.length === 0) return []
-    return rows[0].values.map((row: any[]) => ({
-      id: row[0] as string,
-      channelId: row[1] as string,
-      title: row[2] as string,
-      description: (row[3] as string) || '',
-      startTime: new Date(row[4] as number),
-      endTime: new Date(row[5] as number),
-      category: row[6] as string | undefined,
-    }))
-  }
-
-  async getCurrentEpgProgram(channelId: string, time: Date = new Date()): Promise<EPGProgram | null> {
-    if (!this.db) await this.init()
-
-    const t = time.getTime()
-    const rows = this.db!.exec(
-      'SELECT id, channel_id, title, description, start_time, end_time, category FROM epg WHERE channel_id = ? AND start_time <= ? AND end_time > ? LIMIT 1',
-      [channelId, t, t]
-    )
-    if (rows.length === 0 || rows[0].values.length === 0) return null
-    const row = rows[0].values[0]
-    return {
-      id: row[0] as string,
-      channelId: row[1] as string,
-      title: row[2] as string,
-      description: (row[3] as string) || '',
-      startTime: new Date(row[4] as number),
-      endTime: new Date(row[5] as number),
-      category: row[6] as string | undefined,
-    }
-  }
-
-  async clearEpg(): Promise<void> {
-    if (!this.db) await this.init()
-    this.db!.run('DELETE FROM epg')
-    this.schedulePersist()
-  }
-
   // ─── TMDB Cache ─────────────────────────────────────────────────────────
 
   async saveTMDBMetadata(metadata: TMDBMetadata): Promise<void> {
@@ -802,7 +739,7 @@ export class SQLiteDatabaseService {
       url: row[2] as string,
       group: row[3] as string,
       logo: (row[4] as string) || undefined,
-      epgId: (row[5] as string) || undefined,
+      tvgId: (row[5] as string) || undefined,
       type: row[6] as 'live' | 'movie' | 'series',
       serieKey: (row[7] as string) || undefined,
     }))
