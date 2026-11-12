@@ -25,7 +25,7 @@ export function capturePlaylistUserData(db: Database): PlaylistUserData {
     // If old duplicate entries map to one identity, newest progress wins.
     if (table === 'history') result[table]!.sort((a, b) => Number(a[3]) - Number(b[3]))
   }
-  result.config = db.exec('SELECT key, value FROM config')[0]?.values || []
+  result.config = db.exec("SELECT key, value FROM config WHERE key <> 'epg_url'")[0]?.values || []
   return result
 }
 
@@ -34,7 +34,10 @@ export function restorePlaylistUserData(db: Database, data: PlaylistUserData): v
     const columns = tables[table]
     const stmt = db.prepare(`INSERT OR REPLACE INTO ${table} (${columns.join(',')}) VALUES (${columns.map(() => '?').join(',')})`)
     try {
-      for (const row of data[table] || []) stmt.run(row)
+      for (const row of data[table] || []) {
+        if (table === 'config' && row[0] === 'epg_url') continue
+        stmt.run(row)
+      }
     } finally { stmt.free() }
   }
 }
