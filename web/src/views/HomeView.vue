@@ -7,7 +7,6 @@ import { useTvRemote } from '../composables/useTvRemote'
 import { cleanName } from '../utils/text'
 import type { PlaylistItem, SeriesEntry } from '../types/m3u'
 import VideoPlayer from '../components/VideoPlayer.vue'
-import { EPGService, type EPGProgram } from '../services/epg.service'
 import { TMDBService } from '../services/tmdb.service'
 import type { TMDBMetadata } from '../lib/database'
 import ContentCard from '../components/ContentCard.vue'
@@ -187,30 +186,22 @@ function stopHeroTimer() {
   if (heroTimer) { clearInterval(heroTimer); heroTimer = null }
 }
 
-// EPG watch for Hero Banner
-const heroProgram = ref<EPGProgram | null>(null)
+// Metadata for on-demand hero items
 const tmdbHeroMetadata = ref<TMDBMetadata | null>(null)
 const heroMetaCache = ref<Record<string, TMDBMetadata>>({})
 
 watch(currentHero, async (newVal) => {
   tmdbHeroMetadata.value = null
-  if (newVal) {
-    if (isLiveChannel(newVal)) {
-      heroProgram.value = await EPGService.getCurrentProgram(newVal.id, newVal.name, newVal.group, newVal.epgId)
+  if (newVal && !isLiveChannel(newVal)) {
+    const type = newVal.type === 'movie' ? 'movie' : 'series'
+    const cached = heroMetaCache.value[newVal.id]
+    if (cached) {
+      tmdbHeroMetadata.value = cached
     } else {
-      heroProgram.value = null
-      const type = newVal.type === 'movie' ? 'movie' : 'series'
-      const cached = heroMetaCache.value[newVal.id]
-      if (cached) {
-        tmdbHeroMetadata.value = cached
-      } else {
-        const meta = await TMDBService.getMetadata(newVal.id, newVal.name, type)
-        heroMetaCache.value[newVal.id] = meta
-        tmdbHeroMetadata.value = meta
-      }
+      const meta = await TMDBService.getMetadata(newVal.id, newVal.name, type)
+      heroMetaCache.value[newVal.id] = meta
+      tmdbHeroMetadata.value = meta
     }
-  } else {
-    heroProgram.value = null
   }
 }, { immediate: true })
 
@@ -233,42 +224,6 @@ async function preloadHeroMetadata() {
     }
   }
 }
-
-// Async EPG map for grid items
-const channelEPGs = ref<Record<string, EPGProgram>>({})
-
-// Sequential EPG loading capped at 20 channels to prevent IDB contention on TVs
-async function loadCategoryEPGs(channels: PlaylistItem[]) {
-  const epgs: Record<string, EPGProgram> = {}
-  const capped = channels.slice(0, 20)
-  
-  for (const c of capped) {
-    try {
-      const prog = await EPGService.getCurrentProgram(c.id, c.name, c.group, c.epgId)
-      if (prog) {
-        epgs[c.id] = prog
-      }
-    } catch {
-      // Skip failed lookups silently
-    }
-  }
-  channelEPGs.value = epgs
-}
-
-// Debounced watcher prevents rapid-fire EPG loads on fast category switching
-let epgDebounceTimer: ReturnType<typeof setTimeout> | null = null
-
-watch(categoryContent, (newVal) => {
-  if (epgDebounceTimer) clearTimeout(epgDebounceTimer)
-  
-  if (newVal && newVal.live.length > 0) {
-    epgDebounceTimer = setTimeout(() => {
-      loadCategoryEPGs(newVal.live)
-    }, 250)
-  } else {
-    channelEPGs.value = {}
-  }
-}, { immediate: true })
 
 // Rows logic moved to loadHomeData()
 function extractYear(name?: string): string | null {
@@ -297,18 +252,6 @@ async function onPlayerClose() {
 function clearData() {
   store.clearPlaylist()
   router.push('/onboarding')
-}
-
-function formatTime(d: Date) {
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-}
-
-function getProgress(prog: EPGProgram) {
-  const now = new Date().getTime()
-  const start = prog.startTime.getTime()
-  const end = prog.endTime.getTime()
-  const percent = ((now - start) / (end - start)) * 100
-  return Math.min(Math.max(percent, 0), 100)
 }
 
 onMounted(async () => {
@@ -653,34 +596,12 @@ onRemoteKey('BACK', () => {
               {{ cleanName(currentHero.name || '') }}
             </h1>
 
-            <!-- EPG Program details for Live Channel -->
-            <template v-if="isLiveChannel(currentHero) && heroProgram">
-              <div class="text-primary font-semibold text-lg drop-shadow mb-1">{{ heroProgram.title }}</div>
-              <div class="flex items-center gap-3 text-sm text-gray-400 mb-2 font-medium">
-                <span class="bg-black/40 px-2 py-0.5 rounded text-gray-300 border border-gray-700/50">
-                  {{ formatTime(heroProgram.startTime) }} - {{ formatTime(heroProgram.endTime) }}
-                </span>
-                <span class="text-xs uppercase tracking-wider text-green-400 font-bold bg-green-400/10 px-2 py-0.5 rounded">Agora</span>
-              </div>
-              <p class="text-gray-400 text-sm line-clamp-2 leading-relaxed max-w-xl mb-4">{{ heroProgram.description }}</p>
-              
-              <div class="flex items-center gap-3 w-full max-w-md mb-6">
-                <span class="text-xs text-gray-500 font-medium w-10 text-right">{{ formatTime(heroProgram.startTime) }}</span>
-                <div class="flex-1 bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                  <div class="bg-primary h-full rounded-full transition-all duration-1000" :style="{ width: getProgress(heroProgram) + '%' }"></div>
-                </div>
-                <span class="text-xs text-gray-500 font-medium w-10">{{ formatTime(heroProgram.endTime) }}</span>
-              </div>
-            </template>
-
-            <template v-else>
-              <div class="flex items-center gap-3 mb-4 mt-2">
-                <span v-if="extractYear(currentHero.name)" class="text-gray-400 text-[10px] font-bold tracking-widest uppercase">Lançamento: {{ extractYear(currentHero.name) }}</span>
-              </div>
-              <p class="text-gray-300 text-sm md:text-base line-clamp-3 leading-relaxed max-w-2xl mb-8 drop-shadow-md">
-                {{ (tmdbHeroMetadata && tmdbHeroMetadata.overview) || 'Selecione para assistir agora.' }}
-              </p>
-            </template>
+            <div class="flex items-center gap-3 mb-4 mt-2">
+              <span v-if="extractYear(currentHero.name)" class="text-gray-400 text-[10px] font-bold tracking-widest uppercase">Lançamento: {{ extractYear(currentHero.name) }}</span>
+            </div>
+            <p class="text-gray-300 text-sm md:text-base line-clamp-3 leading-relaxed max-w-2xl mb-8 drop-shadow-md">
+              {{ (tmdbHeroMetadata && tmdbHeroMetadata.overview) || 'Selecione para assistir agora.' }}
+            </p>
           </div>
         </Transition>
 
