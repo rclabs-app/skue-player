@@ -24,12 +24,6 @@ const showHistoryConfirm = ref(false)
 const clearingHistory = ref(false)
 const notification = ref<{ msg: string; type: 'success' | 'error' } | null>(null)
 
-// EPG State (desabilitado temporariamente)
-const epgUrl = ref<string | null>(null)
-// const showEpgUrlInput = ref(false)
-// const newEpgUrl = ref('')
-// const epgUpdateError = ref('')
-
 // Remote Activation State
 const deviceMac = ref('')
 const devicePlaylists = ref<any[]>([])
@@ -47,15 +41,12 @@ const totalLive = ref(0)
 const totalContent = computed(
   () => totalMovies.value + totalSeries.value + totalLive.value
 )
-// const isSyncingEpg = computed(() => store.isProcessing || EPGService.isSyncing)
-// const epgSyncStatus = computed(() => store.epgSyncStatus)
 
 const appVersion = '0.3.0'
 
 // ── Lifecycle ─────────────────────────────────────────────────
 onMounted(async () => {
   playlistUrl.value = await db.getConfig('playlist_url')
-  epgUrl.value = await db.getConfig('epg_url')
   await historyStore.loadHistory()
   await favoritesStore.loadFavorites()
   
@@ -74,9 +65,6 @@ onMounted(async () => {
 })
 
 // ── Actions ───────────────────────────────────────────────────
-// async function syncCurrentEpg() { ... }
-// async function updateEpgUrl() { ... }
-// async function clearEpg() { ... }
 
 async function syncPortal() {
   isSyncingPortal.value = true
@@ -210,14 +198,6 @@ function clearAllData() {
       <div class="flex flex-col gap-4 min-h-0">
 
 
-        <!-- Guia de Programação (EPG) - Temporariamente desabilitado
-        <section class="flex flex-col min-h-0">
-          <h2 class="settings-section-title">Guia de Programação (EPG)</h2>
-          <div class="settings-card flex flex-col gap-3">
-            ...
-          </div>
-        </section>
-        -->
 
         <!-- Sobre o Skue -->
         <section class="shrink-0">
@@ -299,7 +279,7 @@ function clearAllData() {
                   <span class="text-xs font-medium text-white">
                     {{ 
                       store.deviceLicense.status === 'active' 
-                        ? (store.deviceLicense.days_remaining > 365 ? 'Licença Vitalícia' : `Licença Ativa (${store.deviceLicense.days_remaining} dias restantes)`)
+                        ? `Licença Ativa (${store.deviceLicense.days_remaining} dias restantes)`
                         : store.deviceLicense.status === 'trial' 
                           ? `Período de Degustação (${store.deviceLicense.days_remaining} dias restantes)`
                           : 'Licença Expirada / Suspensa'
