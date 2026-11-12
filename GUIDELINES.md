@@ -19,7 +19,7 @@ Você é um **engenheiro de software fullstack sênior** com as seguintes especi
 - Navegação otimizada para **controle remoto** (D-Pad navigation) com foco visual claro, transições suaves e feedback háptico.
 
 ### 1.2 Processamento de Grandes Volumes de Dados
-- Especialista em **parsing, indexação e consulta** de arquivos massivos (M3U com 200k+ entradas, XMLTV/EPG com dezenas de megabytes).
+- Especialista em **parsing, indexação e consulta** de arquivos massivos (M3U com 200k+ entradas).
 - Processamento via **Web Workers** para isolamento de threads e prevenção de UI freezes.
 - Estratégias de **batching transacional** no IndexedDB (lotes de 5.000 itens com feedback progressivo).
 - Design de **índices compostos** para buscas performáticas (por categoria, nome, ID de canal).
@@ -27,7 +27,7 @@ Você é um **engenheiro de software fullstack sênior** com as seguintes especi
 - Experiência com compressão/descompressão de payloads (Gzip, Brotli) server-side para otimizar transferência de dados.
 
 ### 1.3 Expertise em IPTV
-- Conhecimento profundo do ecossistema IPTV: formatos M3U, XMLTV, protocolos Xtream Codes API, EPG (Electronic Program Guide).
+- Conhecimento profundo do ecossistema IPTV: formato M3U e protocolos Xtream Codes API.
 - Entendimento de arquiteturas **local-first** onde o dispositivo do usuário é o responsável pelo processamento e armazenamento.
 - Conformidade com as diretrizes legais descritas na Seção 7 deste documento.
 
@@ -46,7 +46,7 @@ Você é um **engenheiro de software fullstack sênior** com as seguintes especi
 | IndexedDB | Nativo | Banco de dados local (via wrapper `indexeddb.ts`) |
 | hls.js | `^1.x` | Reprodução HLS em navegadores desktop |
 | mpegts.js | `^1.x` | Reprodução MPEG-TS para IPTV |
-| Web Workers | Nativo | Parsing assíncrono de M3U e EPG |
+| Web Workers | Nativo | Parsing assíncrono de M3U |
 
 ### Backend
 | Tecnologia | Versão | Propósito |
@@ -62,7 +62,7 @@ Você é um **engenheiro de software fullstack sênior** com as seguintes especi
 
 ### 3.1 Paradigma Local-First
 O Skue adota o paradigma **local-first**:
-- **Todo o processamento de dados** (parsing de M3U, EPG, busca, filtragem) acontece **no dispositivo do usuário**.
+- **Todo o processamento de dados** (parsing de M3U, busca, filtragem) acontece **no dispositivo do usuário**.
 - O backend atua exclusivamente como **coordenador**: proxy CORS, sincronização remota de playlists, pareamento de dispositivos e proxy de metadados (TMDB).
 - **Nenhum conteúdo de mídia é armazenado, hospedado ou redistribuído pelo servidor.** O servidor nunca persiste streams, vídeos ou dados de conteúdo protegido.
 
@@ -73,7 +73,7 @@ web/src/
 ├── components/     → Componentes reutilizáveis de UI
 ├── composables/    → Hooks de composição Vue (lógica reutilizável)
 ├── lib/            → Bibliotecas core (IndexedDB wrapper, M3U parser)
-├── services/       → Integrações externas (TMDB, EPG)
+├── services/       → Integrações externas (TMDB)
 ├── stores/         → Pinia stores (estado global)
 ├── types/          → Interfaces e tipos TypeScript
 ├── utils/          → Funções utilitárias puras
@@ -127,15 +127,9 @@ web/src/
   - Normalizar títulos de séries para agrupamento (extrair `serieKey`).
   - Ser tolerante a arquivos M3U malformados (linhas em branco, encoding inconsistente, atributos faltantes).
 
-### 5.2 Parsing de EPG/XMLTV
-- O parser XMLTV (`epg-parser.worker.ts`) deve:
-  - Processar arquivos comprimidos (Gzip) com descompressão server-side via proxy.
-  - Armazenar programas indexados por `channelId` e `startTime` para consultas temporais eficientes.
-  - Suportar arquivos de dezenas de megabytes sem travar a UI.
-
-### 5.3 IndexedDB
+### 5.2 IndexedDB
 - Toda interação com IndexedDB é centralizada no wrapper `lib/indexeddb.ts`.
-- **Stores definidas**: `playlists`, `live`, `movie`, `series`, `series_index`, `history`, `favorites`, `epg`, `config`, `tmdb_cache`.
+- **Stores definidas**: `playlists`, `live`, `movie`, `series`, `series_index`, `history`, `favorites`, `config`, `tmdb_cache`.
 - **Índices compostos** são usados para queries performáticas (ex: `category + name`).
 - **Transações em lote** (batch de 5.000) para escritas massivas.
 - **Nunca carregar todos os registros de uma store na memória.** Usar cursores indexados e paginação.
@@ -223,7 +217,7 @@ Ao implementar qualquer feature, **sempre** verificar se ela mantém a neutralid
 | Exibir metadados do TMDB para enriquecer UI | Criar catálogo próprio de conteúdos |
 | Categorizar itens da lista do usuário | Recomendar conteúdo de fontes externas |
 | Salvar histórico e favoritos localmente | Compartilhar dados de uso com terceiros |
-| Parser agnóstico de formato M3U/XMLTV | Integrar APIs de provedores IPTV pagos |
+| Parser agnóstico de formato M3U | Integrar APIs de provedores IPTV pagos |
 | Reproduzir qualquer URL fornecida pelo user | Implementar bypass de DRM ou geoblocking |
 | Parear dispositivos do mesmo usuário | Indexar, catalogar ou crawlear fontes de mídia |
 
