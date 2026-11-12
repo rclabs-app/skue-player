@@ -1,0 +1,10 @@
+# Análise das condições de lançamento
+Data/hora: 2026-11-12 13:50 (America/Recife)
+Ferramenta: Codex
+Estado: concluído
+Objetivo: verificar aderência do projeto às condições de licença de software, conteúdo do usuário, reprodução direta, notificações, revisão jurídica e beta web.
+Arquivos em uso: este registro, docs/ai/ANALISE_LANCAMENTO_2026-11-12.md e atualização de estado verificado em docs/ai/CONTEXT.md. Sem alterações funcionais planejadas.
+Mudanças e decisões: preservar código, pausa de assinatura e alterações preexistentes. Análise por leitura estática e verificações locais sem acessar playlists reais ou efetuar pagamentos.
+Verificações executadas e resultados: leitura de rotas, controllers, models, serviços, Blade, router/store/players e bridge Android. Backend 41 testes/276 asserções; frontend 95 aprovados/1 diagnóstico opcional pulado. Três provas temporárias em /tmp/SkueLaunchAuditTest.php, SQLite em memória e HTTP simulado, confirmaram corpo de vídeo pelo proxy, webhook sem assinatura ativando licença e senha fictícia persistida legível; 3 testes/7 asserções aprovados. Primeiro comando PHPUnit emitiu aviso de cache sem permissão, sem falhar os testes. HTTP local confirmou homepage/portal 200, links legais #, fixture de playlist pública com URLs reservadas de exemplo e ambos os caminhos de download APK 200 em HEAD. Fontes oficiais CDC/Marco Civil consultadas; sem parecer jurídico.
+Resultado: relatório entregue em docs/ai/ANALISE_LANCAMENTO_2026-11-12.md, com evidências, limites e prioridades. Estado relevante registrado no contexto. Nenhuma alteração funcional, pagamento, acesso a playlists reais, deploy ou DNS. Alterações preexistentes preservadas; git diff --check aprovado.
+Pendências e próximo passo: implementação futura de correções de checkout/webhook, limitação do proxy, proteção de credenciais, documentos legais, operação de notificações, controle beta e comprovação de revisão jurídica/plataformas. Não foram executados build, instalação de APK, tráfego de vídeo real ou teste de entrega de e-mail.
