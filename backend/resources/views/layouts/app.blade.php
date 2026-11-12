@@ -159,7 +159,7 @@
                         </svg>
                     </div>
                     <p class="text-sm text-gray-500 max-w-sm">
-                        O media player definitivo para sua Smart TV. Importante: Nós não fornecemos, distribuímos ou vendemos qualquer tipo de conteúdo, playlists (M3U) ou inscrições.
+                        Software para organizar e reproduzir suas próprias listas de mídia. A licença de uso não inclui canais, filmes, séries ou listas. O Skue não fornece nem vende conteúdo ou fontes de reprodução.
                     </p>
                 </div>
                 <div>
