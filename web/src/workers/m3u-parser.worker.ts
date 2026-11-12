@@ -13,7 +13,7 @@
  *      (CHUNK_SIZE rows per COMMIT) — never holding the full array in memory.
  *   2. Persist the DB to OPFS/IDB from within the worker — no export() blob
  *      transferred to main thread.
- *   3. Send only lightweight metadata (counts, epgUrl) back to main thread.
+ *   3. Send only lightweight metadata (counts) back to main thread.
  */
 
 import initSqlJs from 'sql.js'
@@ -75,13 +75,13 @@ async function persistDb(data: Uint8Array): Promise<void> {
 
 // ─── Lightweight streaming M3U parser ────────────────────────────────────────
 
-function determineType(url: string, group: string, name: string, epgId: string | null): 'live' | 'movie' | 'series' {
+function determineType(url: string, group: string, name: string, tvgId: string | null): 'live' | 'movie' | 'series' {
   const lu = url.toLowerCase()
   if (lu.includes('/movie/'))  return 'movie'
   if (lu.includes('/series/')) return 'series'
   if (lu.includes('/live/'))   return 'live'
   if (lu.endsWith('.ts') || lu.endsWith('.m3u8')) return 'live'
-  if (epgId && epgId.trim() !== '') return 'live'
+  if (tvgId && tvgId.trim() !== '') return 'live'
 
   const lg = group.toLowerCase()
   const ln = name.toLowerCase()
@@ -133,7 +133,6 @@ let stmtItem: any;
 let stmtSeries: any;
 const seriesMap = new Map<string, { id: string; displayName: string; group: string; logo: string | null; count: number }>()
 
-let epgUrl: string | undefined
 let itemIdx = 0
 let chunkCount = 0
 let counts = { live: 0, movie: 0, series: 0 }
@@ -141,7 +140,7 @@ let counts = { live: 0, movie: 0, series: 0 }
 let currentName = ''
 let currentGroup = 'Uncategorized'
 let currentLogo: string | null = null
-let currentEpgId: string | null = null
+let currentTvgId: string | null = null
 let hasCurrentItem = false
 
 let remainder = ''
@@ -172,14 +171,11 @@ function processLines(text: string) {
 
     if (!line) continue
 
-    if (line.startsWith('#EXTM3U')) {
-      const m = line.match(/x-tvg-url="([^"]+)"/i) || line.match(/url-tvg="([^"]+)"/i)
-      if (m) epgUrl = m[1]
-    } else if (line.startsWith('#EXTINF:')) {
+    if (line.startsWith('#EXTINF:')) {
       currentName = 'Unknown'
       currentGroup = 'Uncategorized'
       currentLogo = null
-      currentEpgId = null
+      currentTvgId = null
 
       const attrRx = /([a-zA-Z0-9-]+)="([^"]*)"/g
       let match: RegExpExecArray | null
@@ -187,7 +183,7 @@ function processLines(text: string) {
         switch (match[1]) {
           case 'group-title': currentGroup = match[2]; break
           case 'tvg-logo':    currentLogo  = match[2] || null; break
-          case 'tvg-id':      currentEpgId = match[2] || null; break
+          case 'tvg-id':      currentTvgId = match[2] || null; break
         }
       }
       const ci = line.lastIndexOf(',')
@@ -198,7 +194,7 @@ function processLines(text: string) {
       continue
     } else if (hasCurrentItem) {
       const url  = line
-      const type = determineType(url, currentGroup, currentName, currentEpgId)
+      const type = determineType(url, currentGroup, currentName, currentTvgId)
       const id   = contentId(url, currentName)
       itemIdx++
 
@@ -225,7 +221,7 @@ function processLines(text: string) {
         counts.live++
       }
 
-      stmtItem.run([id, currentName, url, currentGroup || 'Outros', currentLogo, currentEpgId, type, serieKey])
+      stmtItem.run([id, currentName, url, currentGroup || 'Outros', currentLogo, currentTvgId, type, serieKey])
       chunkCount++
 
       if (chunkCount >= CHUNK_SIZE) {
@@ -256,7 +252,7 @@ self.onmessage = async (e: MessageEvent) => {
       db.run('DELETE FROM playlist')
       db.run('DELETE FROM series_index')
 
-      stmtItem = db.prepare('INSERT OR REPLACE INTO playlist (id, name, url, group_title, logo, epg_id, type, serie_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      stmtItem = db.prepare('INSERT OR REPLACE INTO playlist (id, name, url, group_title, logo, tvg_id, type, serie_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
       stmtSeries = db.prepare('INSERT OR REPLACE INTO series_index (id, display_name, group_title, logo, serie_key, episode_count) VALUES (?, ?, ?, ?, ?, ?)')
       
       db.run('BEGIN TRANSACTION')
@@ -296,7 +292,6 @@ self.onmessage = async (e: MessageEvent) => {
 
       self.postMessage({
         type: 'done',
-        epgUrl,
         counts: {
           live: counts.live,
           movie: counts.movie,
