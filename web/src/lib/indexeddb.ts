@@ -1,5 +1,4 @@
 import type { PlaylistItem, SeriesEntry } from '../types/m3u'
-import type { EPGProgram } from '../types/epg'
 
 export interface HistoryItem {
   id: string; // The playlist item ID
@@ -9,13 +8,12 @@ export interface HistoryItem {
 }
 
 const DB_NAME = 'skue-db'
-const DB_VERSION = 4
+const DB_VERSION = 5
 const STORE_PLAYLIST = 'playlist'
 const STORE_SERIES_INDEX = 'series_index'
 const STORE_FAVORITES = 'favorites'
 const STORE_HISTORY = 'history'
 const STORE_CONFIG = 'config'
-const STORE_EPG = 'epg'
 const STORE_TMDB_CACHE = 'tmdb_cache'
 
 export interface TMDBMetadata {
@@ -73,12 +71,9 @@ export class DatabaseService {
           db.createObjectStore(STORE_CONFIG, { keyPath: 'key' })
         }
 
-        if (!db.objectStoreNames.contains(STORE_EPG)) {
-          const store = db.createObjectStore(STORE_EPG, { keyPath: 'id' })
-          store.createIndex('channelId', 'channelId', { unique: false })
-          store.createIndex('startTime', 'startTime', { unique: false })
-          store.createIndex('endTime', 'endTime', { unique: false })
-        }
+        // Remove obsolete guide data while retaining playlists and user settings.
+        if (db.objectStoreNames.contains('epg')) db.deleteObjectStore('epg')
+        request.transaction!.objectStore(STORE_CONFIG).delete('epg_url')
 
         if (!db.objectStoreNames.contains(STORE_TMDB_CACHE)) {
           db.createObjectStore(STORE_TMDB_CACHE, { keyPath: 'id' })
@@ -371,82 +366,6 @@ export class DatabaseService {
       }
       request.onerror = () => reject(request.error)
     })
-  }
-
-  async saveEpgPrograms(programs: EPGProgram[]): Promise<void> {
-    if (!this.db) await this.init()
-    
-    const CHUNK_SIZE = 5000;
-    for (let i = 0; i < programs.length; i += CHUNK_SIZE) {
-      const chunk = programs.slice(i, i + CHUNK_SIZE);
-      await new Promise<void>((resolve, reject) => {
-        const transaction = this.db!.transaction(STORE_EPG, 'readwrite')
-        const store = transaction.objectStore(STORE_EPG)
-        
-        transaction.oncomplete = () => resolve()
-        transaction.onerror = () => reject(transaction.error)
-        
-        for (const item of chunk) {
-          store.put(item)
-        }
-      })
-    }
-  }
-
-  async getEpgPrograms(channelId: string): Promise<EPGProgram[]> {
-    if (!this.db) await this.init()
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(STORE_EPG, 'readonly')
-      const store = transaction.objectStore(STORE_EPG)
-      const index = store.index('channelId')
-      const request = index.getAll(channelId)
-      
-      request.onsuccess = () => {
-        const results = (request.result || []) as EPGProgram[]
-        // Sort by start time ascending
-        results.sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
-        resolve(results)
-      }
-      request.onerror = () => reject(request.error)
-    })
-  }
-
-  async getCurrentEpgProgram(channelId: string, time: Date = new Date()): Promise<EPGProgram | null> {
-    if (!this.db) await this.init()
-    
-    const t = time.getTime()
-    
-    return new Promise((resolve, reject) => {
-      const transaction = this.db!.transaction(STORE_EPG, 'readonly')
-      const store = transaction.objectStore(STORE_EPG)
-      const index = store.index('channelId')
-      const cursorRequest = index.openCursor(IDBKeyRange.only(channelId))
-      
-      cursorRequest.onsuccess = () => {
-        const cursor = cursorRequest.result
-        if (!cursor) {
-          resolve(null)
-          return
-        }
-        
-        const p = cursor.value as EPGProgram
-        const startMs = p.startTime instanceof Date ? p.startTime.getTime() : new Date(p.startTime).getTime()
-        const endMs = p.endTime instanceof Date ? p.endTime.getTime() : new Date(p.endTime).getTime()
-        
-        if (startMs <= t && endMs > t) {
-          resolve(p)
-          return
-        }
-        
-        cursor.continue()
-      }
-      cursorRequest.onerror = () => reject(cursorRequest.error)
-    })
-  }
-
-  async clearEpg(): Promise<void> {
-    await this.clearStore(STORE_EPG)
   }
 
   async saveTMDBMetadata(metadata: TMDBMetadata): Promise<void> {
