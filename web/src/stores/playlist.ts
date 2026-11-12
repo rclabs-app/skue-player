@@ -5,7 +5,6 @@ import { db } from '../lib/database'
 import M3uWorker from '../workers/m3u-parser.worker?worker'
 import { getDeviceMac, getDeviceName } from '../utils/device'
 import { getApiUrl } from '../utils/api'
-import { EPGService } from '../services/epg.service'
 import { cleanName } from '../utils/text'
 import { useHistoryStore } from './history'
 import { useFavoritesStore } from './favorites'
@@ -33,8 +32,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
   const seriesIndex = shallowRef<SeriesEntry[]>([])
 
 
-  const epgUrl = ref<string | null>(null)
-  const epgSyncStatus = ref('')
 
   // ─── Derived ───────────────────────────────────────────────────────────────
   /**
@@ -130,8 +127,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
     devicePlaylists.value = []
     seriesIndex.value = []
     seriesIdSet.value = new Set()
-    epgUrl.value = null
-    epgSyncStatus.value = ''
     error.value = removedMessage
     cancelImport?.()
     await db.clearDeviceContent()
@@ -280,7 +275,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
       for (const s of idx) ids.add(s.id)
       seriesIdSet.value = ids
 
-      epgUrl.value = await db.getConfig('epg_url')
       if (deviceRemoved.value) return
       isLoaded.value = true
     } catch (e) {
@@ -420,7 +414,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
           }
 
           if (msg.type === 'done') {
-            const { epgUrl: parsedEpgUrl } = msg
             try {
               worker.terminate()
               processingProgress.value = 'Carregando banco de dados...'
@@ -432,7 +425,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
               }
               await db.saveConfig('playlist_loaded', true)
               await db.saveConfig('playlist_url', sourceInfo)
-              await db.saveConfig('epg_url', parsedEpgUrl ?? null)
               if (deviceRemoved.value) {
                 await db.clearDeviceContent()
                 reject(new Error(removedMessage))
@@ -440,9 +432,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
               }
               await loadFromDb()
               await useHistoryStore().loadHistory()
-              if (parsedEpgUrl && !deviceRemoved.value) {
-                syncEpg(parsedEpgUrl).catch(err => console.error('Auto-sync EPG error:', err))
-              }
               resolve()
             } catch (err) {
               reject(err)
@@ -493,29 +482,10 @@ export const usePlaylistStore = defineStore('playlist', () => {
     await db.clearPlaylist()
     await db.saveConfig('playlist_loaded', false)
     await db.saveConfig('playlist_url', null)
-    await db.saveConfig('epg_url', null)
-    await db.clearEpg()
 
     seriesIndex.value = []
     seriesIdSet.value = new Set()
-    epgUrl.value = null
-    epgSyncStatus.value = ''
     isLoaded.value = false
-  }
-
-  async function syncEpg(url: string) {
-    epgSyncStatus.value = 'Iniciando sincronização...'
-    try {
-      await EPGService.syncEPG(url, (status) => { epgSyncStatus.value = status })
-    } catch (e: any) {
-      epgSyncStatus.value = `Erro: ${e.message}`
-    }
-  }
-
-  async function syncCurrentEpg() {
-    const url = await db.getConfig<string>('epg_url')
-    if (url) await syncEpg(url)
-    else epgSyncStatus.value = 'Nenhuma URL de EPG configurada'
   }
 
   return {
@@ -526,8 +496,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
     seriesIndex,
     series: uniqueSeries,
     uniqueSeries,  // now returns SeriesEntry[] from the deduplicated index
-    epgUrl,
-    epgSyncStatus,
     deviceMac,
     deviceRemoved,
     registrationPending,
@@ -542,8 +510,6 @@ export const usePlaylistStore = defineStore('playlist', () => {
     setMainPlaylist,
     loadPlaylistFromUrl,
     streamToWorker,
-    clearPlaylist,
-    syncEpg,
-    syncCurrentEpg
+    clearPlaylist
   }
 })
