@@ -16,14 +16,14 @@
 
 O **Skue** é um reprodutor e organizador de mídia IPTV / VOD desenvolvido com uma interface de padrão comercial de streaming (inspirada em Netflix, Prime Video e Apple TV), projetado sob o paradigma **Local-First** para oferecer máxima fluidez e responsividade mesmo em dispositivos com hardware restrito (Smart TVs de entrada com 1-2GB de RAM).
 
-O sistema opera estritamente como um **reprodutor de mídia neutro** ("*Bring Your Own Content*"). Todo o processamento de listas (`.m3u`), guia de programação (`XMLTV/EPG`), histórico e favoritos ocorre **diretamente no hardware do usuário**.
+O sistema opera estritamente como um **reprodutor de mídia neutro** ("*Bring Your Own Content*"). Todo o processamento de listas (`.m3u`), histórico e favoritos ocorre **diretamente no hardware do usuário**.
 
 ---
 
 ## 2. Destaques e Funcionalidades
 
 * 🚀 **Arquitetura Local-First:** Processamento e armazenamento descentralizados (IndexedDB estruturado gravado em lotes transacionais de 5.000 itens) para suportar listas massivas (200k+ itens) sem travar a interface.
-* ⚡ **Parsing Assíncrono via Web Workers:** Processamento de M3U e EPG em threads de background dedicadas, garantindo 60 FPS contínuos na UI.
+* ⚡ **Parsing Assíncrono via Web Workers:** Processamento de M3U em thread de background dedicada.
 * 📺 **Suporte Nativo a Smart TVs (Android TV / Google TV):**
   * Navegação espacial otimizada por controle remoto (D-Pad).
   * Camada de vídeo nativa com **ExoPlayer / Media3** renderizada sob WebView transparente via `SurfaceView`.
@@ -60,7 +60,7 @@ O sistema opera estritamente como um **reprodutor de mídia neutro** ("*Bring Yo
 │              │                           │             │
 │  ┌───────────▼─────────────┐   ┌─────────▼──────────┐  │
 │  │ Player (HLS/TS/ExoPlay) │   │    Web Workers     │  │
-│  └─────────────────────────┘   │ (Parser M3U & EPG) │  │
+│  └─────────────────────────┘   │ (Parser M3U)       │  │
 │                                └────────────────────┘  │
 └───────────────────────────┬────────────────────────────┘
                             │ Handshake / Proxy / Pairing
@@ -89,9 +89,9 @@ skue-player/
 ├── web/                # Frontend SPA em Vue 3 + TypeScript + Vite
 │   ├── android/        # Projeto Android TV (Capacitor + ExoPlayer)
 │   └── src/
-│       ├── views/      # Home, Details, Live, Guide, Search, Settings, Onboarding
+│       ├── views/      # Home, Details, Live, Search, Settings, Onboarding
 │       ├── lib/        # Wrapper IndexedDB e M3U Parser
-│       ├── workers/    # Web Workers (M3U / XMLTV)
+│       ├── workers/    # Web Workers (M3U)
 │       └── stores/     # Pinia Stores (Playlist, History, Favorites)
 ├── docs/               # Documentação técnica, changelogs e especificações
 ├── download/           # Binários de release (APK Android TV)
