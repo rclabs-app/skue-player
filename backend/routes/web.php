@@ -1,21 +1,29 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PortalController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
+Route::view('/contato', 'contact')->name('contact');
+
+foreach (config('legal.documents') as $key => $document) {
+    Route::get($document['path'], fn () => view('legal.document', ['document' => config("legal.documents.{$key}")]))
+        ->name('legal.'.$key);
+}
+
 // Download direto do APK para instalação em Smart TVs (via app Downloader)
 Route::get('/download/skue-tv.apk', function () {
     $apkPath = public_path('download/skue-tv.apk');
-    if (!file_exists($apkPath)) {
+    if (! file_exists($apkPath)) {
         $apkPath = base_path('../download/skue-tv.apk');
     }
-    if (!file_exists($apkPath)) {
+    if (! file_exists($apkPath)) {
         abort(404, 'Arquivo de instalação não encontrado.');
     }
+
     return response()->download($apkPath, 'skue-tv.apk', [
         'Content-Type' => 'application/vnd.android.package-archive',
     ]);
