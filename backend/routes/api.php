@@ -94,7 +94,7 @@ Route::prefix('v1')->group(function () {
             return response($body, $response->status())
                 ->header('Content-Type', 'text/plain; charset=utf-8');
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Proxy fetch failed: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Não foi possível buscar a lista na origem.'], 502);
         }
     })->middleware(['throttle:300,1', 'device.auth']);
 
