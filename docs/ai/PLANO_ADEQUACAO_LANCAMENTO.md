@@ -1,6 +1,6 @@
 # Plano de adequação do Skue
 
-Data: 12/11/2026. Estado: etapa 1 implementada, com validação visual pendente; EPG removido; restrição do proxy na etapa 2 e etapas 3 a 7 planejadas.
+Data: 12/11/2026. Estado: etapa 1 implementada, com validação visual pendente; EPG removido; etapa 3 implementada e testada em base sintética, com aplicação operacional pendente; etapa 4 preparada tecnicamente, com operação pendente; etapa 5 implementada para testes locais, com minutas e revisão pendentes; restrição do proxy na etapa 2 e etapas 6 e 7 planejadas.
 Base: análise local em `ANALISE_LANCAMENTO_2026-11-12.md` e orientações atuais do usuário.
 
 ## Decisões e limites
@@ -59,6 +59,10 @@ Concluída quando: testes com fontes sintéticas aceitam listas válidos, rejeit
 
 ## Etapa 3 — Proteger configurações e credenciais
 
+Estado em 12/11/2026: proteção implementada para novas gravações de URL/usuário/senha de playlists e payloads temporários de pareamento. Leitura legada preservada para transição. Comandos de inspeção, conversão e recuperação com backup criptografado implementados; nenhuma transformação da base em uso executada nesta tarefa. Procedimento e inventário em `../OPERACAO_CREDENCIAIS.md`.
+
+Validação: 58 testes de backend/394 asserções e 98 testes frontend aprovados, um diagnóstico opcional pulado; build web aprovado. Cenários de migração/recuperação em SQLite em memória, chave incorreta/anterior, arquivo adulterado, falha de backup, campos máximos, isolamento, exclusão e pareamento de uso único verificados. Conversão real, homologação no banco de destino, validação visual/dispositivo, retenção operacional de backups/logs e aprovação de gestão das chaves continuam pendentes.
+
 Entrega:
 
 - Mapear URL, parâmetros sensíveis, usuário e senha ao longo do portal, API, banco, logs e respostas.
@@ -72,9 +76,13 @@ Arquivos previstos: `backend/app/Models/DevicePlaylist.php`, `backend/app/Servic
 
 Concluída quando: valores sintéticos não aparecem em claro nas colunas protegidas, aparelho autorizado continua sincronizando, outro dispositivo não acessa a configuração e uma base de teste anterior à migração é convertida sem perder acesso. Estratégia de recuperação documentada e verificada em ambiente isolado.
 
-Dependência: consolidar o fluxo da etapa 2 antes de fechar o inventário de dados.
+Dependência atualizada: a pedido do usuário, proteção aplicada ao fluxo atual antes da restrição do proxy da etapa 2. Revalidar inventário e erros quando essa restrição for implementada. Aplicação em instalação existente exige conferir chaves, backup integral e manutenção conforme o procedimento; não usar rollback de colunas para recuperar credenciais.
 
 ## Etapa 4 — Organizar o atendimento a notificações
+
+Estado em 12/11/2026: página pública `/contato` implementada, com links no rodapé institucional e nas configurações do app. Usuário informou que a caixa ainda não existe; responsável não identificado. Canal desativado por padrão, exibindo “Canal em preparação” sem endereço ou botões de envio. Ativação futura por configuração exige endereço válido. Procedimento de triagem, encaminhamento, decisão, resposta e registro em `../ATENDIMENTO_NOTIFICACOES.md`.
+
+Validação técnica: 61 testes backend/412 asserções e 101 testes frontend aprovados, um diagnóstico opcional pulado; builds backend/web aprovados. Site e contato retornaram HTTP 200, com link e estado desativado conferidos no HTML. Inspeção visual indisponível. Operação pendente: criar caixa, designar responsável, definir acompanhamento/prazos/retenção e testar recebimento/resposta e caso fictício pela caixa real. Nenhuma mensagem enviada; exercício documental não comprova operação.
 
 Entrega:
 
@@ -92,6 +100,12 @@ Concluída quando: contato aparece nos dois produtos, mensagem de teste chega ao
 Pode ser iniciada em paralelo às etapas 2 e 3, sem significar autorização para enviar mensagens nesta tarefa.
 
 ## Etapa 5 — Publicar documentos e tornar o aceite verificável
+
+Estado em 12/11/2026: minutas acessíveis em `/termos`, `/privacidade` e `/aviso-legal`; links institucionais reais e leitor no app. Texto integral e versão única `2026-11-12-draft.1` em `backend/config/legal.php`, fornecidos ao app pela API. Servidor valida versão vigente e registra tentativa por UUID único; app só confirma após recibo correspondente. Falhas mantêm tentativa para reenvio explícito sem duplicação. Confirmação anterior permite uso offline da última versão conhecida; primeiro aceite exige conexão. Identificação do dispositivo é declarada, não prova de identidade civil. Procedimento: `../DOCUMENTOS_E_ACEITE.md`.
+
+Validação: 67 testes backend/502 asserções e 117 testes frontend aprovados, um diagnóstico opcional pulado; builds backend/web aprovados. HTTP 200 no site, três páginas e versão da API com conteúdo conferido. Migration exclusiva do UUID aplicada no ambiente local; migration de credenciais permanece pendente. Inspeção visual/dispositivo indisponível ou não executada; nenhum deploy ou novo APK. Testes de aceite usam banco isolado, sem inserir aceites fictícios no banco em uso.
+
+Pendências para fechar a etapa: dados públicos do responsável solicitados ao usuário e ainda não confirmados; bases legais/finalidades, retenção, fornecedores/localização de tratamento e contato operacional precisam de definição e revisão jurídica. Textos descrevem limitações atuais, inclusive proxy ainda não restrito e conversão de credenciais legadas pendente; revisar e incrementar versão após concluir essas operações. Não há aprovação jurídica ou liberação comercial implícita.
 
 Entrega:
 
