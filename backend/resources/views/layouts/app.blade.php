@@ -168,14 +168,15 @@
                         <li><a href="#download" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Download</a></li>
                         <li><a href="#pricing" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Preços</a></li>
                         <li><a href="/portal" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Ativar Dispositivo</a></li>
+                        <li><a href="{{ route('contact') }}" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Contato e notificações</a></li>
                     </ul>
                 </div>
                 <div>
                     <h4 class="text-gray-900 dark:text-white font-semibold mb-4 text-sm uppercase tracking-wider">Legal</h4>
                     <ul class="space-y-3">
-                        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Termos de Uso</a></li>
-                        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Política de Privacidade</a></li>
-                        <li><a href="#" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Aviso Legal (Disclaimer)</a></li>
+                        <li><a href="{{ route('legal.terms') }}" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Termos de Uso</a></li>
+                        <li><a href="{{ route('legal.privacy') }}" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Política de Privacidade</a></li>
+                        <li><a href="{{ route('legal.notice') }}" class="text-sm text-gray-500 hover:text-gray-900 dark:hover:text-white transition">Aviso Legal (Disclaimer)</a></li>
                     </ul>
                 </div>
             </div>
