@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\ProtectedPlaylistValue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,13 +22,17 @@ class DevicePlaylist extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_main' => 'boolean',
+        'url' => ProtectedPlaylistValue::class,
+        'username' => ProtectedPlaylistValue::class,
+        'password' => ProtectedPlaylistValue::class,
     ];
 
     /**
-     * Hidden fields to avoid exposing passwords in API responses.
-     * Use makeVisible('password') when you explicitly need it.
+     * Configuration is only serialized explicitly for the authenticated device.
      */
     protected $hidden = [
+        'url',
+        'username',
         'password',
     ];
 
