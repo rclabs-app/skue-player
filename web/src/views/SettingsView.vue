@@ -8,9 +8,10 @@ import { db } from '../lib/database'
 import { getDeviceMac } from '../utils/device'
 import { buildPlaylistUrl } from '../utils/playlist'
 import TermsModal from '../components/TermsModal.vue'
-import { getPortalUrl } from '../utils/portal'
+import { getContactUrl, getPortalUrl } from '../utils/portal'
 
 const portalUrl = computed(getPortalUrl)
+const contactUrl = computed(getContactUrl)
 const router = useRouter()
 const store = usePlaylistStore()
 const historyStore = useHistoryStore()
@@ -224,18 +225,18 @@ function clearAllData() {
                 <span class="text-white font-mono text-xs">{{ totalContent.toLocaleString('pt-BR') }}</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-gray-500 text-xs">Suporte / DMCA</span>
-                <span class="text-white text-xs font-mono">contato@skue.tv</span>
+                <span class="text-gray-500 text-xs">Atendimento</span>
+                <a :href="contactUrl" target="_blank" rel="noopener noreferrer" class="text-primary underline text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded">Contato e notificações</a>
               </div>
             </div>
             <div class="border-t border-gray-800 pt-2 text-[11px] text-gray-500 leading-relaxed space-y-2">
-              <p>O Skue é um reprodutor local-first neutro. Nenhum conteúdo é armazenado ou transmitido por nossos servidores. O usuário é responsável pela legalidade das fontes utilizadas.</p>
+              <p>O Skue reproduz fontes fornecidas pelo usuário. Configurações são sincronizadas pelo servidor e a importação de listas pode utilizá-lo. A reprodução acontece no dispositivo.</p>
               <button
                 type="button"
                 @click="showTermsModal = true"
                 class="text-primary hover:text-blue-400 underline text-xs font-medium focus:outline-none"
               >
-                Ler Termos de Uso e Declaração de Neutralidade
+                Ler termos, privacidade e aviso legal
               </button>
             </div>
           </div>
@@ -451,7 +452,7 @@ function clearAllData() {
     </div>
 
     <!-- Terms Modal -->
-    <TermsModal v-model="showTermsModal" />
+    <TermsModal v-model="showTermsModal" read-only />
   </div>
 </template>
 
