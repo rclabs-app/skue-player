@@ -9,3 +9,14 @@ export function getPortalUrl(): string {
   if (import.meta.env.DEV) url.port = '8000'
   return url.toString()
 }
+
+/** Contact is served by the same Laravel installation as the customer portal. */
+export function getContactUrl(): string {
+  return new URL('/contato', getPortalUrl()).toString()
+}
+
+/** Legal documents share the Laravel origin, including native installations. */
+export function getLegalUrl(document: 'terms' | 'privacy' | 'notice'): string {
+  const paths = { terms: '/termos', privacy: '/privacidade', notice: '/aviso-legal' }
+  return new URL(paths[document], getPortalUrl()).toString()
+}
