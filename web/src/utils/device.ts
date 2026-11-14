@@ -3,6 +3,7 @@ import { Preferences } from '@capacitor/preferences'
 
 const STORAGE_KEY = 'skue_device_mac'
 let cachedMac = ''
+let pendingMac: Promise<string> | null = null
 
 function identifierToMac(id: string): string {
   let h1 = 0x811c9dc5
@@ -25,7 +26,11 @@ function identifierToMac(id: string): string {
  */
 export async function getDeviceMac(): Promise<string> {
   if (cachedMac) return cachedMac
+  if (!pendingMac) pendingMac = resolveDeviceMac().finally(() => { pendingMac = null })
+  return pendingMac
+}
 
+async function resolveDeviceMac(): Promise<string> {
   // 1. Try Preferences (Native SharedPreferences - survives reinstall if retained)
   try {
     const prefResult = await Preferences.get({ key: STORAGE_KEY })
