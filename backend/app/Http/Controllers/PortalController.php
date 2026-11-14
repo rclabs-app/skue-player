@@ -54,15 +54,15 @@ class PortalController extends Controller
         $device = $registrations->confirm($mac, $key);
 
         if (!$device) {
-            return back()->withErrors(['mac' => 'MAC ou chave inválidos ou expirados. Confira os dados exibidos no aplicativo.'])->withInput();
+            return back()->withErrors(['mac' => 'MAC ou chave inválidos ou expirados. Confira os dados exibidos no aplicativo.'])->withInput($request->only('mac'));
         }
 
         if (strtoupper($device->device_key) !== strtoupper($request->device_key)) {
-            return back()->withErrors(['device_key' => 'O Device Key está incorreto.'])->withInput();
+            return back()->withErrors(['device_key' => 'O Device Key está incorreto.'])->withInput($request->only('mac'));
         }
 
         if ($device->isKeyExpired()) {
-            return back()->withErrors(['device_key' => 'Este Device Key expirou. Por favor, solicite um novo na sua TV.'])->withInput();
+            return back()->withErrors(['device_key' => 'Este Device Key expirou. Por favor, solicite um novo na sua TV.'])->withInput($request->only('mac'));
         }
 
         // Login successful
