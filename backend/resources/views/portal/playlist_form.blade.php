@@ -15,12 +15,12 @@
     </div>
     <div>
         <label for="playlist-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL da lista M3U ou servidor Xtream</label>
-        <input id="playlist-url" name="url" type="url" value="{{ old('url', $playlist?->url) }}" required maxlength="2048" placeholder="https://exemplo.com" class="w-full px-3 py-2 border rounded bg-white dark:bg-[#0c0d10] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+        <input id="playlist-url" name="url" type="url" value="{{ $playlist?->url }}" required maxlength="2048" autocomplete="off" placeholder="https://exemplo.com" class="w-full px-3 py-2 border rounded bg-white dark:bg-[#0c0d10] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
     </div>
     <div x-show="playlistType === 'xtream'" class="space-y-4">
         <div>
             <label for="playlist-username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Usuário da conta Xtream</label>
-            <input id="playlist-username" name="username" value="{{ old('username', $playlist?->username) }}" maxlength="255" autocomplete="off" class="w-full px-3 py-2 border rounded bg-white dark:bg-[#0c0d10] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+            <input id="playlist-username" name="username" value="{{ $playlist?->username }}" maxlength="255" autocomplete="off" class="w-full px-3 py-2 border rounded bg-white dark:bg-[#0c0d10] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
         </div>
         <div>
             <label for="playlist-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha da conta Xtream</label>
