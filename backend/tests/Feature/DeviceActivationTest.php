@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Device;
-use App\Models\DevicePlaylist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Tests\TestCase;
@@ -81,9 +80,9 @@ class DeviceActivationTest extends TestCase
             'is_active' => false,
         ]);
 
-        $token = Crypt::encryptString($device->id . '|' . $device->mac);
+        $token = Crypt::encryptString($device->id.'|'.$device->mac);
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/v1/devices/AA:AA:AA:AA:AA:AA/config');
 
         $response->assertStatus(200)
@@ -166,7 +165,7 @@ class DeviceActivationTest extends TestCase
         $token = Crypt::encryptString($device->id);
 
         // M3U Playlist
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/v1/portal/playlists', [
                 'name' => 'Minha Lista M3U',
                 'type' => 'm3u',
@@ -199,8 +198,8 @@ class DeviceActivationTest extends TestCase
 
         $token = Crypt::encryptString($device->id);
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->putJson('/api/v1/portal/playlists/' . $playlist->id, [
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/v1/portal/playlists/'.$playlist->id, [
                 'name' => 'New Name',
                 'type' => 'xtream',
                 'url' => 'http://new.com',
@@ -211,13 +210,15 @@ class DeviceActivationTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonPath('name', 'New Name')
             ->assertJsonPath('type', 'xtream')
-            ->assertJsonPath('username', 'user1');
+            ->assertJsonMissingPath('username')
+            ->assertJsonMissingPath('url')
+            ->assertJsonMissingPath('password');
 
         $this->assertDatabaseHas('device_playlists', [
             'id' => $playlist->id,
             'name' => 'New Name',
-            'username' => 'user1',
         ]);
+        $this->assertSame('user1', $playlist->fresh()->username);
     }
 
     public function test_portal_can_delete_playlist(): void
@@ -236,8 +237,8 @@ class DeviceActivationTest extends TestCase
 
         $token = Crypt::encryptString($device->id);
 
-        $this->withHeader('Authorization', 'Bearer ' . $token)
-            ->deleteJson('/api/v1/portal/playlists/' . $playlist->id)
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/v1/portal/playlists/'.$playlist->id)
             ->assertStatus(200);
 
         $this->assertDatabaseMissing('device_playlists', [
