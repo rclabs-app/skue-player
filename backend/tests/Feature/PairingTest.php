@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\PairingCode;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -45,7 +44,7 @@ class PairingTest extends TestCase
     public function test_can_retrieve_existing_code(): void
     {
         $pairing = PairingCode::create([
-            'code'       => 'ABC123',
+            'code' => 'ABC123',
             'expires_at' => now()->addMinutes(10),
         ]);
 
@@ -64,7 +63,7 @@ class PairingTest extends TestCase
     public function test_returns_404_for_expired_code(): void
     {
         PairingCode::create([
-            'code'       => 'EXPIRD',
+            'code' => 'EXPIRD',
             'expires_at' => now()->subMinute(),
         ]);
 
@@ -77,7 +76,7 @@ class PairingTest extends TestCase
     public function test_browser_can_store_payload(): void
     {
         PairingCode::create([
-            'code'       => 'VALID1',
+            'code' => 'VALID1',
             'expires_at' => now()->addMinutes(10),
         ]);
 
@@ -87,16 +86,16 @@ class PairingTest extends TestCase
             ->assertJsonPath('status', 'payload_stored');
 
         $this->assertDatabaseHas('pairing_codes', [
-            'code'    => 'VALID1',
-            'payload' => 'encrypted-config-data',
+            'code' => 'VALID1',
         ]);
+        $this->assertSame('encrypted-config-data', PairingCode::findOrFail('VALID1')->payload);
     }
 
     public function test_cannot_overwrite_payload(): void
     {
         PairingCode::create([
-            'code'       => 'DOUBLE',
-            'payload'    => 'first',
+            'code' => 'DOUBLE',
+            'payload' => 'first',
             'expires_at' => now()->addMinutes(10),
         ]);
 
@@ -108,7 +107,7 @@ class PairingTest extends TestCase
     public function test_cannot_store_payload_on_expired_code(): void
     {
         PairingCode::create([
-            'code'       => 'EXPPAY',
+            'code' => 'EXPPAY',
             'expires_at' => now()->subMinute(),
         ]);
 
@@ -122,8 +121,8 @@ class PairingTest extends TestCase
     public function test_tv_can_consume_payload(): void
     {
         PairingCode::create([
-            'code'       => 'CONSM1',
-            'payload'    => 'config-data',
+            'code' => 'CONSM1',
+            'payload' => 'config-data',
             'expires_at' => now()->addMinutes(10),
         ]);
 
@@ -138,8 +137,8 @@ class PairingTest extends TestCase
     public function test_payload_is_deleted_after_consumption(): void
     {
         PairingCode::create([
-            'code'       => 'DELET1',
-            'payload'    => 'data',
+            'code' => 'DELET1',
+            'payload' => 'data',
             'expires_at' => now()->addMinutes(10),
         ]);
 
@@ -152,8 +151,8 @@ class PairingTest extends TestCase
     public function test_returns_202_when_payload_not_ready(): void
     {
         PairingCode::create([
-            'code'       => 'NOPAY1',
-            'payload'    => null,
+            'code' => 'NOPAY1',
+            'payload' => null,
             'expires_at' => now()->addMinutes(10),
         ]);
 
@@ -165,9 +164,9 @@ class PairingTest extends TestCase
     public function test_max_attempts_deletes_code(): void
     {
         PairingCode::create([
-            'code'       => 'ATMPT1',
-            'payload'    => null,
-            'attempts'   => 5,
+            'code' => 'ATMPT1',
+            'payload' => null,
+            'attempts' => 5,
             'expires_at' => now()->addMinutes(10),
         ]);
 
