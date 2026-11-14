@@ -61,7 +61,7 @@ class PairingController extends Controller
 
     /**
      * POST /api/v1/pairing-codes/{code}/payload
-     * Browser sends the encrypted config payload.
+     * Browser sends config; the model encrypts it at rest.
      */
     public function storePayload(Request $request, string $code): JsonResponse
     {
