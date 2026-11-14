@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Casts\ProtectedPlaylistValue;
 use Illuminate\Database\Eloquent\Model;
 
 class PairingCode extends Model
 {
     protected $primaryKey = 'code';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -19,10 +22,13 @@ class PairingCode extends Model
     ];
 
     protected $casts = [
-        'consumed'   => 'boolean',
+        'payload' => ProtectedPlaylistValue::class,
+        'consumed' => 'boolean',
         'expires_at' => 'datetime',
-        'attempts'   => 'integer',
+        'attempts' => 'integer',
     ];
+
+    protected $hidden = ['payload'];
 
     public function isExpired(): bool
     {
