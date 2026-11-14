@@ -1,0 +1,21 @@
+# Etapa 5 — Documentos e aceite verificável
+Data/hora: 2026-11-12 16:20 (America/Recife)
+Ferramenta: Codex
+Estado: implementado para testes locais; definições operacionais e revisão jurídica pendentes
+Objetivo: publicar minutas no Laravel e corrigir versão, confirmação e reenvio do aceite no app.
+Arquivos em uso: config/legal.php e views legais a criar; routes/web.php, TermsController, TermsAcceptance e migration de idempotência; layouts/app.blade.php; TermsModal.vue, utils de aceite/portal/device e testes; SettingsView.vue; docs de operação e plano/contexto; este registro.
+Mudanças e decisões: preservar mudanças preexistentes das etapas 3/4. Fonte única dos textos/versão no backend, minutas sem inventar operador, revisão profissional pendente. Aceite só confirmado com resposta válida do servidor, idempotência por UUID; falha mantém pendência para tentativa explícita. Offline permite apenas confirmação anterior da última versão conhecida; revalidar ao voltar online. Registro vincula identificação declarada do dispositivo, não identidade civil. Sem pagamentos, publicação externa, arquivos de ambiente, leitura de dados de clientes ou envio de e-mail.
+Verificações executadas e resultados: documentos/contexto/Git e sessões consultados; fluxo atual duplica versão no frontend e servidor, não valida versão e ignora falhas HTTP/rede. Documentação normativa consultada em fonte legislativa oficial para preparar minuta de privacidade; não é parecer jurídico.
+Pendências e próximo passo: implementar e testar, confirmar dados públicos do operador com usuário; validar operação de contato/retenção e revisão jurídica antes de abertura comercial.
+
+Escopo complementar: evitar geração concorrente de identificadores diferentes na primeira abertura do app (router inicializa dispositivo enquanto modal solicita identificação). Reutilizar uma única resolução em andamento em getDeviceMac, com teste de concorrência.
+
+Aplicação local: ambiente confirmado como local/localhost:8000 por artisan about; migration exclusiva de acceptance_id aplicada por --path para habilitar o contrato local, sem executar a migration pendente de credenciais nem transformar seus registros. Nenhum dado de cliente consultado.
+
+Resultado: três páginas e rodapé integrados; app lê os mesmos textos/versão e SettingsView usa leitura sem novo aceite. Backend rejeita versão inválida, UUID conflitante e identidade ausente; recibo persistido é retornado sem duplicação para reenvio. Frontend não ignora falha HTTP/rede, mantém UUID para repetição explícita e reconsulta texto antes de tentar novamente. Versão legada não é confirmação. Política offline e limites documentados em docs/DOCUMENTOS_E_ACEITE.md. Plano e contexto atualizados.
+Verificações finais:
+- Backend completo: 67 testes aprovados, 502 asserções. Casos de documentos/manifesto, validação de versões/identidade, repetição com recibo original, conflito, mudança de versão e preservação do histórico.
+- Frontend completo: 117 testes aprovados, um diagnóstico opcional pulado. Protocolo inclui HTTP 422/500/503, perda de rede, recibo incompatível, versão nova e cache; componente verifica fechamento somente após confirmação, falha, modo offline e retorno online, leitura nas configurações. Identidade concorrente testada.
+- Builds backend/web aprovados. HTTP local 200 no site, /termos, /privacidade, /aviso-legal e /api/v1/app-version, com links/textos/versão conferidos. Restrição de rede do sandbox exigiu execução local permitida; inspeção visual indisponível no navegador.
+- Formatação automática inicialmente alcançou arquivos preexistentes fora do escopo; alterações incidentais removidas preservando exatamente as mudanças funcionais anteriores dessas rotas/controllers. git diff --check aprovado.
+Pendências finais: usuário ainda não confirmou dados públicos do responsável. Contato, bases legais, retenção, fornecedores/transferências, revisão jurídica e validação real de layout/dispositivo pendentes. Revisar e versionar documentos após concluir proxy/migração de credenciais; homologar schema no banco de destino antes de deploy. Sem pagamento, reativação de assinatura, envio de mensagens, dados privados consultados, APK, deploy, commit ou push.
