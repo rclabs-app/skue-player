@@ -16,14 +16,14 @@ class VerifyDeviceToken
     public function handle(Request $request, Closure $next): Response
     {
         $authHeader = $request->header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+        if (! $authHeader || ! str_starts_with($authHeader, 'Bearer ')) {
             // Also accept a custom header X-Device-Token
             $token = $request->header('X-Device-Token');
         } else {
             $token = substr($authHeader, 7);
         }
 
-        if (!$token) {
+        if (! $token) {
             return response()->json(['error' => 'Token de dispositivo ausente.'], 401);
         }
 
@@ -45,7 +45,7 @@ class VerifyDeviceToken
 
             // Find the device to verify it still exists in the database
             $device = Device::find($deviceId);
-            if (!$device) {
+            if (! $device) {
                 return response()->json([
                     'code' => 'DEVICE_REMOVED',
                     'error' => 'Este dispositivo foi removido pelo administrador.',
@@ -58,9 +58,10 @@ class VerifyDeviceToken
             // Put device in request attributes so controllers can use it
             $request->attributes->set('device', $device);
 
-            return $next($request);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Falha na autenticação do dispositivo.'], 401);
         }
+
+        return $next($request);
     }
 }
