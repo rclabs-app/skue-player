@@ -99,7 +99,7 @@ function tryApplyResume() {
 
       video.currentTime = target
     } catch (e) {
-      console.warn('Could not seek video to resume position', e)
+      console.warn('Could not seek video to resume position')
     }
   }
 }
@@ -158,7 +158,7 @@ function startNativeSync() {
         )
       }
     } catch (e) {
-      console.error('Error polling NativePlayer state', e)
+      console.error('Error polling NativePlayer state')
     }
   }, 400)
 }
@@ -314,7 +314,7 @@ function togglePlay() {
         isPlaying.value = true
       }
     } catch (e) {
-      console.error('Failed togglePlay NativePlayer', e)
+      console.error('Failed togglePlay NativePlayer')
     }
     wakeControls()
     return
@@ -371,7 +371,7 @@ function seek(delta: number) {
           np.seekNativeVideo(seekingTarget.value * 1000)
           currentTime.value = seekingTarget.value
         } catch (e) {
-          console.error('Failed seek NativePlayer', e)
+          console.error('Failed seek NativePlayer')
         }
       } else if (videoRef.value) {
         videoRef.value.currentTime = seekingTarget.value
@@ -396,7 +396,7 @@ function seekTo(event: MouseEvent) {
       np.seekNativeVideo(targetTime * 1000)
       currentTime.value = targetTime
     } catch (e) {
-      console.error('Failed seekTo NativePlayer', e)
+      console.error('Failed seekTo NativePlayer')
     }
     wakeControls()
     return
@@ -439,7 +439,7 @@ function selectAspectRatio(ratio: string) {
     try {
       (window as any).NativePlayer.updateAspectRatioNative(ratio)
     } catch (e) {
-      console.error('Failed to update aspect ratio native', e)
+      console.error('Failed to update aspect ratio native')
     }
   }
 }
@@ -589,7 +589,7 @@ function resolveTsUrl(url: string): string {
 
 function playNativeWithFallback(url: string, onFail: () => void) {
   const video = videoRef.value!
-  showDebug(`[Native HTML5] Tentando: ${url.slice(-60)}`)
+  showDebug(`[Native HTML5] Tentando: fonte configurada`)
 
   stopPlayback()
   isDestroying = false
@@ -606,7 +606,7 @@ function playNativeWithFallback(url: string, onFail: () => void) {
     nativeFailed = true
     cleanup()
     const err = (e.target as HTMLVideoElement)?.error
-    showDebug(`[Native HTML5] Erro: code=${err?.code} msg=${err?.message} → cascading`)
+    showDebug(`[Native HTML5] Erro: code=${err?.code} → cascading`)
     onFail()
   }
 
@@ -711,7 +711,7 @@ function reconnectLiveStream(url: string) {
 
 function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () => void, hasAudioStream: boolean = true) {
   const video = videoRef.value!
-  showDebug(`[MPEGTS] Iniciando (isLive=${isLiveStream}, audio=${hasAudioStream}): ${url.slice(-50)}`)
+  showDebug(`[MPEGTS] Iniciando (isLive=${isLiveStream}, audio=${hasAudioStream}): fonte configurada`)
 
   cleanupMpegtsListeners?.()
   cleanupMpegtsListeners = null
@@ -850,7 +850,7 @@ function initPlayer() {
       ;(window as any).NativePlayer.playNativeVideo(url)
       startNativeSync()
     } catch (e) {
-      console.error('Failed to start native video', e)
+      console.error('Failed to start native video')
       showError('Erro de Reprodução', 'Falha ao iniciar o player nativo do Android TV.')
     }
     return
@@ -865,10 +865,10 @@ function initPlayer() {
 
   if (isHls) {
     if (Hls.isSupported()) {
-      showDebug(`[Iniciando] HLS direto: ${url.slice(-50)}`)
+      showDebug(`[Iniciando] HLS direto: fonte configurada`)
       playWithHls(url)
     } else if (videoRef.value && (videoRef.value.canPlayType('application/vnd.apple.mpegurl') || videoRef.value.canPlayType('application/x-mpegURL'))) {
-      showDebug(`[Iniciando] HLS nativo SmartTV/Safari: ${url.slice(-50)}`)
+      showDebug(`[Iniciando] HLS nativo SmartTV/Safari: fonte configurada`)
       playNativeWithFallback(url, () => {
         showError('Erro de Reprodução HLS', 'Não foi possível carregar o vídeo via HLS nativo na Smart TV.')
       })
@@ -877,7 +877,7 @@ function initPlayer() {
     }
 
   } else if (isTs && mpegts.isSupported()) {
-    showDebug(`[Iniciando] TS direto: ${url.slice(-50)}`)
+    showDebug(`[Iniciando] TS direto: fonte configurada`)
     playWithMpegts(url, true)
 
   } else if (isMp4) {
@@ -996,7 +996,7 @@ async function stopPlayback() {
     try {
       ;(window as any).NativePlayer.stopNativeVideo()
     } catch (e) {
-      console.error('Error stopping NativePlayer', e)
+      console.error('Error stopping NativePlayer')
     }
   }
   if (hls) {
@@ -1019,7 +1019,7 @@ async function stopPlayback() {
     try {
       await historyStore.updateProgress(progress.id, progress.time, progress.duration)
     } catch (e) {
-      console.error('Error saving progress on stopPlayback', e)
+      console.error('Error saving progress on stopPlayback')
     }
   }
 }
@@ -1091,7 +1091,7 @@ onMounted(() => {
         currentTime.value = resumeTime.value
         hasResumed.value = true
       } catch (e) {
-        console.error('Failed to seek NativePlayer on prepare', e)
+        console.error('Failed to seek NativePlayer on prepare')
       }
     }
     wakeControls()
