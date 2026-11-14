@@ -93,7 +93,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       deviceMac.value = await getDeviceMac()
       deviceRemoved.value = !!(await db.getConfig('device_removed'))
       registrationPending.value = !!(await db.getConfig('pending_device_key'))
-      await syncHandshake().catch(err => console.warn('Handshake sync background failed:', err))
+      await syncHandshake().catch(() => console.warn('Falha na sincronização do dispositivo em segundo plano.'))
 
       if (deviceRemoved.value) {
         await removeDeviceContent()
@@ -116,7 +116,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       isLoaded.value = !!(await db.getConfig('playlist_loaded'))
     } catch (e) {
       error.value = 'Failed to initialize database'
-      console.error(e)
+      console.error('Falha na operação de configuração local.')
     }
   }
 
@@ -208,7 +208,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       devicePlaylists.value = data.playlists || []
       return devicePlaylists.value
     } catch (e) {
-      console.error('Fetch config error:', e)
+      console.error('Falha ao consultar a configuração do dispositivo.')
       return []
     }
   }
@@ -279,7 +279,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       isLoaded.value = true
     } catch (e) {
       error.value = 'Failed to load playlist from database'
-      console.error(e)
+      console.error('Falha na operação de configuração local.')
     } finally {
       isProcessing.value = false
     }
@@ -307,7 +307,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
           responseToStream = directResp
         }
       } catch (e: any) {
-        console.warn('Direct fetch failed:', e.message)
+        console.warn('Falha no acesso direto à origem; tentando importação pelo servidor.')
         if (e.name === 'AbortError') {
           throw new Error('Tempo limite excedido ao baixar a lista. A lista é muito grande ou a internet está lenta.')
         }
