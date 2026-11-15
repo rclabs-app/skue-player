@@ -1,0 +1,32 @@
+services:
+  gateway:
+    build: .
+    restart: unless-stopped
+    environment:
+      MEDIA_GATEWAY_KEY: ${MEDIA_GATEWAY_KEY:?configure a private gateway key}
+      MEDIA_ALLOWED_ORIGINS: https://player.skue.tv
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 256m
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  https:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      MEDIA_PUBLIC_HOSTNAME: ${MEDIA_PUBLIC_HOSTNAME:?configure the public hostname}
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [gateway]
+    mem_limit: 256m
+volumes:
+  caddy_data:
+  caddy_config:
