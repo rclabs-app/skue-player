@@ -1,0 +1,16 @@
+# Filmes recentes na página inicial
+Data/hora: 2026-11-15 13:19 (America/Recife)
+Ferramenta: Codex
+Estado: diagnóstico comparativo concluído; reprodução depende de HTTPS válido no destino da fonte
+Objetivo: investigar/corrigir filmes recentes; séries e APK aguardam validação de filmes conforme orientação atual.
+Arquivos previstos: inicialmente apenas este registro; leitura de HomeView, SQLite, DetailsView, VideoPlayer e Xtream. Declarar mudanças funcionais antes de editar após diagnóstico.
+Verificações iniciais: contexto/README/registros recentes, GUIDELINES/README da raiz, Git status/diffs. Alterações anteriores preservadas. Recentes e categorias usam ContentCard e play(item), que encaminha filmes à mesma DetailsView por ID; DetailsView recupera URL do mesmo SQLite. Recentes ordenam por rowid DESC; categorias consultam grupos. Não há evidência de transformação específica de URL na fileira recente.
+Próximo passo: comparar metadados e somente cabeçalhos das fontes de uma amostra recente e de categoria em Chromium isolado, dentro da autorização de testes já dada, sem baixar corpo de vídeo/alterar contas ou registrar nomes, credenciais e URLs privadas. Não generalizar diferença entre itens como erro de fileira nem atribuir culpa à fonte sem comparação.
+
+Comparação executada: Chromium isolado com origem do player e conta já autorizada; catálogo VOD200. Selecionados um item recente (último da API, correspondente à ordenação inversa de importação) e um item da categoria com maior contagem. Ambos MP4, sem direct_source, ambos responderam302/CORS presente. O recente anunciou destino HTTP em outro host; o da categoria anunciou HTTPS em outro host. Interceptação CDP no estágio Response abortou antes da leitura do corpo do vídeo e de seguir o redirecionamento; nenhum conteúdo baixado/salvo ou conta/dispositivo alterado. Saída somente status/formato/indicadores. Essa amostra não representa todos os itens de todas as categorias.
+
+Consulta adicional de metadados do recente mostrado na captura: autenticação200; get_vod_info301 para endpoint indicado na mesma origemHTTPS, seguido de JSON200. Sem movie_data.direct_source ou info.stream_url. A única URL externa não visual detectada era de metadados TMDB, não mídia reproduzível; não foi usada como fonte de vídeo. Teste TLS sem credenciais no destino público mostrado pelo usuário: validação falhou com verify_code18. Não ignorados certificados, não reescritos destinos ou protocolos, não feito proxy de vídeo.
+
+Conclusão limitada à comparação: fileiras consultam subconjuntos diferentes do mesmo catálogo e encaminham IDs ao mesmo fluxo; diferença observada de entrega é HTTPS→HTTP para recente versus HTTPS→HTTPS na categoria. Não foi encontrado caminho HTTPS válido explicitamente fornecido para o recente testado. A reprodução permanece pendente até o servidor da fonte entregar destino final HTTPS com certificado válido e condições de acesso compatíveis com o navegador. Não ocultar itens ou mudar ordenação para mascarar falha.
+
+Nenhuma alteração funcional, novo teste automatizado/build/deployment, APK, fonte/configuração ou conta foi modificado. Alterações anteriores preservadas; diffcheck aprovado. Apenas este registro e contexto atualizados. Prioridade atual: filmes primeiro; séries e APK aguardam conforme instrução atual do usuário.
