@@ -30,6 +30,34 @@ afterEach(() => {
 })
 
 describe('playlist download restrictions', () => {
+  it('restores movie configuration and sends only a numeric ID/format to the ticket route', async () => {
+    const source = { type: 'xtream' as const, url: 'http://source.example.invalid', username: 'synthetic', password: 'source-secret' }
+    state.config.set('xtream_source', source)
+    const store = usePlaylistStore()
+    store.deviceMac = 'SK:AA:BB:CC:DD:EE'
+    const gateway = 'https://media.example.invalid/v1/media.mp4?ticket=' + 'a'.repeat(40)
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ playlists: [{ ...source, id: 3, name: 'Synthetic', is_active: true, is_main: true }] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ url: gateway })))
+    vi.stubGlobal('fetch', fetcher)
+    expect(await store.resolveMoviePlayback('http://source.example.invalid/movie/synthetic/source-secret/7.mp4', new AbortController().signal)).toBe(gateway)
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(fetcher.mock.calls[1]![0]).toContain('/playlists/3/movie-ticket')
+    expect(JSON.parse(fetcher.mock.calls[1]![1].body)).toEqual({ stream_id: '7', extension: 'mp4' })
+    expect(JSON.stringify(fetcher.mock.calls)).not.toContain('source-secret')
+  })
+
+  it('does not route native APK movies or an unrelated URL through the gateway', async () => {
+    const source = { type: 'xtream' as const, url: 'http://source.example.invalid', username: 'synthetic', password: 'source-secret' }
+    state.config.set('xtream_source', source)
+    const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher)
+    const store = usePlaylistStore(), signal = new AbortController().signal
+    expect(await store.resolveMoviePlayback('http://elsewhere.invalid/movie/7.mp4', signal)).toBeNull()
+    state.native = true
+    expect(await store.resolveMoviePlayback('http://source.example.invalid/movie/synthetic/source-secret/7.mp4', signal)).toBeNull()
+    expect(fetcher).not.toHaveBeenCalled()
+  })
+
   it('queries HTTPS episodes through the authenticated playlist route without sending source credentials', async () => {
     const source = { type: 'xtream' as const, url: 'https://source.example.invalid', username: 'synthetic', password: 'source-secret' }
     const { XtreamClient } = await import('../lib/xtream')
