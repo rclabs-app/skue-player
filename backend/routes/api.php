@@ -28,6 +28,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/handshake',      [DeviceController::class, 'handshake']);
         Route::patch('/{mac}/playlists/{id}/set-main', [DeviceController::class, 'setMainPlaylist'])->middleware('device.auth');
         Route::get('/{mac}/config',    [DeviceController::class, 'config'])->middleware('device.auth');
+        Route::get('/{mac}/playlists/{id}/xtream/series/{seriesId}', \App\Http\Controllers\Api\XtreamSeriesController::class)
+            ->whereNumber('id')->whereNumber('seriesId')->middleware('device.auth');
     });
 
     // Portal de Gerenciamento Remoto de Playlists
@@ -79,6 +81,34 @@ Route::prefix('v1')->group(function () {
                     'Accept' => '*/*'
                 ])
                 ->get($url);
+            if ($response->status() === 451) {
+                // Only fixed categories enter logs; upstream headers/body may
+                // contain credentials or private playlist addresses.
+                $diagnosticId = (string) \Illuminate\Support\Str::uuid();
+                $server = strtolower(trim($response->header('Server') ?? ''));
+                $serverFamily = match (true) {
+                    str_contains($server, 'cloudflare') => 'cloudflare',
+                    str_contains($server, 'vercel') => 'vercel',
+                    str_contains($server, 'nginx') => 'nginx',
+                    str_contains($server, 'apache') => 'apache',
+                    $server === '' => 'absent',
+                    default => 'other',
+                };
+                \Illuminate\Support\Facades\Log::warning('Playlist import received HTTP 451', [
+                    'diagnostic_id' => $diagnosticId,
+                    'upstream_status' => 451,
+                    'requested_scheme' => $parsed['scheme'],
+                    'server_family' => $serverFamily,
+                    'has_cloudflare_ray' => $response->header('CF-Ray') !== null,
+                    'has_blocked_by_link' => (bool) preg_match('/rel\s*=\s*["\']?blocked-by/i', $response->header('Link') ?? ''),
+                    'has_via_header' => $response->header('Via') !== null,
+                ]);
+                return response()->json([
+                    'code' => 'PLAYLIST_SOURCE_RESTRICTED',
+                    'error' => 'A origem recusou o acesso à lista (HTTP 451). Verifique a disponibilidade e as condições de acesso com o responsável pela fonte.',
+                    'diagnostic_id' => $diagnosticId,
+                ], 451);
+            }
             $body = $response->body();
             
             // Check magic bytes for gzip: 1f 8b
