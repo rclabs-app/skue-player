@@ -61,7 +61,9 @@ class DeviceRemovalTest extends TestCase
     public function test_filament_list_has_no_individual_or_bulk_delete(): void
     {
         $this->withoutVite();
-        $this->actingAs(User::factory()->create());
+        $admin = User::factory()->create();
+        config(['admin.emails' => [$admin->email]]);
+        $this->actingAs($admin);
         $device = $this->device();
         Livewire::test(ListDevices::class)
             ->assertTableActionDoesNotExist('delete')
@@ -72,7 +74,9 @@ class DeviceRemovalTest extends TestCase
     public function test_filament_delete_requires_exact_mac_and_cancel_preserves_content(): void
     {
         $this->withoutVite();
-        $this->actingAs(User::factory()->create());
+        $admin = User::factory()->create();
+        config(['admin.emails' => [$admin->email]]);
+        $this->actingAs($admin);
         $device = $this->device();
         $device->update(['name' => 'TV da sala']);
         $list = $device->playlists()->create(['name' => 'Test', 'type' => 'm3u', 'url' => 'https://example.com/list']);
