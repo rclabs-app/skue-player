@@ -18,6 +18,7 @@ const props = defineProps<{
   poster?: string
   title?: string
   isLive?: boolean
+  contentType?: 'movie' | 'series'
 }>()
 
 const emit = defineEmits<{
@@ -607,6 +608,10 @@ function playNativeWithFallback(url: string, onFail: () => void) {
     cleanup()
     const err = (e.target as HTMLVideoElement)?.error
     showDebug(`[Native HTML5] Erro: code=${err?.code} → cascading`)
+    if (err?.code === 2) {
+      showError('Falha de acesso ao vídeo', 'Não foi possível acessar a fonte. Confira a conexão e se o servidor oferece vídeo por HTTPS com acesso permitido ao navegador.')
+      return
+    }
     onFail()
   }
 
@@ -621,7 +626,7 @@ function playNativeWithFallback(url: string, onFail: () => void) {
 
   video.src = url
   video.play().catch(e => {
-    showDebug(`[Native HTML5] play() catch: ${e.name} ${e.message}`)
+    showDebug(`[Native HTML5] play() rejeitado: ${e.name}`)
     if (!nativeFailed) {
       nativeFailed = true
       cleanup()
@@ -754,7 +759,7 @@ function playWithMpegts(url: string, isLiveStream: boolean = true, onError?: () 
       onError()
     } else {
       showError('Erro de Reprodução', recoverLiveHttp
-        ? 'Não foi possível recuperar a transmissão. Tente novamente ou selecione outro canal.'
+        ? 'Não foi possível acessar a transmissão. A fonte precisa oferecer vídeo por HTTPS e permitir o acesso pelo navegador. Tente novamente ou selecione outro canal.'
         : msg)
     }
   }
@@ -886,7 +891,7 @@ function initPlayer() {
 
     const tryTsMpegts = () => {
       playWithMpegts(tsUrl, false, () => {
-        showError('Conteúdo Incompatível', 'Este servidor não serve este conteúdo em formato compatível.')
+        showError('Não foi possível reproduzir', 'A fonte não pôde ser acessada ou reproduzida. Verifique se o vídeo oferece HTTPS, permissão de acesso pelo navegador e um formato compatível.')
       })
     }
 
@@ -906,7 +911,7 @@ function initPlayer() {
 
     const tryNative = () => {
       playNativeWithFallback(url, () => {
-        showError('Conteúdo Incompatível', 'Este servidor não serve este conteúdo em formato compatível.')
+        showError('Não foi possível reproduzir', 'A fonte não pôde ser acessada ou reproduzida. Verifique se o vídeo oferece HTTPS, permissão de acesso pelo navegador e um formato compatível.')
       })
     }
 
@@ -1228,7 +1233,7 @@ onUnmounted(() => {
             <PlayerTopBar
               ref="topBarRef"
               :title="title || 'Reproduzindo'"
-              :subtitle="isLive ? 'Ao vivo • TV' : 'Filme • Reprodução'"
+              :subtitle="isLive ? 'Ao vivo • TV' : contentType === 'series' ? 'Série • Reprodução' : 'Filme • Reprodução'"
               :is-live="Boolean(isLive)"
               :current-clock="currentClock"
               @close="handleClose()"
