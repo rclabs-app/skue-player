@@ -162,11 +162,11 @@
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">Baixe o APK de testes e instale via pendrive ou gerenciador de arquivos em um aparelho Android compatível.</p>
                 </div>
                 <div>
-                    <a href="/downloads/skue-tv.apk" class="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-sm transition-colors text-sm shadow-md shadow-blue-600/20">
+                    <a href="{{ route('download.android') }}" class="w-full inline-flex items-center justify-center gap-2 py-3.5 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-sm transition-colors text-sm shadow-md shadow-blue-600/20">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                        Baixar Skue TV (v1.0.0 APK)
+                        Baixar Skue TV ({{ config('downloads.android.version') }})
                     </a>
-                    <span class="block text-center text-[11px] text-gray-400 mt-2">Versão 1.0.0-tv · Android 7.0+ · 69 MB</span>
+                    <span class="block text-center text-[11px] text-gray-400 mt-2">Versão {{ config('downloads.android.version') }} · Android 7.0+ · {{ number_format(config('downloads.android.size_bytes') / 1048576, 1, ',', '.') }} MiB</span>
                 </div>
             </div>
 
@@ -181,7 +181,7 @@
                 </div>
                 <div class="bg-white dark:bg-[#0c0d10] p-4 rounded border border-gray-200 dark:border-white/10 text-center">
                     <span class="text-xs text-gray-400 uppercase tracking-widest block mb-1">URL Direta no Downloader</span>
-                    <code class="text-base font-mono font-bold text-blue-600 dark:text-blue-400 select-all">skue.tv/downloads/skue-tv.apk</code>
+                    <code class="text-base font-mono font-bold text-blue-600 dark:text-blue-400 select-all">skue.tv/download/skue-tv.apk</code>
                 </div>
             </div>
         </div>
