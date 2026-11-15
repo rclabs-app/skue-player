@@ -172,6 +172,15 @@ export class SQLiteDatabaseService {
     return capturePlaylistUserData(this.db!)
   }
 
+  async getXtreamCachedEpisodes(prefix: string): Promise<PlaylistItem[]> {
+    await this.init()
+    const items = this.queryPlaylistItems(
+      'SELECT id,name,url,group_title,logo,tvg_id,type,serie_key FROM playlist WHERE type = ? AND serie_key LIKE ?',
+      ['series', prefix + '%']
+    )
+    return items.filter(item => /\/\d+\.[a-zA-Z0-9]{1,8}$/.test(new URL(item.url).pathname))
+  }
+
   /** Export the current database state to an array (for worker offloading) */
   exportDatabase(): Uint8Array | null {
     if (!this.db) return null
