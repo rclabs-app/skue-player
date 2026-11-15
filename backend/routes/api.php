@@ -30,6 +30,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/{mac}/config',    [DeviceController::class, 'config'])->middleware('device.auth');
         Route::get('/{mac}/playlists/{id}/xtream/series/{seriesId}', \App\Http\Controllers\Api\XtreamSeriesController::class)
             ->whereNumber('id')->whereNumber('seriesId')->middleware('device.auth');
+        Route::post('/{mac}/playlists/{id}/movie-ticket', \App\Http\Controllers\Api\MoviePlaybackController::class)
+            ->whereNumber('id')->middleware(['device.auth', 'throttle:30,1']);
     });
 
     // Portal de Gerenciamento Remoto de Playlists
