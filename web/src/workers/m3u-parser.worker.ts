@@ -21,6 +21,7 @@ import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url'
 import { SCHEMA } from '../lib/sqlite'
 import { contentId } from '../lib/contentIdentity'
 import { restorePlaylistUserData } from '../lib/playlistUserData'
+import type { PlaylistItem } from '../types/m3u'
 
 // How many rows to INSERT per COMMIT — keeps peak memory low
 const CHUNK_SIZE = 2000
@@ -133,6 +134,7 @@ let stmtItem: any;
 let stmtSeries: any;
 const seriesMap = new Map<string, { id: string; displayName: string; group: string; logo: string | null; count: number }>()
 
+let retainedEpisodes: PlaylistItem[] = []
 let itemIdx = 0
 let chunkCount = 0
 let counts = { live: 0, movie: 0, series: 0 }
@@ -151,6 +153,8 @@ const commitChunk = () => {
   db.run('BEGIN TRANSACTION')
   chunkCount = 0
 }
+
+let currentXtreamSeriesKey: string | null = null
 
 function processLines(text: string) {
   const content = remainder + text
@@ -172,6 +176,7 @@ function processLines(text: string) {
     if (!line) continue
 
     if (line.startsWith('#EXTINF:')) {
+      currentXtreamSeriesKey = null
       currentName = 'Unknown'
       currentGroup = 'Uncategorized'
       currentLogo = null
@@ -184,6 +189,7 @@ function processLines(text: string) {
           case 'group-title': currentGroup = match[2]; break
           case 'tvg-logo':    currentLogo  = match[2] || null; break
           case 'tvg-id':      currentTvgId = match[2] || null; break
+          case 'skue-series-key': currentXtreamSeriesKey = /^xc:vod2-[a-z0-9]+-[a-z0-9]+:\d+$/.test(match[2]) ? match[2] : null; break
         }
       }
       const ci = line.lastIndexOf(',')
@@ -200,7 +206,7 @@ function processLines(text: string) {
 
       let serieKey: string | null = null
       if (type === 'series') {
-        serieKey = buildSerieKey(currentName)
+        serieKey = currentXtreamSeriesKey || buildSerieKey(currentName)
         const existing = seriesMap.get(serieKey)
         if (!existing) {
           seriesMap.set(serieKey, {
@@ -208,7 +214,7 @@ function processLines(text: string) {
             displayName: cleanDisplayName(currentName),
             group: currentGroup,
             logo: currentLogo,
-            count: 1,
+            count: currentXtreamSeriesKey ? 0 : 1,
           })
         } else {
           existing.count++
@@ -246,6 +252,7 @@ self.onmessage = async (e: MessageEvent) => {
     if (msg.type === 'init') {
       self.postMessage({ type: 'progress', message: 'Iniciando banco de dados...' })
       const SQL = await initSqlJs({ locateFile: () => wasmUrl })
+      retainedEpisodes = msg.retainedEpisodes || []
       db  = new SQL.Database()
       db.run(SCHEMA)
       restorePlaylistUserData(db, msg.userData || {})
@@ -270,6 +277,13 @@ self.onmessage = async (e: MessageEvent) => {
         processLines(finalStr + '\n')
       }
 
+      for (const item of retainedEpisodes) {
+        const series = item.serieKey ? seriesMap.get(item.serieKey) : null
+        if (!series) continue
+        stmtItem.run([item.id,item.name,item.url,item.group,item.logo || null,item.tvgId || null,'series',item.serieKey])
+        series.count++
+      }
+      retainedEpisodes = []
       db.run('COMMIT')
       stmtItem.free()
 
