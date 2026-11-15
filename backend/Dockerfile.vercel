@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+FROM php:8.3-apache-bookworm AS php-base
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev libicu-dev libzip-dev libonig-dev libxml2-dev unzip git \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql intl zip mbstring bcmath opcache dom \
+    && a2enmod rewrite \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+WORKDIR /var/www/html
+
+FROM php-base AS dependencies
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
+COPY . .
+RUN mkdir -p bootstrap/cache storage/framework/views \
+    && composer dump-autoload --no-dev --optimize --no-scripts \
+    && php artisan package:discover --ansi \
+    && php artisan filament:assets
+
+FROM node:22-bookworm-slim AS assets
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+COPY --from=dependencies /var/www/html/vendor ./vendor
+RUN npm run build
+
+FROM php-base AS runtime
+ENV APP_ENV=production APP_DEBUG=false LOG_CHANNEL=stderr LOG_LEVEL=warning \
+    DB_CONNECTION=pgsql DB_SSLMODE=require SESSION_DRIVER=database CACHE_STORE=database \
+    QUEUE_CONNECTION=sync SESSION_SECURE_COOKIE=true PORT=8080 \
+    LARAVEL_STORAGE_PATH=/tmp/skue/storage \
+    APACHE_RUN_DIR=/tmp/apache2 APACHE_LOCK_DIR=/tmp/apache2
+COPY --from=dependencies /var/www/html /var/www/html
+COPY --from=assets /app/public/build /var/www/html/public/build
+COPY docker/apache.conf /etc/apache2/conf-enabled/skue.conf
+# Keep image files read-only; entrypoint writes only to /tmp.
+RUN sed -i 's@^Include ports.conf@Include /tmp/apache2/ports.conf@' /etc/apache2/apache2.conf \
+    && sed -i 's@/var/run/apache2@/tmp/apache2@g; s@/var/lock/apache2@/tmp/apache2@g' /etc/apache2/envvars \
+    && a2dissite 000-default \
+    && chmod +x docker/start.sh
+EXPOSE 8080
+ENTRYPOINT ["/var/www/html/docker/start.sh"]
