@@ -1,0 +1,13 @@
+# Skills de design e animações
+Data/hora: 2026-11-14 16:36 (America/Recife)
+Ferramenta: Codex
+Estado: concluído
+Objetivo: analisar Taste Skill, Transitions.dev e React Bits e criar skills para uso desses recursos pelo agente.
+Arquivos em uso: este registro; novas skills no escopo global ~/.codex/skills, sem alterar a aplicação Skue.
+Mudanças e decisões: verificar fontes oficiais, compatibilidade de framework, recursos existentes e instalação. Preservar o visual com menos neon e a pausa de assinatura. Não aplicar efeitos ou componentes ao app nesta tarefa.
+Verificações executadas e resultados: Git inicialmente limpo; contexto e último registro consultados; sites oficiais lidos. React Bits oferece componentes React; Taste preserva a stack; Transitions oferece CSS e React.
+Resultado: criadas e instaladas globalmente taste-design, transitions-dev e reactbits-ui em ~/.codex/skills. Metadados de descoberta gerados, seleção implícita padrão preservada e diretórios existentes não sobrescritos. Nenhum componente ou dependência instalado no app.
+Recursos: taste-design inclui biblioteca, scripts e referências MIT da revisão f6b76575f949707b4e3c37cd86cb44b0b98643e8; diferenças entre documentação web 2.1.5 e fonte 2.5.1 registradas. transitions-dev inclui 36 receitas gratuitas da revisão 20d70c1262bf721c0300c2946cbe1fc7605a555c e licença preservada; coleção permanece privada no escopo do usuário. Entradas adaptadas localmente, orientações originais preservadas como upstream-guide.md. reactbits-ui inclui guia de variantes/compatibilidade, referência Tech Text e ferramenta Python de consulta somente leitura ao registro público, sem copiar o componente para a skill ou para o app.
+Verificações finais: quick_validate aprovado nas três skills preparadas e novamente nas três instaladas; sintaxe dos 10 scripts MJS de Taste aprovada; execução real de start.mjs types --page software aprovada. Ferramenta React Bits consultou TechText-TS-CSS, retornando dois arquivos e nenhuma dependência adicional no registro. Identificador inválido e saída já existente recusados; links locais dos entrypoints conferidos; 36 receitas contadas.
+Decisões: preservar stack, marca e intenção; não impor regras estéticas upstream contra instruções do usuário. Componentes React não devem introduzir React em projeto Vue apenas para efeito. Licenças e restrições de redistribuição documentadas, sem aquisição Pro, MCP, login, deploy, commit ou push.
+Limitações e próximo passo: skills disponíveis para descoberta no próximo turno; nenhuma aplicação visual real, execução de inspector/browser de Taste ou componente React montado nesta tarefa. Somente este registro alterado no repositório; validar a integração concreta quando uma skill for aplicada a um projeto.
