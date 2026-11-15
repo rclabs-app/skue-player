@@ -45,3 +45,4 @@ Thumbs.db
 ANTIGRAVITY_SPECS.md
 .github/
 .neon
+.env*
