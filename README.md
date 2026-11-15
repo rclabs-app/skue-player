@@ -205,12 +205,14 @@ O aplicativo utiliza o Capacitor com bridge customizado em Java para ExoPlayer n
 
 ```bash
 cd web
-npm run build
+VITE_API_BASE_URL=https://api.skue.tv VITE_PORTAL_URL=https://skue.tv/portal npm run build
 npx cap sync android
 cd android
 ./gradlew assembleDebug
 ```
 *O APK gerado ficará disponível em `web/android/app/build/outputs/apk/debug/`.*
+
+Distribuição de testes atual: `1.0.2-tv-beta` (versionCode 10), com a assinatura debug existente preservada. O download canônico é `https://skue.tv/download/skue-tv.apk`; o Laravel redireciona para o artefato público configurado em `SKUE_ANDROID_APK_URL`. Incremente a versão Android e atualize os metadados em `backend/config/downloads.php` ao publicar outro APK. A assinatura comercial e a validação de instalação/atualização em aparelho continuam pendentes.
 
 Para testar o APK com o backend do computador na mesma rede, mantenha o backend
 em execução na porta 8000, acessível pela rede local. No build, informe
@@ -244,3 +246,7 @@ O **Skue** é um reprodutor de mídia neutro e agnóstico de conteúdo.
 ## 9. Licença
 
 Propriedade de **RC Labs**. Todos os direitos reservados.
+
+### Conta Xtream no navegador
+
+O player seleciona o importador de API para configurações do tipo Xtream. Categorias e catálogo são consultados diretamente na fonte; episódios de séries são carregados sob demanda. M3U permanece como importador separado. Requisitos de HTTPS/CORS, persistência e limites de validação estão em [docs/XTREAM_WEB.md](docs/XTREAM_WEB.md). O APK publicado não é atualizado por essa alteração web.
