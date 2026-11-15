@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlaylistStore } from '../stores/playlist'
-import { buildPlaylistUrl } from '../utils/playlist'
+import type { PlaylistConfig } from '../utils/playlist'
 import QrcodeVue from 'qrcode.vue'
 import { getPortalUrl } from '../utils/portal'
 
@@ -12,14 +12,29 @@ const router = useRouter()
 const store = usePlaylistStore()
 
 const error = ref('')
+const downloadDiagnostic = computed(() => {
+  const diagnostic = store.downloadDiagnostics
+  if (!diagnostic) return ''
+  const direct = diagnostic.directStatus
+    ? `HTTP ${diagnostic.directStatus}`
+    : ({
+      pending: 'sem resposta', 'mixed-content': 'HTTP bloqueado pelo navegador',
+      response: 'sem resposta', 'network-error': 'falha de conexão', timeout: 'tempo esgotado',
+    }[diagnostic.direct])
+  const proxy = diagnostic.proxyAttempted
+    ? ` Servidor: ${diagnostic.proxyStatus ? `HTTP ${diagnostic.proxyStatus}` : 'sem resposta'}.`
+    : ''
+  return `Direto no aparelho: ${direct}.${proxy}`
+})
 
 // Device Activation (MAC Address + Key)
 const deviceMac = ref('')
 const activationKey = computed(() => store.deviceRemoved ? '' : store.deviceKey)
 const isWaiting = ref(false)
+const isConnected = ref(false)
 let pollingInterval: number | null = null
 
-async function requestActivation() {
+async function requestActivation(retryPlaylist = true) {
   try {
     error.value = ''
     isWaiting.value = true
@@ -31,15 +46,24 @@ async function requestActivation() {
     deviceMac.value = store.deviceMac
 
     const data = await store.syncHandshake()
+    isConnected.value = true
     
     // If device already has playlists registered, boot immediately
     if (data.playlists_count > 0) {
+      // The router already attempted initialization. Preserve its import error
+      // instead of immediately repeating a failed request on entering this view.
+      if (!retryPlaylist && store.error) {
+        error.value = store.error
+        isWaiting.value = false
+        return
+      }
       await checkRemotePlaylists()
       return
     }
 
     startPolling()
   } catch (e) {
+    isConnected.value = false
     error.value = store.deviceRemoved
       ? 'O acesso anterior foi removido. Conecte-se ao servidor para gerar uma nova chave.'
       : 'Erro de conexão ao gerar chave de ativação.'
@@ -77,13 +101,11 @@ async function checkRemotePlaylists() {
       stopPolling()
       
       // Load first active playlist
-      const active = playlists.find((p: any) => p.is_active) || playlists[0]
-      const targetUrl = buildPlaylistUrl(active)
-      
-      await handleUrlLoad(targetUrl)
+      const active = playlists.find((p: any) => p.is_main && p.is_active) || playlists.find((p: any) => p.is_active)
+      if (active) await handleUrlLoad(active)
     }
   } catch (e) {
-    console.error('Polling error:', e)
+    console.error('Falha ao consultar listas remotas.')
   }
 }
 
@@ -95,15 +117,15 @@ function stopPolling() {
   }
 }
 
-async function handleUrlLoad(url: string) {
-  if (!url) {
+async function handleUrlLoad(config: PlaylistConfig) {
+  if (!config.url) {
     error.value = 'Please enter a valid URL'
     return
   }
   
   error.value = ''
   try {
-    await store.loadPlaylistFromUrl(url)
+    await store.loadConfiguredPlaylist(config)
     router.push('/')
   } catch (e: any) {
     if (e.message === 'Failed to fetch' || e.message.includes('NetworkError')) {
@@ -116,8 +138,7 @@ async function handleUrlLoad(url: string) {
 
 onMounted(async () => {
   try {
-    await store.initialize()
-    await requestActivation()
+    await requestActivation(false)
   } finally {
     if (typeof (window as any).hideCustomSplash === 'function') {
       (window as any).hideCustomSplash()
@@ -151,6 +172,7 @@ onUnmounted(() => {
               class="bg-red-950/60 border border-red-800/70 text-red-200 px-3 py-2 rounded-lg mb-3 lg:mb-4 text-xs leading-snug"
             >
               {{ error }}
+              <p v-if="downloadDiagnostic" class="mt-2 text-[11px] leading-relaxed">{{ downloadDiagnostic }}</p>
             </div>
 
             <!-- Instruções Passo a Passo -->
@@ -174,7 +196,7 @@ onUnmounted(() => {
           <div class="mt-3 lg:mt-5 pt-3 lg:pt-4 border-t border-white/[0.07] space-y-2.5">
             <div class="flex flex-wrap items-center gap-2">
               <button
-                @click="requestActivation"
+                @click="requestActivation()"
                 class="onboarding-action flex-1 bg-white/[0.06] hover:bg-white/[0.12] focus:bg-white focus:text-black text-gray-200 font-medium py-2 lg:py-2.5 px-3.5 rounded-xl border border-white/10 transition-all flex justify-center items-center gap-2 text-xs"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -198,6 +220,10 @@ onUnmounted(() => {
                   <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
                 {{ store.registrationPending ? 'Aguardando confirmação no portal...' : 'Aguardando configuração remota...' }}
+              </p>
+              <p v-else-if="isConnected" class="onboarding-status text-[11px] text-amber-400/90 flex items-center justify-center landscape:justify-start sm:justify-start gap-2">
+                <span class="inline-flex rounded-full h-2 w-2 bg-amber-400 shrink-0"></span>
+                {{ error ? 'Conectado ao serviço de ativação. Falha ao carregar a lista.' : 'Conectado ao serviço de ativação.' }}
               </p>
               <p v-else class="onboarding-status text-[11px] text-red-400/90 flex items-center justify-center landscape:justify-start sm:justify-start gap-2">
                 <span class="inline-flex rounded-full h-2 w-2 bg-red-500/80 shrink-0"></span>
