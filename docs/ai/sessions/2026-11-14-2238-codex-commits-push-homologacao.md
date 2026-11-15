@@ -1,7 +1,7 @@
 # Commits e push da homologação
 Data/hora: 2026-11-14 22:38 (America/Recife)
 Ferramenta: Codex
-Estado: em andamento
+Estado: commits e push de conteúdo concluídos; registro final de auditoria
 Objetivo: executar commits por arquivo e push das novas atualizações conforme pedido explícito atual.
 Arquivos previstos: alterações locais da homologação, skills Neon instaladas pelo pedido anterior, documentação/registros e este registro. Excluídos ignorados, ambientes, credenciais, bancos e artefatos locais.
 Fluxo: revisar conteúdo/diff/índice e remoto → fixar escopo/hashes/mensagens → commits isolados por caminho → push sem force → conferir remoto e automação Vercel. Pedido atual autoriza commit e push; não pressupor autorização para segredos nem reescrever histórico. Estado inicial main em 7af3a3f, índice sem mudanças staged.
@@ -87,3 +87,12 @@ Verificações antes dos commits: PHPUnit aprovado, 79 testes/598 asserções; V
 - `486296a2` — `docs/ai/CONTEXT.md` — Consolida o contexto da homologação publicada
 
 Cada commit foi conferido por caminho único, mensagem e hash SHA256 do conteúdo. Os 71 commits de conteúdo foram concluídos; este registro será versionado em commit próprio antes do push explícito origin/main. Nenhum hook ou verificação falhou.
+
+## Resultado do push
+
+- Commit do registro inicial: `24379572` — este arquivo — Registra a execução dos commits de homologação.
+- Primeiro push origin/main aprovado: `7af3a3f..2437957`; ls-remote confirmou igualdade com HEAD após envio.
+- Total inicial: 72 commits, exatamente um arquivo por commit. Credenciais/ambientes/bancos locais permaneceram fora do histórico.
+- Índice e árvore de trabalho estavam limpos após o primeiro push.
+- Integração Git Vercel acionou backend `dpl_Hh3AAxDPxH5rycdznCWD8DnTgT68`, observado BUILDING com SHA 24379572; player continua no deployment READY publicado antes, pois não tem vínculo Git automático configurado.
+- Este complemento registra os resultados verificados e será enviado em commit próprio do mesmo arquivo; hash final e sincronização remota serão confirmados na resposta. Nenhum outro conteúdo será incluído nesse complemento.
