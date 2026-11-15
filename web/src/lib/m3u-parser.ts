@@ -50,7 +50,7 @@ export function parseM3U(content: string): ParsedPlaylist {
 
       if (currentItem.type === 'series') {
         // Compute the normalized key for this series
-        const key = buildSerieKey(currentItem.name || '')
+        const key = currentItem.serieKey || buildSerieKey(currentItem.name || '')
         currentItem.serieKey = key
 
         const existing = seriesMap.get(key)
@@ -62,7 +62,7 @@ export function parseM3U(content: string): ParsedPlaylist {
             group: currentItem.group || 'Uncategorized',
             logo: currentItem.logo,
             serieKey: key,
-            episodeCount: 1,
+            episodeCount: key.startsWith('xc:') ? 0 : 1,
           })
         } else {
           existing.episodeCount++
@@ -94,6 +94,7 @@ function parseExtInf(line: string): Partial<PlaylistItem> {
     if (key === 'group-title') item.group = value
     else if (key === 'tvg-logo') item.logo = value
     else if (key === 'tvg-id') item.tvgId = value
+    else if (key === 'skue-series-key' && /^xc:vod2-[a-z0-9]+-[a-z0-9]+:\d+$/.test(value)) item.serieKey = value
   }
 
   const commaIndex = line.lastIndexOf(',')
