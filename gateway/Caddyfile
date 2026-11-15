@@ -1,0 +1,19 @@
+{
+    admin off
+    log default {
+        format filter {
+            wrap json
+            fields {
+                request>uri delete
+                request>headers delete
+            }
+        }
+    }
+}
+{$MEDIA_PUBLIC_HOSTNAME} {
+    # Tickets must not be recorded in access logs.
+    log {
+        output discard
+    }
+    reverse_proxy gateway:8080
+}
