@@ -16,6 +16,14 @@ foreach (config('legal.documents') as $key => $document) {
 
 // Download direto do APK para instalação em Smart TVs (via app Downloader)
 Route::get('/download/skue-tv.apk', function () {
+    $remoteUrl = config('downloads.android.url');
+    if (is_string($remoteUrl) && trim($remoteUrl) !== '') {
+        abort_unless(filter_var($remoteUrl, FILTER_VALIDATE_URL)
+            && parse_url($remoteUrl, PHP_URL_SCHEME) === 'https', 503);
+
+        return redirect()->away($remoteUrl)->header('Cache-Control', 'no-store');
+    }
+
     $apkPath = public_path('download/skue-tv.apk');
     if (! file_exists($apkPath)) {
         $apkPath = base_path('../download/skue-tv.apk');
@@ -27,7 +35,9 @@ Route::get('/download/skue-tv.apk', function () {
     return response()->download($apkPath, 'skue-tv.apk', [
         'Content-Type' => 'application/vnd.android.package-archive',
     ]);
-});
+})->name('download.android');
+
+Route::redirect('/downloads/skue-tv.apk', '/download/skue-tv.apk');
 
 // Portal Routes
 Route::prefix('portal')->group(function () {
