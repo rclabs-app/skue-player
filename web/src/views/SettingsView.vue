@@ -92,7 +92,7 @@ async function confirmSwapPlaylist() {
   try {
     const targetUrl = buildPlaylistUrl(playlist)
     await store.setMainPlaylist(playlist.id)
-    await store.loadPlaylistFromUrl(targetUrl)
+    await store.loadConfiguredPlaylist(playlist)
     playlistUrl.value = targetUrl
     showNotification(`Lista "${playlist.name}" carregada com sucesso!`)
     window.location.reload()
