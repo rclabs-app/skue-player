@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, type CSSProperties } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted, watch, type CSSProperties } from 'vue'
 import Hls from 'hls.js'
 import mpegts from 'mpegts.js'
 import { monitorLivePlayback } from '../lib/livePlaybackMonitor'
 import { createMpegtsConfig } from '../lib/mpegtsConfig'
 import { createLiveTsLoader } from '../lib/liveTsLoader'
 import { getLiveHlsAlternative, probeLiveHlsManifest } from '../lib/liveStreamUrl'
-import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { useHistoryStore } from '../stores/history'
 import PlayerTopBar from './PlayerTopBar.vue'
@@ -19,6 +18,7 @@ const props = defineProps<{
   title?: string
   isLive?: boolean
   contentType?: 'movie' | 'series'
+  resolveFallback?: (url: string, signal: AbortSignal) => Promise<string | null>
 }>()
 
 const emit = defineEmits<{
@@ -26,7 +26,7 @@ const emit = defineEmits<{
   (e: 'error', msg: string): void
 }>()
 
-const videoRef = ref<HTMLVideoElement | null>(null)
+const videoRef = shallowRef<HTMLVideoElement | null>(null)
 let hls: Hls | null = null
 let tsPlayer: mpegts.Player | null = null
 const historyStore = useHistoryStore()
@@ -34,6 +34,9 @@ let lastUpdateTime = 0
 let liveViewRecorded = false
 let isDestroying = false
 let playbackGeneration = 0
+let managedNativeFailure: ((code?: number) => void) | null = null
+let managedNative = false
+let movieRequest: AbortController | null = null
 let cleanupMpegtsListeners: (() => void) | null = null
 const playbackRequested = ref(true)
 let liveHlsAttempted = false
@@ -51,9 +54,8 @@ let bufferingTimeout: ReturnType<typeof setTimeout> | null = null
 
 // Native Android Player Bridge Sync
 const isNativePlatform = computed(() => {
-  const isAndroid = /android/i.test(navigator.userAgent);
-  const hasBridge = typeof (window as any).NativePlayer !== 'undefined';
-  return isAndroid || hasBridge || Capacitor.isNativePlatform();
+  // Android browsers do not provide the APK's JavaScript bridge.
+  return typeof (window as any).NativePlayer?.playNativeVideo === 'function';
 })
 let nativePollInterval: ReturnType<typeof setInterval> | null = null
 
@@ -180,6 +182,7 @@ function recordLiveView() {
 }
 
 function handlePlaying() {
+  if (managedNative && !isDestroying) tryApplyResume()
   recordLiveView()
   switchingLiveSource = false
   if (bufferingTimeout) clearTimeout(bufferingTimeout)
@@ -588,51 +591,61 @@ function resolveTsUrl(url: string): string {
   return url.replace(/\.(mkv|mp4|avi|mov|wmv|flv|m4v)(\?.*)?$/i, '.ts')
 }
 
-function playNativeWithFallback(url: string, onFail: () => void) {
+function playNativeWithFallback(url: string, onFail: (code?: number) => void, gateway = false) {
   const video = videoRef.value!
-  showDebug(`[Native HTML5] Tentando: fonte configurada`)
-
-  stopPlayback()
+  void stopPlayback()
   isDestroying = false
-
-  let nativeFailed = false
-
-  const cleanup = () => {
-    video.removeEventListener('error', onError)
-    video.removeEventListener('playing', onPlaying)
+  managedNative = true
+  const generation = playbackGeneration
+  const isCurrent = () => !isDestroying && generation === playbackGeneration && videoRef.value === video
+  let failed = false
+  const fail = (code?: number) => {
+    if (failed || !isCurrent() || code === 1) return
+    failed = true
+    onFail(code)
   }
-
-  const onError = (e: Event) => {
-    if (nativeFailed) return
-    nativeFailed = true
-    cleanup()
-    const err = (e.target as HTMLVideoElement)?.error
-    showDebug(`[Native HTML5] Erro: code=${err?.code} → cascading`)
-    if (err?.code === 2) {
-      showError('Falha de acesso ao vídeo', 'Não foi possível acessar a fonte. Confira a conexão e se o servidor oferece vídeo por HTTPS com acesso permitido ao navegador.')
-      return
-    }
-    onFail()
-  }
-
-  const onPlaying = () => {
-    cleanup()
-    tryApplyResume()
-    showDebug(`[Native HTML5] Playback iniciado com sucesso!`)
-  }
-
-  video.addEventListener('error', onError, { once: true })
-  video.addEventListener('playing', onPlaying, { once: true })
-
+  // Use the template's event handler; keep it active after playback starts.
+  managedNativeFailure = fail
+  if (gateway) video.crossOrigin = 'anonymous'
   video.src = url
-  video.play().catch(e => {
-    showDebug(`[Native HTML5] play() rejeitado: ${e.name}`)
-    if (!nativeFailed) {
-      nativeFailed = true
-      cleanup()
-      onFail()
+  void video.play().catch((error: unknown) => {
+    if (!isCurrent()) return
+    const name = error instanceof Error ? error.name : ''
+    if (name === 'AbortError') return
+    if (name === 'NotAllowedError') {
+      playbackRequested.value = false
+      isBuffering.value = false
+      isPlaying.value = false
+      return // A user gesture, not another source, is required.
     }
+    fail(video.error?.code)
   })
+}
+
+function playMovie(url: string) {
+  const finalError = (code?: number) => showError(code === 2 ? 'Falha de acesso ao vídeo' : 'Não foi possível reproduzir',
+    'A fonte não pôde ser acessada ou reproduzida. Verifique se o vídeo oferece HTTPS, permissão de acesso pelo navegador e um formato compatível.')
+  const recover = async (code?: number) => {
+    if (!props.resolveFallback || code === 3) { finalError(code); return }
+    const generation = playbackGeneration
+    const position = Math.max(currentTime.value, videoRef.value?.currentTime || 0)
+    const controller = new AbortController()
+    movieRequest = controller
+    isBuffering.value = true
+    let alternative: string | null = null
+    try { alternative = await props.resolveFallback(url, controller.signal) } catch { /* Sanitized final error below. */ }
+    if (controller.signal.aborted || isDestroying || generation !== playbackGeneration) return
+    movieRequest = null
+    if (!alternative || !/^https:\/\//i.test(alternative)) { finalError(code); return }
+    hasError.value = false
+    if (position >= 5) { resumeTime.value = position; hasResumed.value = false }
+    playNativeWithFallback(alternative, finalError, true)
+  }
+  if (/^http:\/\//i.test(url) && window.location.protocol === 'https:' && props.resolveFallback) {
+    void recover(2) // Avoid the browser's predictable mixed-content request.
+  } else {
+    playNativeWithFallback(url, code => { void recover(code) })
+  }
 }
 
 function playWithHls(url: string, fallbackUrl: string | null = null, onErrorCallback?: () => void) {
@@ -885,6 +898,9 @@ function initPlayer() {
     showDebug(`[Iniciando] TS direto: fonte configurada`)
     playWithMpegts(url, true)
 
+  } else if (!props.isLive && props.contentType !== 'series' && (isMp4 || /\.(m4v|webm)(?:\?|$)/i.test(url))) {
+    playMovie(url)
+
   } else if (isMp4) {
     const hlsUrl = resolveHlsUrl(url)
     const tsUrl  = resolveTsUrl(url)
@@ -939,6 +955,7 @@ function handleNativeError(e: Event) {
   const video = e.target as HTMLVideoElement
   if (!video.error) return
   if (isDestroying) return
+  if (managedNative) { managedNativeFailure?.(video.error.code); return }
   const code = video.error.code
   if (code === 4) {
     showError('Formato Não Suportado', `Este dispositivo não consegue decodificar este conteúdo.\nCódigo: MEDIA_ERR_SRC_NOT_SUPPORTED`)
@@ -981,6 +998,10 @@ async function stopPlayback() {
   if (isDestroying) return
   isDestroying = true
   playbackGeneration++
+  movieRequest?.abort()
+  movieRequest = null
+  managedNativeFailure = null
+  managedNative = false
   pendingLiveReconnect = null
   liveBufferConsumed = false
   if (liveReconnectTimer) clearTimeout(liveReconnectTimer)
@@ -1015,6 +1036,7 @@ async function stopPlayback() {
   if (videoRef.value) {
     videoRef.value.pause()
     videoRef.value.removeAttribute('src')
+    videoRef.value.removeAttribute('crossorigin')
     videoRef.value.load()
   }
   if (bufferingTimeout) clearTimeout(bufferingTimeout)
