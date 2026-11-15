@@ -1,0 +1,21 @@
+# This project builds only the browser player, never Android or local state.
+/*
+!src
+!public
+!index.html
+!package.json
+!package-lock.json
+!tsconfig*.json
+!vite.config.ts
+!tailwind.config.*
+!postcss.config.*
+!vercel.json
+**/*.spec.ts
+**/__fixtures__/**
+**/.env*
+**/*.db
+**/*.sqlite*
+**/*.apk
+**/*.aab
+**/*.jks
+**/*.keystore
