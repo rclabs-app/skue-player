@@ -544,6 +544,7 @@ function handleKeydown(e: KeyboardEvent) {
       :url="activePlaybackEpisode ? activePlaybackEpisode.url : item.url"
       :title="activePlaybackEpisode ? activePlaybackEpisode.name : item.name"
       :poster="item.logo"
+      :resolve-fallback="item.type === 'movie' ? store.resolveMoviePlayback : undefined"
       :content-type="item.type === 'series' ? 'series' : 'movie'"
       @close="onPlayerClose"
       @error="errorMsg = $event"
