@@ -11,6 +11,7 @@ import { useFavoritesStore } from './favorites'
 import { Capacitor } from '@capacitor/core'
 import { buildPlaylistUrl, type PlaylistConfig } from '../utils/playlist'
 import { XtreamClient, XtreamError } from '../lib/xtream'
+import { movieReference, validMovieGatewayUrl } from '../lib/moviePlayback'
 
 class PlaylistAccessRestrictedError extends Error {
   constructor() {
@@ -113,6 +114,30 @@ export const usePlaylistStore = defineStore('playlist', () => {
     })
     episodeRequests.set(serieKey, request)
     return request
+  }
+
+  async function resolveMoviePlayback(url: string, signal: AbortSignal): Promise<string | null> {
+    if (Capacitor.isNativePlatform() || deviceRemoved.value) return null
+    const source = await db.getConfig<PlaylistConfig>('xtream_source')
+    if (!source) return null
+    const reference = movieReference(url, source)
+    const token = await db.getConfig<string>('device_token')
+    if (!reference || !token || signal.aborted) return null
+    const generation = importGeneration
+    const findConfigured = () => devicePlaylists.value.find(entry => entry.is_active && entry.url === source.url
+      && entry.username === source.username && entry.password === source.password)
+    if (!findConfigured()) await fetchDeviceConfig(signal)
+    const configured = findConfigured()
+    if (!configured || signal.aborted || generation !== importGeneration || deviceRemoved.value) return null
+    const response = await fetch(getApiUrl(`/api/v1/devices/${encodeURIComponent(deviceMac.value)}/playlists/${configured.id}/movie-ticket`), {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(reference), signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]),
+    })
+    if (await handleDeviceRemoval(response)) return null
+    if (!response.ok) return null
+    const data = await response.json()
+    if (signal.aborted || generation !== importGeneration || deviceRemoved.value) return null
+    return validMovieGatewayUrl(data.url) ? data.url : null
   }
 
   // ─── Device State ──────────────────────────────────────────────────────────
@@ -249,7 +274,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     }
   }
 
-  async function fetchDeviceConfig(): Promise<any[]> {
+  async function fetchDeviceConfig(signal?: AbortSignal): Promise<any[]> {
     try {
       // Pending keys become registered only after confirmation in the Laravel portal.
       if (registrationPending.value) {
@@ -259,7 +284,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
       const token = await db.getConfig('device_token')
       const headers: Record<string, string> = {}
       if (token) headers['Authorization'] = `Bearer ${token}`
-      const response = await fetch(getApiUrl(`/api/v1/devices/${deviceMac.value}/config`), { headers })
+      const response = await fetch(getApiUrl(`/api/v1/devices/${deviceMac.value}/config`), { headers, signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(30000) })
       if (await handleDeviceRemoval(response)) return []
       if (!response.ok) throw new Error('Failed to fetch remote config')
       const data = await response.json()
@@ -627,6 +652,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     devicePlaylists,
     deviceLicense,
     getSeriesEpisodes,
+    resolveMoviePlayback,
     isSeriesId,
     initialize,
     syncHandshake,
