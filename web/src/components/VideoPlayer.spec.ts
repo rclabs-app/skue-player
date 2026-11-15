@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount, type VueWrapper } from '@vue/test-utils'
+import { mount, DOMWrapper, type VueWrapper } from '@vue/test-utils'
 import VideoPlayer from './VideoPlayer.vue'
 
 const state = vi.hoisted(() => ({
@@ -90,6 +90,110 @@ describe('VideoPlayer playback lifecycle', () => {
     expect(wrapper!.text()).toContain('Falha de acesso ao vídeo')
     expect(wrapper!.text()).not.toContain('Conteúdo Incompatível')
     expect(state.players).toHaveLength(0)
+  })
+
+  function openBrowserMovie(url: string, resolveFallback?: (url: string, signal: AbortSignal) => Promise<string | null>) {
+    // Real Teleport preserves the actual media element across component updates.
+    wrapper = mount(VideoPlayer, { attachTo: document.body, props: { url, id: 'test', isLive: false, resolveFallback } })
+    return new DOMWrapper(document.body)
+  }
+
+  it('uses the gateway once after a native access failure, without inventing formats', async () => {
+    state.hlsSupported = true
+    const resolveFallback = vi.fn().mockResolvedValue('https://media.example.invalid/v1/media.mp4?ticket=synthetic')
+    const view = openBrowserMovie('https://source.example.invalid/movie/1.mp4', resolveFallback)
+    const video = view.get('video')
+    Object.defineProperty(video.element, 'error', { configurable: true, value: { code: 2 } })
+    await video.trigger('error')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(resolveFallback).toHaveBeenCalledTimes(1)
+    expect((video.element as HTMLVideoElement).src).toContain('media.example.invalid')
+    expect((video.element as HTMLVideoElement).crossOrigin).toBe('anonymous')
+    await video.trigger('error')
+    expect(resolveFallback).toHaveBeenCalledTimes(1)
+    expect(state.players).toHaveLength(0)
+    expect(state.hlsInstances).toHaveLength(0)
+    expect(view.text()).toContain('Falha de acesso ao vídeo')
+  })
+
+  it('cancels the gateway request and ignores its late result after changing movie', async () => {
+    let finish!: (value: string) => void
+    const resolveFallback = vi.fn().mockImplementation(() => new Promise<string>(resolve => { finish = resolve }))
+    const view = openBrowserMovie('https://source.example.invalid/movie/1.mp4', resolveFallback)
+    Object.defineProperty(view.get('video').element, 'error', { configurable: true, value: { code: 4 } })
+    await view.get('video').trigger('error')
+    const signal = resolveFallback.mock.calls[0]![1] as AbortSignal
+    await wrapper!.setProps({ url: 'https://source.example.invalid/movie/2.mp4' })
+    expect(signal.aborted).toBe(true)
+    finish('https://media.example.invalid/v1/media.mp4?ticket=late')
+    await vi.advanceTimersByTimeAsync(0)
+    expect((view.get('video').element as HTMLVideoElement).src).toContain('/movie/2.mp4')
+  })
+
+  it('cancels a pending gateway request when closing the player', async () => {
+    let finish!: (value: string) => void
+    const resolver = vi.fn().mockImplementation(() => new Promise<string>(resolve => { finish = resolve }))
+    const view = openBrowserMovie('https://source.example.invalid/movie/1.mp4', resolver)
+    Object.defineProperty(view.get('video').element, 'error', { configurable: true, value: { code: 2 } })
+    await view.get('video').trigger('error')
+    const signal = resolver.mock.calls[0]![1] as AbortSignal
+    const attempts = play.mock.calls.length
+    wrapper!.unmount(); wrapper = undefined
+    expect(signal.aborted).toBe(true)
+    finish('https://media.example.invalid/v1/media.mp4?ticket=late')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(play).toHaveBeenCalledTimes(attempts)
+  })
+
+  it('retains the playback position when recovering through the gateway', async () => {
+    const resolver = vi.fn().mockResolvedValue('https://media.example.invalid/v1/media.mp4?ticket=synthetic')
+    const view = openBrowserMovie('https://source.example.invalid/movie/1.mp4', resolver)
+    const video = view.get('video'), element = video.element as HTMLVideoElement
+    element.currentTime = 30
+    await video.trigger('timeupdate')
+    Object.defineProperty(element, 'error', { configurable: true, value: { code: 2 } })
+    await video.trigger('error'); await vi.advanceTimersByTimeAsync(0)
+    element.currentTime = 0
+    Object.defineProperty(element, 'readyState', { configurable: true, value: 1 })
+    await video.trigger('loadedmetadata')
+    expect(element.currentTime).toBe(30)
+  })
+
+  it('requests the gateway before attempting HTTP from an HTTPS page', async () => {
+    vi.spyOn(window.location, 'protocol', 'get').mockReturnValue('https:')
+    const resolver = vi.fn().mockResolvedValue(null)
+    const view = openBrowserMovie('http://source.example.invalid/movie/1.mp4', resolver)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(resolver).toHaveBeenCalledTimes(1)
+    expect(play).not.toHaveBeenCalled()
+    expect((view.get('video').element as HTMLVideoElement).src).toBe('')
+    expect(view.text()).toContain('Falha de acesso ao vídeo')
+  })
+
+  it('waits for a user gesture after autoplay denial without requesting a gateway', async () => {
+    play.mockRejectedValueOnce(new DOMException('Gesture required', 'NotAllowedError'))
+    const resolver = vi.fn()
+    wrapper = mount(VideoPlayer, { props: { url: '/movie/1.mp4', isLive: false, resolveFallback: resolver }, global: { stubs: { teleport: true } } })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(resolver).not.toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('Não foi possível reproduzir')
+    expect(state.players).toHaveLength(0)
+  })
+
+  it('does not switch formats or use the gateway after a decoder failure', async () => {
+    const resolver = vi.fn(), view = openBrowserMovie('https://source.example.invalid/movie/1.mp4', resolver)
+    Object.defineProperty(view.get('video').element, 'error', { configurable: true, value: { code: 3 } })
+    await view.get('video').trigger('error')
+    expect(resolver).not.toHaveBeenCalled()
+    expect(state.players).toHaveLength(0)
+    expect(view.text()).toContain('Não foi possível reproduzir')
+  })
+
+  it('uses HTML video in an Android browser without an APK bridge', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 Android Chrome')
+    const view = open(false, '/movie/1.mp4')
+    expect(view.get('video').element.src).toContain('/movie/1.mp4')
+    expect(view.text()).not.toContain('Falha ao iniciar o player nativo')
   })
 
   beforeEach(() => {
