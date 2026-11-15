@@ -8,13 +8,27 @@ import { getApiUrl } from '../utils/api'
 import { cleanName } from '../utils/text'
 import { useHistoryStore } from './history'
 import { useFavoritesStore } from './favorites'
+import { Capacitor } from '@capacitor/core'
+import { buildPlaylistUrl, type PlaylistConfig } from '../utils/playlist'
+import { XtreamClient, XtreamError } from '../lib/xtream'
 
+class PlaylistAccessRestrictedError extends Error {
+  constructor() {
+    super('A fonte recusou o acesso à lista (HTTP 451). Verifique a disponibilidade e as condições de acesso com o responsável pela fonte.')
+  }
+}
 
 export const usePlaylistStore = defineStore('playlist', () => {
   const isLoaded = ref(false)
   const isProcessing = ref(false)
   const processingProgress = ref('')
   const error = ref<string | null>(null)
+  const downloadDiagnostics = ref<{
+    direct: 'pending' | 'mixed-content' | 'response' | 'network-error' | 'timeout'
+    directStatus?: number
+    proxyAttempted: boolean
+    proxyStatus?: number
+  } | null>(null)
 
   // Live + Movies: no longer fully loaded in RAM.
   // They are fetched on demand from the database.
@@ -52,8 +66,53 @@ export const usePlaylistStore = defineStore('playlist', () => {
    * On-demand episode fetch — called from DetailsView when user opens a series.
    * Queries IDB by serieKey index — does NOT scan 200k items.
    */
+  const episodeRequests = new Map<string, Promise<PlaylistItem[]>>()
   async function getSeriesEpisodes(serieKey: string): Promise<PlaylistItem[]> {
-    return db.getEpisodesBySerieKey(serieKey)
+    const cached = await db.getEpisodesBySerieKey(serieKey)
+    if (!serieKey.startsWith('xc:')) return cached
+    const episodes = cached.filter(item => /\.[a-zA-Z0-9]{1,8}$/.test(new URL(item.url).pathname))
+    if (episodes.length) return episodes
+    const pending = episodeRequests.get(serieKey)
+    if (pending) return pending
+    const generation = importGeneration
+    const request = (async () => {
+      const source = await db.getConfig<PlaylistConfig>('xtream_source')
+      const series = seriesIndex.value.find(item => item.serieKey === serieKey)
+      if (!source || !series) return []
+      const token = await db.getConfig<string>('device_token')
+      const findConfigured = () => devicePlaylists.value.find(entry => entry.is_active && entry.url === source.url
+        && entry.username === source.username && entry.password === source.password)
+      let configured = findConfigured()
+      // A cached catalog survives reload, but devicePlaylists is only in RAM.
+      // Restore the authenticated binding before selecting the episode transport.
+      if (!configured && token && /^https:/i.test(source.url)) {
+        await fetchDeviceConfig()
+        configured = findConfigured()
+        if (!configured) throw new XtreamError(deviceRemoved.value ? removedMessage
+          : 'Não foi possível confirmar a configuração desta lista. Tente consultar os episódios novamente.')
+      }
+      const playlistId = configured?.id
+      const metadata = configured && token && /^https:/i.test(source.url) ? async (seriesId: string) => {
+        const response = await fetch(getApiUrl(`/api/v1/devices/${encodeURIComponent(deviceMac.value)}/playlists/${playlistId}/xtream/series/${seriesId}`), {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: AbortSignal.timeout(45000),
+        })
+        if (await handleDeviceRemoval(response)) throw new XtreamError(removedMessage, 410)
+        if (!response.ok) throw new XtreamError(`Não foi possível consultar os episódios (HTTP ${response.status}).`, response.status)
+        return response.json()
+      } : undefined
+      const items = await new XtreamClient(source).episodes(serieKey, series.displayName, series.group, metadata)
+      if (deviceRemoved.value || generation !== importGeneration) throw new Error('A configuração da lista mudou durante a consulta.')
+      await db.savePlaylistItems(items)
+      const updated = { ...series, episodeCount: items.length }
+      await db.saveSeriesIndex([updated])
+      seriesIndex.value = seriesIndex.value.map(entry => entry.serieKey === serieKey ? updated : entry)
+      return items
+    })().finally(() => {
+      if (episodeRequests.get(serieKey) === request) episodeRequests.delete(serieKey)
+    })
+    episodeRequests.set(serieKey, request)
+    return request
   }
 
   // ─── Device State ──────────────────────────────────────────────────────────
@@ -78,6 +137,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
   const deviceKey = ref('')
   const deviceRemoved = ref(false)
   const removedMessage = 'Este dispositivo foi removido pelo administrador.'
+  let importGeneration = 0
+  let activeXtream: AbortController | null = null
   let cancelImport: (() => void) | null = null
   const deviceMac = ref('')
   const devicePlaylists = shallowRef<DevicePlaylist[]>([])
@@ -108,15 +169,13 @@ export const usePlaylistStore = defineStore('playlist', () => {
           const configs = await fetchDeviceConfig()
           const mainPlaylist = configs.find(p => p.is_main)
           if (mainPlaylist) {
-              const { buildPlaylistUrl } = await import('../utils/playlist')
-              const targetUrl = buildPlaylistUrl(mainPlaylist)
-              await loadPlaylistFromUrl(targetUrl)
+              await loadConfiguredPlaylist(mainPlaylist)
           }
       }
       isLoaded.value = !!(await db.getConfig('playlist_loaded'))
     } catch (e) {
-      error.value = 'Failed to initialize database'
-      console.error('Falha na operação de configuração local.')
+      error.value ||= 'Não foi possível inicializar o aplicativo.'
+      console.error('Falha ao inicializar o aplicativo.')
     }
   }
 
@@ -128,6 +187,8 @@ export const usePlaylistStore = defineStore('playlist', () => {
     seriesIndex.value = []
     seriesIdSet.value = new Set()
     error.value = removedMessage
+    importGeneration++
+    activeXtream?.abort()
     cancelImport?.()
     await db.clearDeviceContent()
     const history = useHistoryStore()
@@ -285,36 +346,82 @@ export const usePlaylistStore = defineStore('playlist', () => {
     }
   }
 
+  async function loadConfiguredPlaylist(config: PlaylistConfig): Promise<void> {
+    if (config.type !== 'xtream') return loadPlaylistFromUrl(buildPlaylistUrl(config))
+    if (deviceRemoved.value) throw new Error(removedMessage)
+    activeXtream?.abort()
+    const controller = new AbortController()
+    activeXtream = controller
+    importGeneration++
+    isProcessing.value = true
+    error.value = null
+    processingProgress.value = 'Consultando a conta Xtream...'
+    downloadDiagnostics.value = { direct: 'pending', proxyAttempted: false }
+    try {
+      if (!Capacitor.isNativePlatform() && window.location.protocol === 'https:' && /^http:/i.test(config.url)) {
+        downloadDiagnostics.value.direct = 'mixed-content'
+        throw new XtreamError('O player web HTTPS precisa de uma API Xtream HTTPS disponibilizada pela fonte.')
+      }
+      const client = new XtreamClient(config, controller.signal, status => {
+        downloadDiagnostics.value = { direct: 'response', directStatus: status, proxyAttempted: false }
+      })
+      const response = await client.playlistResponse()
+      await streamToWorker(response, buildPlaylistUrl(config), config)
+    } catch (cause) {
+      if (!(cause instanceof XtreamError) || !cause.status) {
+        if (downloadDiagnostics.value?.direct === 'pending') downloadDiagnostics.value.direct = 'network-error'
+      }
+      error.value = cause instanceof Error ? cause.message : 'Não foi possível importar a conta Xtream.'
+      throw cause
+    } finally {
+      if (activeXtream === controller) activeXtream = null
+      isProcessing.value = false
+    }
+  }
+
   // ─── Load from URL (download + parse + save) ──────────────────────────────
   async function loadPlaylistFromUrl(url: string) {
     if (deviceRemoved.value) throw new Error(removedMessage)
     isProcessing.value = true
     error.value = null
+    importGeneration++
+    activeXtream?.abort()
     processingProgress.value = 'Downloading playlist...'
+    downloadDiagnostics.value = { direct: 'pending', proxyAttempted: false }
 
     try {
       let responseToStream: Response | null = null
       
-      // 1. Try direct fetch first
-      try {
+      // Browser fetch from HTTPS to HTTP is blocked before reaching the source.
+      // Native HTTP remains available through the configured Capacitor bridge.
+      const mixedBrowserRequest = !Capacitor.isNativePlatform()
+        && window.location.protocol === 'https:' && /^http:/i.test(url)
+      if (mixedBrowserRequest) downloadDiagnostics.value.direct = 'mixed-content'
+      if (!mixedBrowserRequest) {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 60000)
-        
-        const directResp = await fetch(url, { signal: controller.signal })
-        clearTimeout(timeoutId)
-        
-        if (directResp.ok) {
-          responseToStream = directResp
-        }
-      } catch (e: any) {
-        console.warn('Falha no acesso direto à origem; tentando importação pelo servidor.')
-        if (e.name === 'AbortError') {
-          throw new Error('Tempo limite excedido ao baixar a lista. A lista é muito grande ou a internet está lenta.')
+        try {
+          const directResp = await fetch(url, { signal: controller.signal })
+          downloadDiagnostics.value.direct = 'response'
+          downloadDiagnostics.value.directStatus = directResp.status
+          if (directResp.status === 451) throw new PlaylistAccessRestrictedError()
+          if (directResp.ok) responseToStream = directResp
+        } catch (e: any) {
+          // A source restriction must not trigger another access path.
+          if (e instanceof PlaylistAccessRestrictedError) throw e
+          downloadDiagnostics.value.direct = e.name === 'AbortError' ? 'timeout' : 'network-error'
+          console.warn('Falha no acesso direto à origem; tentando importação pelo servidor.')
+          if (e.name === 'AbortError') {
+            throw new Error('Tempo limite excedido ao baixar a lista. A lista é muito grande ou a internet está lenta.')
+          }
+        } finally {
+          clearTimeout(timeoutId)
         }
       }
 
       // 2. Proxy fetch fallback
       if (!responseToStream) {
+        downloadDiagnostics.value.proxyAttempted = true
         const token = await db.getConfig('device_token')
         const headers: Record<string, string> = { 
           'Content-Type': 'application/json',
@@ -325,20 +432,26 @@ export const usePlaylistStore = defineStore('playlist', () => {
         const proxyController = new AbortController()
         const proxyTimeoutId = setTimeout(() => proxyController.abort(), 60000)
 
-        const response = await fetch(getApiUrl('/api/v1/proxy'), {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ url }),
-          signal: proxyController.signal
-        }).catch(e => {
+        let response: Response
+        try {
+          response = await fetch(getApiUrl('/api/v1/proxy'), {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ url }),
+            signal: proxyController.signal
+          })
+          downloadDiagnostics.value.proxyStatus = response.status
+        } catch (e: any) {
           if (e.name === 'AbortError') {
             throw new Error('Tempo limite excedido ao usar o servidor proxy.')
           }
           throw e
-        })
-        clearTimeout(proxyTimeoutId)
+        } finally {
+          clearTimeout(proxyTimeoutId)
+        }
 
         if (await handleDeviceRemoval(response)) throw new Error(removedMessage)
+        if (response.status === 451) throw new PlaylistAccessRestrictedError()
         if (!response.ok) {
           if (response.status === 429) {
             throw new Error('Muitas requisições enviadas. Por favor, aguarde 1 minuto e tente novamente.')
@@ -362,7 +475,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
   }
 
   // ─── Stream content to Worker ───────────────────────────────────────────────
-  async function streamToWorker(response: Response, sourceInfo: string) {
+  async function streamToWorker(response: Response, sourceInfo: string, xtreamSource: PlaylistConfig | null = null) {
     if (deviceRemoved.value) throw new Error(removedMessage)
     isProcessing.value = true
     error.value = null
@@ -374,6 +487,13 @@ export const usePlaylistStore = defineStore('playlist', () => {
 
     try {
       const userData = await db.getPlaylistUserData()
+      userData.config = (userData.config || []).filter(entry => entry[0] !== 'xtream_source')
+      userData.config.push(['xtream_source', JSON.stringify(xtreamSource)])
+      const previous = await db.getConfig<PlaylistConfig>('xtream_source')
+      const sameAccount = xtreamSource && previous && previous.url === xtreamSource.url
+        && previous.username === xtreamSource.username && previous.password === xtreamSource.password
+      const retainedEpisodes = sameAccount
+        ? await db.getXtreamCachedEpisodes(new XtreamClient(xtreamSource).seriesPrefix) : []
       if (deviceRemoved.value) throw new Error(removedMessage)
       await new Promise<void>((resolve, reject) => {
         const worker = new M3uWorker()
@@ -467,7 +587,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
         }
 
         // 1. Init worker
-        worker.postMessage({ type: 'init', userData })
+        worker.postMessage({ type: 'init', userData, retainedEpisodes })
       })
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Unknown error'
@@ -479,6 +599,9 @@ export const usePlaylistStore = defineStore('playlist', () => {
   }
 
   async function clearPlaylist() {
+    importGeneration++
+    activeXtream?.abort()
+    cancelImport?.()
     await db.clearPlaylist()
     await db.saveConfig('playlist_loaded', false)
     await db.saveConfig('playlist_url', null)
@@ -493,6 +616,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     isProcessing,
     processingProgress,
     error,
+    downloadDiagnostics,
     seriesIndex,
     series: uniqueSeries,
     uniqueSeries,  // now returns SeriesEntry[] from the deduplicated index
@@ -508,6 +632,7 @@ export const usePlaylistStore = defineStore('playlist', () => {
     syncHandshake,
     fetchDeviceConfig,
     setMainPlaylist,
+    loadConfiguredPlaylist,
     loadPlaylistFromUrl,
     streamToWorker,
     clearPlaylist
