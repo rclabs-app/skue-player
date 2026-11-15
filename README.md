@@ -44,6 +44,10 @@ O sistema opera estritamente como um **reprodutor de mídia neutro** ("*Bring Yo
 
 ---
 
+### Gateway de filmes em preparação
+
+Há uma implementação opcional em [`gateway/`](gateway/README.md) para entregar por HTTPS filmes de fontes HTTP. Ela foi validada localmente com dados sintéticos e permanece desativada até definir hospedagem, configurar segredos e testar a fonte no servidor público. O Laravel apenas autoriza; o serviço separado retransmite o vídeo sem armazená-lo. Isso altera a premissa de reprodução exclusivamente direta e exige revisar as descrições operacionais antes da ativação. Nesta etapa, somente filmes Xtream MP4/M4V/WebM; séries, Live e atualização do APK aguardam.
+
 ## 3. Arquitetura do Sistema
 
 ```
