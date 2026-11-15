@@ -82,6 +82,16 @@ describe('VideoPlayer playback lifecycle', () => {
     return wrapper
   }
 
+  it('shows an access error for native network failure without cascading to invented formats', async () => {
+    open(false, 'https://source.example.invalid/movie/1.mp4')
+    const video = wrapper!.find('video')
+    Object.defineProperty(video.element, 'error', { configurable: true, value: { code: 2 } })
+    await video.trigger('error')
+    expect(wrapper!.text()).toContain('Falha de acesso ao vídeo')
+    expect(wrapper!.text()).not.toContain('Conteúdo Incompatível')
+    expect(state.players).toHaveLength(0)
+  })
+
   beforeEach(() => {
     vi.useFakeTimers()
     state.players.length = 0
