@@ -54,12 +54,18 @@ describe('playlist import continuity', () => {
     vi.stubGlobal('self', scope)
     try {
       await import('../workers/m3u-parser.worker')
-      await scope.onmessage({ data: { type: 'init', userData } })
-      await scope.onmessage({ data: { type: 'chunk', data: new TextEncoder().encode('#EXTM3U url-tvg="https://example.invalid/old.xml"\n' + other + movie + channel) } })
+      await scope.onmessage({ data: { type: 'init', userData, retainedEpisodes: [
+        { id: 'cached-episode', name: 'Show S01E01', url: 'https://example.invalid/series/user/pass/4.mp4', group: 'Séries', type: 'series', serieKey: 'xc:vod2-test-source:3' },
+        { id: 'absent-series-episode', name: 'Old S01E01', url: 'https://example.invalid/series/user/pass/5.mp4', group: 'Séries', type: 'series', serieKey: 'xc:vod2-test-source:99' },
+      ] } })
+      await scope.onmessage({ data: { type: 'chunk', data: new TextEncoder().encode('#EXTM3U url-tvg="https://example.invalid/old.xml"\n' + other + movie + channel + '#EXTINF:-1 skue-series-key="xc:vod2-test-source:3",Show\nhttps://example.invalid/series/user/pass/3\n') } })
       await scope.onmessage({ data: { type: 'end' } })
       expect(postMessage.mock.calls.some(([m]) => m.type === 'error')).toBe(false)
       expect(saved).toBeDefined()
       const restored = new SQL.Database(saved!)
+      expect(restored.exec("SELECT serie_key,episode_count FROM series_index WHERE display_name='Show'")[0].values).toEqual([['xc:vod2-test-source:3',1]])
+      expect(restored.exec("SELECT id FROM playlist WHERE id='cached-episode'")[0].values).toEqual([['cached-episode']])
+      expect(restored.exec("SELECT id FROM playlist WHERE id='absent-series-episode'")).toEqual([])
       expect(postMessage.mock.calls.find(([m]) => m.type === 'done')?.[0]).not.toHaveProperty('epgUrl')
       expect(restored.exec("SELECT value FROM config WHERE key='epg_url'")).toEqual([])
       expect(restored.exec("SELECT tvg_id,type FROM playlist WHERE name='Synthetic channel'")[0].values).toEqual([['channel-1','live']])
