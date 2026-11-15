@@ -6,6 +6,7 @@ import { useFavoritesStore } from '../stores/favorites'
 import { useHistoryStore } from '../stores/history'
 import { cleanName } from '../utils/text'
 import type { PlaylistItem } from '../types/m3u'
+import { XtreamError } from '../lib/xtream'
 import VideoPlayer from '../components/VideoPlayer.vue'
 import { TMDBService } from '../services/tmdb.service'
 import type { TMDBMetadata } from '../lib/database'
@@ -41,6 +42,7 @@ watch(() => item.value?.id, () => {
 // This avoids holding 200k PlaylistItems in memory at startup.
 const episodes = ref<PlaylistItem[]>([])
 const episodesLoading = ref(false)
+const episodesError = ref('')
 
 async function loadEpisodes() {
   if (!item.value || item.value.type !== 'series') {
@@ -48,10 +50,14 @@ async function loadEpisodes() {
     return
   }
   episodesLoading.value = true
+  episodesError.value = ''
   try {
     // Use serieKey stored on the PlaylistItem, or derive from cleanName
     const key = item.value.serieKey || cleanName(item.value.name).toLowerCase()
     episodes.value = await store.getSeriesEpisodes(key)
+  } catch (cause) {
+    const status = cause instanceof XtreamError && cause.status ? ` (HTTP ${cause.status})` : ''
+    episodesError.value = `Não foi possível consultar os episódios na fonte${status}. Tente novamente.`
   } finally {
     episodesLoading.value = false
   }
@@ -237,6 +243,7 @@ function goBack() {
 function startPlayback() {
   if (item.value?.type === 'series') {
     const ep = nextEpisodeToWatch.value
+    if (episodesLoading.value || !ep?.url) return
     if (ep) {
       activePlaybackEpisode.value = ep
       const info = parseEpisodeInfo(ep.name)
@@ -438,6 +445,7 @@ function handleKeydown(e: KeyboardEvent) {
               <button 
                 id="btn-play"
                 @click="startPlayback"
+                :disabled="item.type === 'series' && (episodesLoading || !nextEpisodeToWatch)"
                 class="bg-primary hover:bg-blue-600 focus:bg-white focus:text-black focus:scale-105 text-white flex items-center justify-center gap-3 px-8 py-4 rounded-lg font-bold transition-all shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 text-lg min-w-[240px]"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -455,6 +463,11 @@ function handleKeydown(e: KeyboardEvent) {
             </div>
           </div>
 
+          <div v-if="item.type === 'series' && episodesLoading" role="status" class="mb-6 text-gray-300">Carregando episódios…</div>
+          <div v-else-if="item.type === 'series' && (episodesError || !episodes.length)" role="alert" class="mb-6 text-gray-300">
+            <p>{{ episodesError || 'A fonte não retornou episódios para esta série.' }}</p>
+            <button @click="loadEpisodes" class="mt-3 px-4 py-2 rounded border border-white/30 focus:ring-2 focus:ring-primary">Consultar episódios novamente</button>
+          </div>
           <!-- Seasons and Episodes -->
           <div v-if="item.type === 'series' && seasons.length > 0" class="mt-4 w-full">
             <!-- Season Selector -->
@@ -531,6 +544,7 @@ function handleKeydown(e: KeyboardEvent) {
       :url="activePlaybackEpisode ? activePlaybackEpisode.url : item.url"
       :title="activePlaybackEpisode ? activePlaybackEpisode.name : item.name"
       :poster="item.logo"
+      :content-type="item.type === 'series' ? 'series' : 'movie'"
       @close="onPlayerClose"
       @error="errorMsg = $event"
     />
