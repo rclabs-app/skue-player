@@ -190,3 +190,30 @@ Verificações HTTPS anônimas com validação de certificado aprovada, sem bypa
 Após os novos deployments: site/portal/login administrativo/saúde 200; player `/` e `/live` 200 com HTML SPA; saúde retorna status ok; configuração privada sem token 401; preflight 204 permite origem player.skue.tv e X-Device-Token. Dezoito assets JavaScript verificados: API e portal finais presentes, URL temporária do backend ausente. Isso comprova entrega HTTPS, assets e configuração; navegação visual, login interativo, reprodução e aparelho ainda precisam de validação.
 
 Código funcional não foi alterado nesta correção; builds dos deployments concluíram. Não houve nova suíte local, migration, criação de dispositivo, alteração de conta, commit/push ou APK. A main remota ainda precisa receber a preparação local mediante fluxo Git aprovado. O pacote isolado temporário do player foi removido após validar a publicação.
+
+
+### APK de testes atualizado e enviado — 14/11/2026
+
+O APK local anterior (10/11, code8) continha endereços da rede local. Gerado novamente com `VITE_API_BASE_URL=https://api.skue.tv` e `VITE_PORTAL_URL=https://skue.tv/portal`, seguido de `cap sync android` e `assembleDebug`. Versão atual **1.0.2-tv-beta**, **versionCode 10**, pacote `tv.skue.player`, Android 7.0+; 8.619.262 bytes (8,2 MiB).
+
+- SHA256: `243bcb4548c8f603d4a3f17349ef46b9ba58a392c34edd3f99f91abd2025f1f4`.
+- Certificado SHA256: `6242575bb6f590273e38387c0099a237e2f3fe497ee7e49697f323cee0be8213`, igual ao APK local anterior; não foi gerada outra chave.
+- Build **debug de homologação**, sem assinatura comercial. Atualização/instalação e reprodução em aparelho ainda não verificadas.
+- ZIP do APK conferido: API/portal finais presentes, sem URL de rede 192.168. Cópias locais ignoradas atualizadas após backup dos instaladores anteriores em /tmp.
+
+Após autorização específica do usuário, criado Blob público `skue-apk-homologacao`, store `store_LVB1UzjkwCJfcVGP`, ligado somente ao ambiente production do backend. Nenhum upgrade ou meio de pagamento alterado. Objeto público versionado: https://lvb1uzjkwcjfcvgp.public.blob.vercel-storage.com/android/1.0.2-tv-beta/skue-tv.apk . Download direto já conferido por HTTP200, tipo APK, tamanho e SHA256.
+
+`SKUE_ANDROID_APK_URL` aponta ao objeto no ambiente do backend. A rota canônica https://skue.tv/download/skue-tv.apk redireciona para o armazenamento, sem retransmitir bytes pelo Laravel; a forma antiga `/downloads/skue-tv.apk` redireciona à canônica. Configuração remota tem prioridade sobre instaladores locais antigos; URL não HTTPS é recusada. Homepage usa metadados de `config/downloads.php` e rota nomeada. Para o próximo APK, incrementar versão Gradle, reconstruir/verificar, publicar objeto novo e atualizar URL/metadados; não sobrescrever o objeto versionado com cache longo.
+
+Novos testes de download: 4 testes/12 asserções. Suíte backend na atualização code10: 84 testes/616 asserções aprovados. Build Vite, sync Capacitor, compilação Gradle e apksigner aprovados. CLI gerou `.env.local` privado 0600/ignorado; não copiar seu conteúdo nem incluir tokens no Git. Código novo desta etapa ainda não commitado; publicação direta local autorizada pelo pedido de upload.
+
+A publicação code9 foi validada anteriormente no backend `dpl_6tv1K3EoLTJPjLPVpEj2xDZ66PGV`. A atualização code10 mantém o armazenamento e o plano existentes; confira abaixo a verificação atual e o deployment correspondente.
+
+
+### Diagnóstico da importação — 14/11/2026
+
+Consulta limitada e autorizada à URL HTTP original retornou HTTP200, sem redirecionamento, tipo application/octet-stream e prefixo M3U válido; sem cabeçalho CORS. Credenciais/conteúdo não registrados, sem reprodução. Esse resultado é da máquina de diagnóstico: não comprova acesso pela Vercel ou pelo celular. Capturas do browser mostram HTTPS da fonte403 sem ACAO e proxy451; não há evidência para atribuir motivo jurídico ou indisponibilidade geral. Código preserva protocolo informado, sem conversão HTTP/HTTPS. Browser HTTPS evita tentativa HTTP que seria bloqueada e usa importação autenticada; APK conserva acesso direto via bridge nativa. Não houve alteração da política da fonte nem de User-Agent.
+
+APK code10 e player web acrescentam diagnóstico sem URL/credenciais: resultado da tentativa direta e da importação pelo servidor. Corrigem também estado incorreto de desconexão e importação repetida na montagem. Suíte web: 127 aprovados/1 diagnóstico opcional pulado; build Vite/cap sync/Gradle aprovados, certificado preservado. Acesso real pelo aparelho e importação completa continuam pendentes.
+
+Publicação code10 confirmada: backend `dpl_13KsHiDJo5wGVsfG3fXQ9d314cNf` e player `dpl_37bZctSzkk4STvPB6vyDZNo6Y1bE` READY. Saúde/site/onboarding200; 17 assets com diagnóstico/API final. Download integral nos caminhos singular e plural200 com tamanho e SHA256code10 correspondentes; homepage versão1.0.2 correta. Isso valida distribuição/configuração, não a importação da fonte no celular/browser.
